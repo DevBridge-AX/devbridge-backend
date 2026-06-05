@@ -6,4 +6,5 @@ import java.util.Optional;
 
 public interface ExternalHrEmployeeRepository extends JpaRepository<ExternalHrEmployee, String> {
     Optional<ExternalHrEmployee> findByEmployeeIdAndEmail(String employeeId, String email);
+    Optional<ExternalHrEmployee> findByEmployeeIdAndName(String employeeId, String name);
 }

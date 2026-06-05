@@ -9,13 +9,16 @@ spring:
     host: smtp.gmail.com
     port: 587
     username: choie000208@gmail.com
-    password: syvl kihn rlix jmjl
+    password: syvlkihnrlixjmjl
     properties:
       mail:
         smtp:
           auth: true
           starttls:
             enable: true
+            connectiontimeout: 5000
+            timeout: 5000
+            writetimeout: 5000
 
 jwt:
   secret: c2VjcmV0LWtleS1mb3ItZGV2YnJpZGdlLWFpLXByb2plY3QtYXV0aGVudGljYXRpb24=

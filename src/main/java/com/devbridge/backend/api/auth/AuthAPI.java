@@ -5,6 +5,7 @@ import com.devbridge.backend.domain.auth.dto.SignInResponse;
 import com.devbridge.backend.domain.auth.dto.SignUpRequest;
 import com.devbridge.backend.domain.auth.dto.SendEmailRequest;
 import com.devbridge.backend.domain.auth.dto.VerifyEmailRequest;
+import com.devbridge.backend.domain.auth.dto.VerifyHrRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -16,6 +17,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @Tag(name = "Authentication")
 @RequestMapping("/api/auth")
 public interface AuthAPI {
+
+    @Operation(summary = "Verify HR Employee")
+    @PostMapping("/verify-hr")
+    ResponseEntity<String> verifyHr(@Valid @RequestBody VerifyHrRequest request);
 
     @Operation(summary = "SignUp")
     @PostMapping("/signup")

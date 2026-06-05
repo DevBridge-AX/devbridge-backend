@@ -5,6 +5,7 @@ import com.devbridge.backend.domain.auth.dto.SignInResponse;
 import com.devbridge.backend.domain.auth.dto.SignUpRequest;
 import com.devbridge.backend.domain.auth.dto.SendEmailRequest;
 import com.devbridge.backend.domain.auth.dto.VerifyEmailRequest;
+import com.devbridge.backend.domain.auth.dto.VerifyHrRequest;
 import com.devbridge.backend.domain.auth.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController implements AuthAPI {
 
     private final AuthService authService;
+
+    @Override
+    public ResponseEntity<String> verifyHr(VerifyHrRequest request) {
+        String maskedEmail = authService.verifyHr(request);
+        return ResponseEntity.ok(maskedEmail);
+    }
 
     @Override
     public ResponseEntity<Void> signUp(SignUpRequest request) {
