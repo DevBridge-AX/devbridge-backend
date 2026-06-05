@@ -39,4 +39,10 @@ public class AuthController implements AuthAPI {
         authService.verifyEmailAuthCode(request);
         return ResponseEntity.ok().build();
     }
+
+    @Override
+    public ResponseEntity<Void> logout(jakarta.servlet.http.HttpServletRequest request) {
+        authService.logout(request);
+        return ResponseEntity.ok().build();
+    }
 }

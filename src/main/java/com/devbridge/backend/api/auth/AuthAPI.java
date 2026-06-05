@@ -32,4 +32,8 @@ public interface AuthAPI {
     @Operation(summary = "VerifyEmailAuthCode")
     @PostMapping("/email/verify")
     ResponseEntity<Void> verifyEmailAuthCode(@Valid @RequestBody VerifyEmailRequest request);
+
+    @Operation(summary = "Logout")
+    @PostMapping("/logout")
+    ResponseEntity<Void> logout(jakarta.servlet.http.HttpServletRequest request);
 }

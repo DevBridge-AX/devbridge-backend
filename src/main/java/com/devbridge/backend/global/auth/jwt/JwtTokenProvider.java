@@ -84,4 +84,17 @@ public class JwtTokenProvider {
 
         return new UsernamePasswordAuthenticationToken(userId, token, authorities);
     }
+
+    public Long getExpiration(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(key)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            return Math.max(0, claims.getExpiration().getTime() - System.currentTimeMillis());
+        } catch (Exception e) {
+            return 0L;
+        }
+    }
 }
