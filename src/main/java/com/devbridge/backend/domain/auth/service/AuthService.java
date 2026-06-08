@@ -14,6 +14,7 @@ import com.devbridge.backend.global.auth.jwt.JwtTokenProvider;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -29,6 +30,7 @@ import org.thymeleaf.context.Context;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -124,6 +126,7 @@ public class AuthService {
                 .build();
 
         userRepository.save(user);
+        log.info("Successfully saved user: " + user.getId());
         redisTemplate.delete(verifiedKey);
     }
 
