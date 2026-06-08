@@ -2,9 +2,12 @@ package com.devbridge.backend.api.workspace;
 
 import com.devbridge.backend.domain.task.repository.TaskRepository;
 import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.domain.workspace.dto.WorkspaceDashboardSummaryResponse;
 import com.devbridge.backend.domain.workspace.repository.WorkspaceRepository;
+import com.devbridge.backend.domain.workspace.service.WorkspaceDashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
@@ -16,6 +19,7 @@ public class WorkspaceDashboardTestController {
     private final UserRepository userRepository;
     private final WorkspaceRepository workspaceRepository;
     private final TaskRepository taskRepository;
+    private final WorkspaceDashboardService workspaceDashboardService;
 
     @GetMapping("/api/workspace/dashboard/test")
     public Map<String, Object> testWorkspaceDashboardDatabase() {
@@ -25,5 +29,12 @@ public class WorkspaceDashboardTestController {
                 "workspaceCount", workspaceRepository.count(),
                 "taskCount", taskRepository.count()
         );
+    }
+
+    @GetMapping("/api/workspace/dashboard/summary")
+    public WorkspaceDashboardSummaryResponse getWorkspaceDashboardSummary(
+            @RequestParam String workspaceId
+    ) {
+        return workspaceDashboardService.getSummary(workspaceId);
     }
 }
