@@ -57,9 +57,8 @@ public class AuthService {
     }
 
     public void validateAndSendEmailAuthCode(SendEmailRequest request) {
-        if (!hrEmployeeRepository.existsByEmail(request.email())) {
-            throw new IllegalArgumentException("등록된 이메일을 확인해주세요.");
-        }
+        hrEmployeeRepository.findByEmployeeIdAndEmail(request.employeeId(), request.email())
+                .orElseThrow(() -> new IllegalArgumentException("사번과 등록된 이메일 정보가 일치하지 않습니다."));
         sendEmailAuthCode(request);
     }
 
