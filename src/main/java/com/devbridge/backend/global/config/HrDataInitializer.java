@@ -23,7 +23,7 @@ public class HrDataInitializer implements ApplicationRunner {
             repository.saveAll(List.of(
                     ExternalHrEmployee.builder()
                             .employeeId("EMP001")
-                            .email("hr_leader@company.com")
+                            .email("julie019019@gmail.com")
                             .name("김현수")
                             .department("인사팀")
                             .position("팀장")
@@ -50,6 +50,14 @@ public class HrDataInitializer implements ApplicationRunner {
                             .email("sam000208@naver.com")
                             .name("최펭수")
                             .department("개발팀")
+                            .position("대리")
+                            .isActive(true)
+                            .build(),
+                    ExternalHrEmployee.builder()
+                            .employeeId("EMP005")
+                            .email("julie019@naver.com")
+                            .name("김현수")
+                            .department("기획팀")
                             .position("대리")
                             .isActive(true)
                             .build()
