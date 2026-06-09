@@ -45,4 +45,9 @@ public class User extends BaseEntity {
 
     @Column(name = "system_role", nullable = false, length = 50)
     private String systemRole; // 권한 (ADMIN, USER)
+
+    public void updateProfile(String name, String passwordHash) {
+        if (name != null) this.name = name;
+        if (passwordHash != null) this.passwordHash = passwordHash;
+    }
 }
