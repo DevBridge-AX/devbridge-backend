@@ -2,6 +2,7 @@ package com.devbridge.backend.api.workspace;
 
 import com.devbridge.backend.domain.task.repository.TaskRepository;
 import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.domain.workspace.dto.WorkspaceDashboardDetailResponse;
 import com.devbridge.backend.domain.workspace.dto.WorkspaceDashboardSummaryResponse;
 import com.devbridge.backend.domain.workspace.repository.WorkspaceRepository;
 import com.devbridge.backend.domain.workspace.service.WorkspaceDashboardService;
@@ -36,5 +37,12 @@ public class WorkspaceDashboardTestController {
             @RequestParam String workspaceId
     ) {
         return workspaceDashboardService.getSummary(workspaceId);
+    }
+
+    @GetMapping("/api/workspace/dashboard/detail")
+    public WorkspaceDashboardDetailResponse getWorkspaceDashboardDetail(
+            @RequestParam String workspaceId
+    ) {
+        return workspaceDashboardService.getDetail(workspaceId);
     }
 }
