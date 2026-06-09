@@ -56,6 +56,13 @@ public class AuthService {
         return maskEmail(hr.getEmail());
     }
 
+    public void validateAndSendEmailAuthCode(SendEmailRequest request) {
+        if (!hrEmployeeRepository.existsByEmail(request.email())) {
+            throw new IllegalArgumentException("등록된 이메일을 확인해주세요.");
+        }
+        sendEmailAuthCode(request);
+    }
+
     @Async
     public void sendEmailAuthCode(SendEmailRequest request) {
         String code = String.format("%06d", ThreadLocalRandom.current().nextInt(1_000_000));

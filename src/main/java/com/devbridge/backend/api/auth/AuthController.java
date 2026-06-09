@@ -37,7 +37,7 @@ public class AuthController implements AuthAPI {
 
     @Override
     public ResponseEntity<Void> sendEmailAuthCode(SendEmailRequest request) {
-        authService.sendEmailAuthCode(request);
+        authService.validateAndSendEmailAuthCode(request);
         return ResponseEntity.ok().build();
     }
 
