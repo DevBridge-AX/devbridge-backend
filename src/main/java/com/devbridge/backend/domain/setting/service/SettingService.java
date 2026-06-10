@@ -23,6 +23,7 @@ public class SettingService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
         return new ProfileResponse(
+                user.getId(),
                 user.getEmployeeId(),
                 user.getName(),
                 user.getEmail(),
@@ -50,5 +51,15 @@ public class SettingService {
 
         String newHash = passwordEncoder.encode(request.newPassword());
         user.changePassword(newHash);
+    }
+
+    @Transactional(readOnly = true)
+    public void verifyPassword(String userId, String password) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. id: " + userId));
+
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
+        }
     }
 }

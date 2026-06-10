@@ -2,6 +2,7 @@ package com.devbridge.backend.api.user;
 
 import com.devbridge.backend.domain.setting.dto.UpdatePasswordRequest;
 import com.devbridge.backend.domain.setting.dto.UpdateProfileRequest;
+import com.devbridge.backend.domain.setting.dto.VerifyPasswordRequest;
 import com.devbridge.backend.domain.setting.service.SettingService;
 import com.devbridge.backend.domain.user.dto.UserResponse;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,12 @@ public class UserController implements UserAPI {
     @Override
     public ResponseEntity<Void> updatePassword(String userId, UpdatePasswordRequest request) {
         settingService.changePassword(userId, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @Override
+    public ResponseEntity<Void> verifyPassword(String userId, VerifyPasswordRequest request) {
+        settingService.verifyPassword(userId, request.password());
         return ResponseEntity.ok().build();
     }
 }
