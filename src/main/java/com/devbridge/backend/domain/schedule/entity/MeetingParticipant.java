@@ -35,4 +35,8 @@ public class MeetingParticipant extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 50)
     private ParticipantRole role;
+
+    public void respond() {
+        this.status = ParticipantStatus.RESPONDED;
+    }
 }
