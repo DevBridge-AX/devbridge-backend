@@ -45,4 +45,14 @@ public class User extends BaseEntity {
 
     @Column(name = "system_role", nullable = false, length = 50)
     private String systemRole; // 권한 (ADMIN, USER)
+
+    public void updateProfile(String name, String department, String position) {
+        if (name != null) this.name = name;
+        if (department != null) this.department = department;
+        if (position != null) this.position = position;
+    }
+
+    public void changePassword(String newPasswordHash) {
+        if (newPasswordHash != null) this.passwordHash = newPasswordHash;
+    }
 }
