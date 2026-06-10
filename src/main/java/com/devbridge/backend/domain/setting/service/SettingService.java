@@ -1,6 +1,7 @@
 package com.devbridge.backend.domain.setting.service;
 
 import com.devbridge.backend.domain.setting.dto.ProfileResponse;
+import com.devbridge.backend.domain.setting.dto.UpdatePasswordRequest;
 import com.devbridge.backend.domain.setting.dto.UpdateProfileRequest;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
@@ -35,17 +36,19 @@ public class SettingService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. id: " + userId));
 
-        if (request.currentPassword() != null) {
-            if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
-                throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
-            }
+        user.updateProfile(request.name(), request.department(), request.position());
+    }
+
+    @Transactional
+    public void changePassword(String userId, UpdatePasswordRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. id: " + userId));
+
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
         }
 
-        String newHash = null;
-        if (request.newPassword() != null) {
-            newHash = passwordEncoder.encode(request.newPassword());
-        }
-
-        user.updateProfile(request.name(), newHash);
+        String newHash = passwordEncoder.encode(request.newPassword());
+        user.changePassword(newHash);
     }
 }
