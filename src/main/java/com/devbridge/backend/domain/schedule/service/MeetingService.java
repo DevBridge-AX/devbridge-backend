@@ -32,12 +32,12 @@ public class MeetingService {
     private final WorkspaceRepository workspaceRepository;
 
     @Transactional
-    public CreateMeetingResponse createMeeting(CreateMeetingRequest request) {
-//        Workspace workspace = workspaceRepository.findById(request.workspaceId())
-//                .orElseThrow(() -> new IllegalArgumentException("해당 워크스페이스가 존재하지 않습니다."));
+    public CreateMeetingResponse createMeeting(String hostEmployeeId, CreateMeetingRequest request) {
+        Workspace workspace = workspaceRepository.findById(request.workspaceId())
+                .orElseThrow(() -> new IllegalArgumentException("해당 워크스페이스가 존재하지 않습니다."));
 
         Meeting meeting = Meeting.builder()
-//                .workspace(workspace)
+                .workspace(workspace)
                 .title(request.title())
                 .durationMinutes(request.durationMinutes())
                 .status(MeetingStatus.GATHERING)
@@ -47,7 +47,7 @@ public class MeetingService {
         List<MeetingParticipant> participants = new ArrayList<>();
         participants.add(MeetingParticipant.builder()
                 .meeting(meeting)
-                .employeeId(request.hostEmployeeId())
+                .employeeId(hostEmployeeId)
                 .status(ParticipantStatus.PENDING)
                 .role(ParticipantRole.HOST)
                 .build());

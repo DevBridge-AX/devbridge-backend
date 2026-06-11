@@ -7,6 +7,7 @@ import com.devbridge.backend.domain.schedule.dto.SubmitAvailableTimesResponse;
 import com.devbridge.backend.domain.schedule.service.MeetingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -16,8 +17,9 @@ public class MeetingController implements MeetingAPI {
     private final MeetingService meetingService;
 
     @Override
-    public ResponseEntity<CreateMeetingResponse> createMeeting(CreateMeetingRequest request) {
-        return ResponseEntity.ok(meetingService.createMeeting(request));
+    public ResponseEntity<CreateMeetingResponse> createMeeting(
+            @AuthenticationPrincipal String hostEmployeeId, CreateMeetingRequest request) {
+        return ResponseEntity.ok(meetingService.createMeeting(hostEmployeeId, request));
     }
 
     @Override
