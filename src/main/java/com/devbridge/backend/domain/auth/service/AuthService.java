@@ -149,6 +149,7 @@ public class AuthService {
         return SignInResponse.builder()
                 .accessToken(accessToken)
                 .tokenType("Bearer")
+                .lastWorkspaceId(null) // TODO: 워크스페이스 기능 구현 후 실제 조회로 교체
                 .build();
     }
 
