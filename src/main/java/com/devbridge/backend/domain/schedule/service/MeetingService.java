@@ -32,8 +32,8 @@ public class MeetingService {
     private final WorkspaceRepository workspaceRepository;
 
     @Transactional
-    public CreateMeetingResponse createMeeting(String hostEmployeeId, CreateMeetingRequest request) {
-        Workspace workspace = workspaceRepository.findById(request.workspaceId())
+    public CreateMeetingResponse createMeeting(String workspaceId, String hostEmployeeId, CreateMeetingRequest request) {
+        Workspace workspace = workspaceRepository.findById(workspaceId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 워크스페이스가 존재하지 않습니다."));
 
         Meeting meeting = Meeting.builder()

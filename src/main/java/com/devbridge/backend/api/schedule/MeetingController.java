@@ -8,6 +8,7 @@ import com.devbridge.backend.domain.schedule.service.MeetingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -18,8 +19,10 @@ public class MeetingController implements MeetingAPI {
 
     @Override
     public ResponseEntity<CreateMeetingResponse> createMeeting(
-            @AuthenticationPrincipal String hostEmployeeId, CreateMeetingRequest request) {
-        return ResponseEntity.ok(meetingService.createMeeting(hostEmployeeId, request));
+            @RequestHeader("X-Workspace-Id") String workspaceId,
+            @AuthenticationPrincipal String hostEmployeeId,
+            CreateMeetingRequest request) {
+        return ResponseEntity.ok(meetingService.createMeeting(workspaceId, hostEmployeeId, request));
     }
 
     @Override

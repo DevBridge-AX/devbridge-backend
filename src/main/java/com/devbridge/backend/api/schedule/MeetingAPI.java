@@ -12,6 +12,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 @Tag(name = "Meeting", description = "When2meet 기반 회의 일정 조율 API 명세")
@@ -21,6 +22,7 @@ public interface MeetingAPI {
     @Operation(summary = "회의 조율 요청 방 생성", description = "주최자가 제목, 소요 시간, 대상자 사번 리스트를 입력해 회의 조율 방을 생성합니다.")
     @PostMapping
     ResponseEntity<CreateMeetingResponse> createMeeting(
+            @RequestHeader("X-Workspace-Id") String workspaceId,
             @AuthenticationPrincipal String hostEmployeeId,
             @Valid @RequestBody CreateMeetingRequest request);
 

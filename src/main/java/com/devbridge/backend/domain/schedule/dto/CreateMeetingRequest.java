@@ -8,9 +8,6 @@ import jakarta.validation.constraints.Positive;
 import java.util.List;
 
 public record CreateMeetingRequest(
-        @NotBlank(message = "워크스페이스 ID는 필수입니다.")
-        String workspaceId,
-
         @NotBlank(message = "회의 제목은 필수입니다.")
         String title,
 
