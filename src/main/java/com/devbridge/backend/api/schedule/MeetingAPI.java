@@ -3,8 +3,11 @@ package com.devbridge.backend.api.schedule;
 import com.devbridge.backend.domain.schedule.dto.ConfirmedScheduleResponse;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingRequest;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingResponse;
+import com.devbridge.backend.domain.schedule.dto.MeetingDetailResponse;
+import com.devbridge.backend.domain.schedule.dto.MeetingSummaryResponse;
 import com.devbridge.backend.domain.schedule.dto.SubmitAvailableTimesRequest;
 import com.devbridge.backend.domain.schedule.dto.SubmitAvailableTimesResponse;
+import com.devbridge.backend.domain.schedule.entity.MeetingStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -46,4 +49,16 @@ public interface MeetingAPI {
             @AuthenticationPrincipal String employeeId,
             @RequestParam("startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate);
+
+    @Operation(summary = "내 회의 목록 조회", description = "로그인한 사용자가 참여 중인 회의 목록을 조회합니다. 확정(CONFIRMED) 회의와 조율 중인 회의를 모두 포함하며, status 파라미터로 상태를 필터링할 수 있습니다.")
+    @GetMapping
+    ResponseEntity<List<MeetingSummaryResponse>> getMyMeetings(
+            @AuthenticationPrincipal String employeeId,
+            @RequestParam(value = "status", required = false) MeetingStatus status);
+
+    @Operation(summary = "회의 상세 조회", description = "회의의 확정 시간, 후보 시간, 참석자 목록, 상태 등 상세 정보를 조회합니다.")
+    @GetMapping("/{meetingId}")
+    ResponseEntity<MeetingDetailResponse> getMeetingDetail(
+            @PathVariable("meetingId") String meetingId,
+            @AuthenticationPrincipal String employeeId);
 }

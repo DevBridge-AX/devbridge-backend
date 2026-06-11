@@ -3,8 +3,11 @@ package com.devbridge.backend.api.schedule;
 import com.devbridge.backend.domain.schedule.dto.ConfirmedScheduleResponse;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingRequest;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingResponse;
+import com.devbridge.backend.domain.schedule.dto.MeetingDetailResponse;
+import com.devbridge.backend.domain.schedule.dto.MeetingSummaryResponse;
 import com.devbridge.backend.domain.schedule.dto.SubmitAvailableTimesRequest;
 import com.devbridge.backend.domain.schedule.dto.SubmitAvailableTimesResponse;
+import com.devbridge.backend.domain.schedule.entity.MeetingStatus;
 import com.devbridge.backend.domain.schedule.service.MeetingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -39,5 +42,15 @@ public class MeetingController implements MeetingAPI {
     public ResponseEntity<List<ConfirmedScheduleResponse>> getMyConfirmedSchedules(
             String employeeId, LocalDate startDate, LocalDate endDate) {
         return ResponseEntity.ok(meetingService.getMyConfirmedSchedules(employeeId, startDate, endDate));
+    }
+
+    @Override
+    public ResponseEntity<List<MeetingSummaryResponse>> getMyMeetings(String employeeId, MeetingStatus status) {
+        return ResponseEntity.ok(meetingService.getMyMeetings(employeeId, status));
+    }
+
+    @Override
+    public ResponseEntity<MeetingDetailResponse> getMeetingDetail(String meetingId, String employeeId) {
+        return ResponseEntity.ok(meetingService.getMeetingDetail(meetingId, employeeId));
     }
 }

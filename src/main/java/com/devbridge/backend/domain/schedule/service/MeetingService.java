@@ -4,6 +4,9 @@ import com.devbridge.backend.domain.schedule.dto.CandidateTimeSlot;
 import com.devbridge.backend.domain.schedule.dto.ConfirmedScheduleResponse;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingRequest;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingResponse;
+import com.devbridge.backend.domain.schedule.dto.MeetingDetailResponse;
+import com.devbridge.backend.domain.schedule.dto.MeetingParticipantResponse;
+import com.devbridge.backend.domain.schedule.dto.MeetingSummaryResponse;
 import com.devbridge.backend.domain.schedule.dto.SubmitAvailableTimesRequest;
 import com.devbridge.backend.domain.schedule.dto.SubmitAvailableTimesResponse;
 import com.devbridge.backend.domain.schedule.entity.Meeting;
@@ -18,6 +21,7 @@ import com.devbridge.backend.domain.schedule.repository.ParticipantAvailableTime
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.repository.WorkspaceRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -96,6 +100,51 @@ public class MeetingService {
                             meeting.getConfirmedEndTime());
                 })
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<MeetingSummaryResponse> getMyMeetings(String employeeId, MeetingStatus status) {
+        List<MeetingParticipant> participants = status == null
+                ? meetingParticipantRepository.findByEmployeeId(employeeId)
+                : meetingParticipantRepository.findByEmployeeIdAndMeeting_Status(employeeId, status);
+
+        return participants.stream()
+                .map(MeetingParticipant::getMeeting)
+                .sorted(Comparator.comparing(Meeting::getCreatedAt).reversed())
+                .map(meeting -> new MeetingSummaryResponse(
+                        meeting.getId(),
+                        meeting.getTitle(),
+                        meeting.getStatus(),
+                        meeting.getDurationMinutes(),
+                        meeting.getConfirmedStartTime(),
+                        meeting.getConfirmedEndTime()))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public MeetingDetailResponse getMeetingDetail(String meetingId, String employeeId) {
+        meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, employeeId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 회의의 참석자가 아닙니다."));
+
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 회의가 존재하지 않습니다."));
+
+        List<MeetingParticipantResponse> participants = meetingParticipantRepository.findByMeetingId(meetingId).stream()
+                .map(participant -> new MeetingParticipantResponse(
+                        participant.getEmployeeId(),
+                        participant.getRole(),
+                        participant.getStatus()))
+                .toList();
+
+        return new MeetingDetailResponse(
+                meeting.getId(),
+                meeting.getTitle(),
+                meeting.getDurationMinutes(),
+                meeting.getStatus(),
+                meeting.getConfirmedStartTime(),
+                meeting.getConfirmedEndTime(),
+                fromJson(meeting.getTopCandidateTimes()),
+                participants);
     }
 
     @Transactional
@@ -205,6 +254,17 @@ public class MeetingService {
             return objectMapper.writeValueAsString(candidateTimeSlots);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("후보 시간 목록 직렬화에 실패했습니다.", e);
+        }
+    }
+
+    private List<CandidateTimeSlot> fromJson(String topCandidateTimesJson) {
+        if (topCandidateTimesJson == null || topCandidateTimesJson.isBlank()) {
+            return List.of();
+        }
+        try {
+            return objectMapper.readValue(topCandidateTimesJson, new TypeReference<List<CandidateTimeSlot>>() {});
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("후보 시간 목록 역직렬화에 실패했습니다.", e);
         }
     }
 

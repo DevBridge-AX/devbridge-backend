@@ -16,6 +16,10 @@ public interface MeetingParticipantRepository extends JpaRepository<MeetingParti
 
     List<MeetingParticipant> findByMeetingId(String meetingId);
 
+    List<MeetingParticipant> findByEmployeeId(String employeeId);
+
+    List<MeetingParticipant> findByEmployeeIdAndMeeting_Status(String employeeId, MeetingStatus status);
+
     List<MeetingParticipant> findByEmployeeIdAndMeeting_StatusAndMeeting_ConfirmedStartTimeLessThanAndMeeting_ConfirmedEndTimeGreaterThan(
             String employeeId,
             MeetingStatus status,
