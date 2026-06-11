@@ -1,5 +1,7 @@
 package com.devbridge.backend.domain.schedule.service;
 
+import com.devbridge.backend.domain.schedule.dto.CandidateTimeSlot;
+import com.devbridge.backend.domain.schedule.dto.ConfirmedScheduleResponse;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingRequest;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingResponse;
 import com.devbridge.backend.domain.schedule.dto.SubmitAvailableTimesRequest;
@@ -15,13 +17,21 @@ import com.devbridge.backend.domain.schedule.repository.MeetingRepository;
 import com.devbridge.backend.domain.schedule.repository.ParticipantAvailableTimeRepository;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.repository.WorkspaceRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MeetingService {
@@ -30,6 +40,7 @@ public class MeetingService {
     private final MeetingParticipantRepository meetingParticipantRepository;
     private final ParticipantAvailableTimeRepository participantAvailableTimeRepository;
     private final WorkspaceRepository workspaceRepository;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public CreateMeetingResponse createMeeting(String workspaceId, String hostEmployeeId, CreateMeetingRequest request) {
@@ -66,6 +77,26 @@ public class MeetingService {
         return new CreateMeetingResponse(meeting.getId());
     }
 
+    @Transactional(readOnly = true)
+    public List<ConfirmedScheduleResponse> getMyConfirmedSchedules(String employeeId, LocalDate startDate, LocalDate endDate) {
+        var rangeStart = startDate.atStartOfDay();
+        var rangeEnd = endDate.plusDays(1).atStartOfDay();
+
+        return meetingParticipantRepository
+                .findByEmployeeIdAndMeeting_StatusAndMeeting_ConfirmedStartTimeLessThanAndMeeting_ConfirmedEndTimeGreaterThan(
+                        employeeId, MeetingStatus.CONFIRMED, rangeEnd, rangeStart)
+                .stream()
+                .map(participant -> {
+                    Meeting meeting = participant.getMeeting();
+                    return new ConfirmedScheduleResponse(
+                            meeting.getId(),
+                            meeting.getTitle(),
+                            meeting.getConfirmedStartTime(),
+                            meeting.getConfirmedEndTime());
+                })
+                .toList();
+    }
+
     @Transactional
     public SubmitAvailableTimesResponse submitAvailableTimes(
             String meetingId, String employeeId, SubmitAvailableTimesRequest request) {
@@ -87,11 +118,87 @@ public class MeetingService {
 
         boolean allResponded = isAllParticipantsResponded(meetingId);
 
+        if (allResponded) {
+            selectTopCandidateTimes(participant.getMeeting());
+        }
+
         return new SubmitAvailableTimesResponse(meetingId, employeeId, participant.getStatus(), allResponded);
     }
 
     private boolean isAllParticipantsResponded(String meetingId) {
         return meetingParticipantRepository.findByMeetingId(meetingId).stream()
                 .allMatch(participant -> participant.getStatus() == ParticipantStatus.RESPONDED);
+    }
+
+    private void selectTopCandidateTimes(Meeting meeting) {
+        List<ParticipantAvailableTime> availableTimes =
+                participantAvailableTimeRepository.findByMeetingParticipant_MeetingId(meeting.getId());
+
+        List<List<TimeRange>> rangesByParticipant = availableTimes.stream()
+                .collect(Collectors.groupingBy(time -> time.getMeetingParticipant().getId()))
+                .values().stream()
+                .map(times -> mergeRanges(times.stream()
+                        .map(time -> new TimeRange(time.getStartTime(), time.getEndTime()))
+                        .toList()))
+                .toList();
+
+        List<TimeRange> intersection = rangesByParticipant.stream()
+                .reduce(this::intersectRanges)
+                .orElse(List.of());
+
+        List<CandidateTimeSlot> topCandidates = intersection.stream()
+                .sorted(Comparator.comparing(TimeRange::start))
+                .limit(3)
+                .map(range -> new CandidateTimeSlot(range.start(), range.end()))
+                .toList();
+
+        if (topCandidates.isEmpty()) {
+            log.warn("회의 ID {}의 참석자 가능 시간 교집합이 존재하지 않습니다.", meeting.getId());
+        }
+
+        meeting.selectTopCandidateTimes(toJson(topCandidates));
+    }
+
+    private List<TimeRange> mergeRanges(List<TimeRange> ranges) {
+        List<TimeRange> sorted = ranges.stream()
+                .sorted(Comparator.comparing(TimeRange::start))
+                .toList();
+
+        List<TimeRange> merged = new ArrayList<>();
+        for (TimeRange range : sorted) {
+            if (!merged.isEmpty() && !range.start().isAfter(merged.get(merged.size() - 1).end())) {
+                TimeRange last = merged.remove(merged.size() - 1);
+                LocalDateTime mergedEnd = last.end().isAfter(range.end()) ? last.end() : range.end();
+                merged.add(new TimeRange(last.start(), mergedEnd));
+            } else {
+                merged.add(range);
+            }
+        }
+        return merged;
+    }
+
+    private List<TimeRange> intersectRanges(List<TimeRange> ranges1, List<TimeRange> ranges2) {
+        List<TimeRange> result = new ArrayList<>();
+        for (TimeRange range1 : ranges1) {
+            for (TimeRange range2 : ranges2) {
+                LocalDateTime start = range1.start().isAfter(range2.start()) ? range1.start() : range2.start();
+                LocalDateTime end = range1.end().isBefore(range2.end()) ? range1.end() : range2.end();
+                if (start.isBefore(end)) {
+                    result.add(new TimeRange(start, end));
+                }
+            }
+        }
+        return result;
+    }
+
+    private String toJson(List<CandidateTimeSlot> candidateTimeSlots) {
+        try {
+            return objectMapper.writeValueAsString(candidateTimeSlots);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("후보 시간 목록 직렬화에 실패했습니다.", e);
+        }
+    }
+
+    private record TimeRange(LocalDateTime start, LocalDateTime end) {
     }
 }

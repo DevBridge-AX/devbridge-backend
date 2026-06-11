@@ -52,7 +52,15 @@ public class Meeting extends BaseEntity {
     @Column(name = "meeting_link", length = 1000)
     private String meetingLink;
 
+    @Column(name = "top_candidate_times", columnDefinition = "TEXT")
+    private String topCandidateTimes;
+
     @Builder.Default
     @OneToMany(mappedBy = "meeting", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MeetingReference> references = new ArrayList<>();
+
+    public void selectTopCandidateTimes(String topCandidateTimesJson) {
+        this.topCandidateTimes = topCandidateTimesJson;
+        this.status = MeetingStatus.SELECTING;
+    }
 }
