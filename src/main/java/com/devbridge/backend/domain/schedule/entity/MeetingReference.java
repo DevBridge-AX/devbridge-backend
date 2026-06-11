@@ -1,18 +1,17 @@
 package com.devbridge.backend.domain.schedule.entity;
 
 import com.devbridge.backend.domain.datasource.entity.KnowledgeDocument;
-import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "SCHEDULE_REFERENCES")
+@Table(name = "MEETING_REFERENCES")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-public class ScheduleReference extends BaseEntity {
+public class MeetingReference extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -20,15 +19,15 @@ public class ScheduleReference extends BaseEntity {
     private String id; // 참조 ID
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "schedule_id", nullable = false)
-    private SmartSchedule schedule; // 일정 ID
+    @JoinColumn(name = "meeting_id", nullable = false)
+    private Meeting meeting; // 회의 ID
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user; // 등록자 ID
+    @Column(name = "employee_id", nullable = false, length = 50)
+    private String employeeId; // 등록자 사번 (미가입자 대응을 위한 employeeId 표준 유지)
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "reference_type", nullable = false, length = 50)
-    private String referenceType; // DIRECT_FILE, DOC_LINK, EXTERNAL_LINK
+    private ReferenceType referenceType; // DIRECT_FILE, DOC_LINK, EXTERNAL_LINK
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "document_id")
