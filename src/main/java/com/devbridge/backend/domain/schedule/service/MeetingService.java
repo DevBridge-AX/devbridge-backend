@@ -13,6 +13,8 @@ import com.devbridge.backend.domain.schedule.entity.ParticipantStatus;
 import com.devbridge.backend.domain.schedule.repository.MeetingParticipantRepository;
 import com.devbridge.backend.domain.schedule.repository.MeetingRepository;
 import com.devbridge.backend.domain.schedule.repository.ParticipantAvailableTimeRepository;
+import com.devbridge.backend.domain.workspace.entity.Workspace;
+import com.devbridge.backend.domain.workspace.repository.WorkspaceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,10 +29,15 @@ public class MeetingService {
     private final MeetingRepository meetingRepository;
     private final MeetingParticipantRepository meetingParticipantRepository;
     private final ParticipantAvailableTimeRepository participantAvailableTimeRepository;
+    private final WorkspaceRepository workspaceRepository;
 
     @Transactional
     public CreateMeetingResponse createMeeting(CreateMeetingRequest request) {
+//        Workspace workspace = workspaceRepository.findById(request.workspaceId())
+//                .orElseThrow(() -> new IllegalArgumentException("해당 워크스페이스가 존재하지 않습니다."));
+
         Meeting meeting = Meeting.builder()
+//                .workspace(workspace)
                 .title(request.title())
                 .durationMinutes(request.durationMinutes())
                 .status(MeetingStatus.GATHERING)
