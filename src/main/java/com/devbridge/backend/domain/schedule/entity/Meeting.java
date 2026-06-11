@@ -63,4 +63,10 @@ public class Meeting extends BaseEntity {
         this.topCandidateTimes = topCandidateTimesJson;
         this.status = MeetingStatus.SELECTING;
     }
+
+    public void confirmSchedule(LocalDateTime confirmedStartTime, LocalDateTime confirmedEndTime) {
+        this.confirmedStartTime = confirmedStartTime;
+        this.confirmedEndTime = confirmedEndTime;
+        this.status = MeetingStatus.CONFIRMED;
+    }
 }

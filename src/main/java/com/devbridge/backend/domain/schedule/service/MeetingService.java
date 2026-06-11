@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -146,17 +147,25 @@ public class MeetingService {
                 .reduce(this::intersectRanges)
                 .orElse(List.of());
 
-        List<CandidateTimeSlot> topCandidates = intersection.stream()
+        List<TimeRange> sufficientRanges = intersection.stream()
+                .filter(range -> Duration.between(range.start(), range.end()).toMinutes() >= meeting.getDurationMinutes())
                 .sorted(Comparator.comparing(TimeRange::start))
+                .toList();
+
+        List<CandidateTimeSlot> topCandidates = sufficientRanges.stream()
                 .limit(3)
                 .map(range -> new CandidateTimeSlot(range.start(), range.end()))
                 .toList();
 
-        if (topCandidates.isEmpty()) {
-            log.warn("회의 ID {}의 참석자 가능 시간 교집합이 존재하지 않습니다.", meeting.getId());
+        meeting.selectTopCandidateTimes(toJson(topCandidates));
+
+        if (sufficientRanges.isEmpty()) {
+            log.warn("회의 ID {}의 참석자 가능 시간 교집합 중 소요 시간을 만족하는 후보가 없어 SELECTING 상태로 유지됩니다.", meeting.getId());
+            return;
         }
 
-        meeting.selectTopCandidateTimes(toJson(topCandidates));
+        TimeRange bestRange = sufficientRanges.get(0);
+        meeting.confirmSchedule(bestRange.start(), bestRange.start().plusMinutes(meeting.getDurationMinutes()));
     }
 
     private List<TimeRange> mergeRanges(List<TimeRange> ranges) {
