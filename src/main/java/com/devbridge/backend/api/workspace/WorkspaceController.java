@@ -33,7 +33,7 @@ public class WorkspaceController implements WorkspaceAPI {
     }
 
     @Override
-    public ResponseEntity<List<WorkspaceMemberResponse>> searchMembers(String workspaceId, String keyword) {
-        return ResponseEntity.ok(workspaceService.searchMembers(workspaceId, keyword));
+    public ResponseEntity<List<WorkspaceMemberResponse>> searchMembers(String workspaceId, String employeeId, String keyword) {
+        return ResponseEntity.ok(workspaceService.searchMembers(workspaceId, employeeId, keyword));
     }
 }

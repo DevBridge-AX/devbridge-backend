@@ -7,6 +7,7 @@ import com.devbridge.backend.domain.workspace.dto.WorkspaceResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,9 +29,10 @@ public interface WorkspaceAPI {
     @PostMapping("/invite")
     ResponseEntity<Void> inviteMember(@RequestBody InviteMemberRequest request);
 
-    @Operation(summary = "워크스페이스 멤버 검색", description = "현재 워크스페이스에 속한 멤버를 이름으로 검색합니다. 회의 참석자 지정 등에서 사용됩니다.")
+    @Operation(summary = "워크스페이스 멤버 검색", description = "현재 워크스페이스에 속한 멤버를 이름으로 검색합니다. 로그인한 사용자 본인은 결과에서 제외되며, 검색어가 없으면 빈 목록을 반환합니다. 회의 참석자 지정 등에서 사용됩니다.")
     @GetMapping("/members")
     ResponseEntity<List<WorkspaceMemberResponse>> searchMembers(
             @RequestHeader("X-Workspace-Id") String workspaceId,
+            @AuthenticationPrincipal String employeeId,
             @RequestParam(value = "keyword", required = false, defaultValue = "") String keyword);
 }

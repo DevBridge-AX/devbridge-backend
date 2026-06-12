@@ -17,12 +17,16 @@ public class WorkspaceService {
     private final WorkspaceMemberRepository workspaceMemberRepository;
 
     @Transactional(readOnly = true)
-    public List<WorkspaceMemberResponse> searchMembers(String workspaceId, String keyword) {
+    public List<WorkspaceMemberResponse> searchMembers(String workspaceId, String employeeId, String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return List.of();
+        }
+
         if (!workspaceRepository.existsById(workspaceId)) {
             throw new IllegalArgumentException("해당 워크스페이스가 존재하지 않습니다.");
         }
 
-        return workspaceMemberRepository.searchByWorkspaceIdAndUserNameContaining(workspaceId, keyword).stream()
+        return workspaceMemberRepository.searchByWorkspaceIdAndUserNameContaining(workspaceId, employeeId, keyword).stream()
                 .map(member -> WorkspaceMemberResponse.builder()
                         .userId(member.getUser().getId())
                         .employeeId(member.getUser().getEmployeeId())
