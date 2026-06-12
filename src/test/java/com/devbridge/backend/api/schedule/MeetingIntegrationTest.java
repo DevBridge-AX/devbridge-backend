@@ -2,7 +2,11 @@ package com.devbridge.backend.api.schedule;
 
 import com.devbridge.backend.domain.schedule.dto.*;
 import com.devbridge.backend.domain.schedule.entity.MeetingStatus;
+import com.devbridge.backend.domain.user.entity.User;
+import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
+import com.devbridge.backend.domain.workspace.entity.WorkspaceMember;
+import com.devbridge.backend.domain.workspace.repository.WorkspaceMemberRepository;
 import com.devbridge.backend.domain.workspace.repository.WorkspaceRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,6 +44,12 @@ class MeetingIntegrationTest {
     @Autowired
     private WorkspaceRepository workspaceRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private WorkspaceMemberRepository workspaceMemberRepository;
+
     private String workspaceId;
 
     @BeforeEach
@@ -51,6 +61,42 @@ class MeetingIntegrationTest {
                 .build();
         Workspace savedWorkspace = workspaceRepository.save(workspace);
         this.workspaceId = savedWorkspace.getId();
+
+        // 사용자 저장
+        User user1 = User.builder()
+                .employeeId("EMP001")
+                .email("julie019019@gmail.com")
+                .name("김현수")
+                .systemRole("USER")
+                .authProvider("LOCAL")
+                .build();
+        userRepository.save(user1);
+
+        User user2 = User.builder()
+                .employeeId("EMP002")
+                .email("user@company.com")
+                .name("이원빈")
+                .systemRole("USER")
+                .authProvider("LOCAL")
+                .build();
+        userRepository.save(user2);
+
+        // 워크스페이스 멤버 매핑 저장
+        WorkspaceMember member1 = WorkspaceMember.builder()
+                .workspace(savedWorkspace)
+                .user(user1)
+                .memberRole("OWNER")
+                .joinedAt(LocalDateTime.now())
+                .build();
+        workspaceMemberRepository.save(member1);
+
+        WorkspaceMember member2 = WorkspaceMember.builder()
+                .workspace(savedWorkspace)
+                .user(user2)
+                .memberRole("MEMBER")
+                .joinedAt(LocalDateTime.now())
+                .build();
+        workspaceMemberRepository.save(member2);
     }
 
     private UsernamePasswordAuthenticationToken getMockAuthentication(String employeeId) {
@@ -117,5 +163,23 @@ class MeetingIntegrationTest {
                 .andExpect(jsonPath("$.confirmedStartTime").value("2026-06-15T10:00:00")) // 확정 시작 시각 확인
                 .andExpect(jsonPath("$.confirmedEndTime").value("2026-06-15T11:00:00")) // 소요 시간인 60분이 더해진 확정 종료 시각 확인
                 .andExpect(jsonPath("$.topCandidateTimes[0].startTime").value("2026-06-15T10:00:00")); // 후보군 데이터 정상 적재 확인
+
+        // Step 5. 내 회의 목록 조회를 통해 내가 참여 중인 회의 목록이 정상 반환되는지 확인 (GET /api/meetings)
+        mockMvc.perform(get("/api/meetings")
+                        .with(authentication(getMockAuthentication("EMP001"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].meetingId").value(meetingId))
+                .andExpect(jsonPath("$[0].title").value("API 설계 회고 미팅"))
+                .andExpect(jsonPath("$[0].status").value("CONFIRMED"));
+
+        // Step 6. 내 확정 일정 조회를 통해 특정 기간 내의 확정 일정 시간대가 정상 반환되는지 확인 (GET /api/meetings/participants/me/schedules)
+        mockMvc.perform(get("/api/meetings/participants/me/schedules")
+                        .param("startDate", "2026-06-15")
+                        .param("endDate", "2026-06-15")
+                        .with(authentication(getMockAuthentication("EMP001"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].meetingId").value(meetingId))
+                .andExpect(jsonPath("$[0].confirmedStartTime").value("2026-06-15T10:00:00"))
+                .andExpect(jsonPath("$[0].confirmedEndTime").value("2026-06-15T11:00:00"));
     }
 }
