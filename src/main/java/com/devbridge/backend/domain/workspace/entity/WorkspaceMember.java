@@ -32,4 +32,11 @@ public class WorkspaceMember extends BaseEntity {
 
     @Column(name = "joined_at", nullable = false)
     private LocalDateTime joinedAt; // 참여일
+
+    @Column(name = "last_accessed_at")
+    private LocalDateTime lastAccessedAt;
+
+    public void updateLastAccessedAt(LocalDateTime lastAccessedAt) {
+        this.lastAccessedAt = lastAccessedAt;
+    }
 }
