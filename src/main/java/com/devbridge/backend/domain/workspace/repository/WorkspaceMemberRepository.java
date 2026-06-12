@@ -20,4 +20,6 @@ public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember
             @Param("workspaceId") String workspaceId,
             @Param("employeeId") String employeeId,
             @Param("keyword") String keyword);
+
+    boolean existsByWorkspace_IdAndUser_EmployeeId(String workspaceId, String employeeId);
 }

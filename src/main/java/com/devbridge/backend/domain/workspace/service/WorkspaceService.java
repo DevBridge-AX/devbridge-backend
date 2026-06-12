@@ -2,7 +2,6 @@ package com.devbridge.backend.domain.workspace.service;
 
 import com.devbridge.backend.domain.workspace.dto.WorkspaceMemberResponse;
 import com.devbridge.backend.domain.workspace.repository.WorkspaceMemberRepository;
-import com.devbridge.backend.domain.workspace.repository.WorkspaceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,7 +12,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WorkspaceService {
 
-    private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
 
     @Transactional(readOnly = true)
@@ -22,9 +20,7 @@ public class WorkspaceService {
             return List.of();
         }
 
-        if (!workspaceRepository.existsById(workspaceId)) {
-            throw new IllegalArgumentException("해당 워크스페이스가 존재하지 않습니다.");
-        }
+        validateMembership(workspaceId, employeeId);
 
         return workspaceMemberRepository.searchByWorkspaceIdAndUserNameContaining(workspaceId, employeeId, keyword).stream()
                 .map(member -> WorkspaceMemberResponse.builder()
@@ -35,5 +31,12 @@ public class WorkspaceService {
                         .position(member.getUser().getPosition())
                         .build())
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public void validateMembership(String workspaceId, String employeeId) {
+        if (!workspaceMemberRepository.existsByWorkspace_IdAndUser_EmployeeId(workspaceId, employeeId)) {
+            throw new IllegalArgumentException("해당 워크스페이스에 속한 사용자가 아닙니다.");
+        }
     }
 }

@@ -20,6 +20,7 @@ import com.devbridge.backend.domain.schedule.repository.MeetingRepository;
 import com.devbridge.backend.domain.schedule.repository.ParticipantAvailableTimeRepository;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.repository.WorkspaceRepository;
+import com.devbridge.backend.domain.workspace.service.WorkspaceService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,10 +46,13 @@ public class MeetingService {
     private final MeetingParticipantRepository meetingParticipantRepository;
     private final ParticipantAvailableTimeRepository participantAvailableTimeRepository;
     private final WorkspaceRepository workspaceRepository;
+    private final WorkspaceService workspaceService;
     private final ObjectMapper objectMapper;
 
     @Transactional
     public CreateMeetingResponse createMeeting(String workspaceId, String hostEmployeeId, CreateMeetingRequest request) {
+        workspaceService.validateMembership(workspaceId, hostEmployeeId);
+
         Workspace workspace = workspaceRepository.findById(workspaceId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 워크스페이스가 존재하지 않습니다."));
 
