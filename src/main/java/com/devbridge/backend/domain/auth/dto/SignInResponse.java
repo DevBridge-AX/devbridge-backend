@@ -12,4 +12,5 @@ import lombok.NoArgsConstructor;
 public class SignInResponse {
     private String accessToken;
     private String tokenType;
+    private String lastWorkspaceId;
 }
