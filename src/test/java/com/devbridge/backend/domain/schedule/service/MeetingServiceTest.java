@@ -16,6 +16,7 @@ import com.devbridge.backend.domain.schedule.repository.MeetingParticipantReposi
 import com.devbridge.backend.domain.schedule.repository.MeetingRepository;
 import com.devbridge.backend.domain.schedule.repository.ParticipantAvailableTimeRepository;
 import com.devbridge.backend.domain.workspace.repository.WorkspaceRepository;
+import com.devbridge.backend.domain.workspace.service.WorkspaceService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,6 +50,9 @@ class MeetingServiceTest {
     @Mock
     private WorkspaceRepository workspaceRepository;
 
+    @Mock
+    private WorkspaceService workspaceService;
+
     private ObjectMapper objectMapper;
     private MeetingService meetingService;
 
@@ -56,7 +60,7 @@ class MeetingServiceTest {
     void setUp() {
         objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
         meetingService = new MeetingService(
-                meetingRepository, meetingParticipantRepository, participantAvailableTimeRepository, workspaceRepository, objectMapper);
+                meetingRepository, meetingParticipantRepository, participantAvailableTimeRepository, workspaceRepository, workspaceService, objectMapper);
     }
 
     @Test
