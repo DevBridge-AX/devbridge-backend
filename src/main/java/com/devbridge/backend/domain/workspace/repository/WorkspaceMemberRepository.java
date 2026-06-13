@@ -20,6 +20,15 @@ public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember
             from WorkspaceMember wm
             join fetch wm.workspace
             where wm.user.id = :userId
+            order by wm.joinedAt desc
+            """)
+    List<WorkspaceMember> findAllWithWorkspaceByUserId(@Param("userId") String userId);
+
+    @Query("""
+            select wm
+            from WorkspaceMember wm
+            join fetch wm.workspace
+            where wm.user.id = :userId
             order by coalesce(wm.lastAccessedAt, wm.joinedAt) desc
             """)
     List<WorkspaceMember> findRecentWorkspaceMembershipsByUserId(
