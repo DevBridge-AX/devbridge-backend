@@ -1,5 +1,7 @@
 package com.devbridge.backend.domain.workspace.service;
 
+import com.devbridge.backend.domain.workspace.dto.WorkspaceResponse;
+import com.devbridge.backend.domain.workspace.entity.WorkspaceMember;
 import com.devbridge.backend.domain.workspace.dto.WorkspaceMemberResponse;
 import com.devbridge.backend.domain.workspace.repository.WorkspaceMemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +15,28 @@ import java.util.List;
 public class WorkspaceService {
 
     private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final WorkspaceAccessService workspaceAccessService;
+
+    @Transactional(readOnly = true)
+    public List<WorkspaceResponse> getMyWorkspaces(String userId) {
+        return workspaceMemberRepository.findAllWithWorkspaceByUserId(userId)
+                .stream()
+                .map(this::toWorkspaceResponse)
+                .toList();
+    }
+
+    @Transactional
+    public void updateLastAccessedAt(String userId, String workspaceId) {
+        workspaceAccessService.updateLastAccessedAt(userId, workspaceId);
+    }
+
+    private WorkspaceResponse toWorkspaceResponse(WorkspaceMember workspaceMember) {
+        return WorkspaceResponse.builder()
+                .id(workspaceMember.getWorkspace().getId())
+                .name(workspaceMember.getWorkspace().getName())
+                .description(workspaceMember.getWorkspace().getDescription())
+                .build();
+    }
 
     @Transactional(readOnly = true)
     public List<WorkspaceMemberResponse> searchMembers(String workspaceId, String employeeId, String keyword) {
