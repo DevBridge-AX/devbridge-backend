@@ -67,3 +67,6 @@ CLAUDE.md
 .vscode/
 .metadata/
 .agents/
+
+### .env ###
+.env
