@@ -10,6 +10,7 @@ import com.devbridge.backend.domain.user.entity.ExternalHrEmployee;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.ExternalHrEmployeeRepository;
 import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.domain.workspace.service.WorkspaceAccessService;
 import com.devbridge.backend.global.auth.jwt.JwtTokenProvider;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -37,6 +38,7 @@ public class AuthService {
 
     private final ExternalHrEmployeeRepository hrEmployeeRepository;
     private final UserRepository userRepository;
+    private final WorkspaceAccessService workspaceAccessService;
     private final PasswordEncoder passwordEncoder;
     private final StringRedisTemplate redisTemplate;
     private final JavaMailSender mailSender;
@@ -146,11 +148,13 @@ public class AuthService {
         }
 
         String accessToken = jwtTokenProvider.createAccessToken(user.getId(), user.getSystemRole());
+        String lastWorkspaceId = workspaceAccessService.findLastWorkspaceIdByUserId(user.getId());
+
         return SignInResponse.builder()
-                .accessToken(accessToken)
-                .tokenType("Bearer")
-                .lastWorkspaceId(null) // TODO: 워크스페이스 기능 구현 후 실제 조회로 교체
-                .build();
+            .accessToken(accessToken)
+            .tokenType("Bearer")
+            .lastWorkspaceId(lastWorkspaceId)
+            .build();
     }
 
     public void logout(jakarta.servlet.http.HttpServletRequest request) {
