@@ -1,4 +1,4 @@
-USE devbridge_ax;
+USE devbridge;
 
 SET SQL_SAFE_UPDATES = 0;
 SET FOREIGN_KEY_CHECKS = 0;

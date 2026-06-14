@@ -64,18 +64,18 @@ class MeetingIntegrationTest {
 
         // 사용자 저장
         User user1 = User.builder()
-                .employeeId("EMP001")
-                .email("julie019019@gmail.com")
-                .name("김현수")
+                .employeeId("EMP003")
+                .email("choie000208@gmail.com")
+                .name("최형수")
                 .systemRole("USER")
                 .authProvider("LOCAL")
                 .build();
         userRepository.save(user1);
 
         User user2 = User.builder()
-                .employeeId("EMP002")
-                .email("user@company.com")
-                .name("이원빈")
+                .employeeId("EMP004")
+                .email("sam000208@naver.com")
+                .name("최펭수")
                 .systemRole("USER")
                 .authProvider("LOCAL")
                 .build();
@@ -106,18 +106,18 @@ class MeetingIntegrationTest {
     @Test
     @DisplayName("회의 방 생성부터 참여자들의 일정 제출 후 자동 스케줄링 및 확정 처리까지의 전체 비즈니스 시나리오 테스트")
     void meeting_creation_scheduling_and_confirmation_flow() throws Exception {
-        // Step 1. 호스트(EMP001)가 타이틀과 대상을 정해 회의 생성 요청 (POST /api/meetings)
+        // Step 1. 호스트(EMP003)가 타이틀과 대상을 정해 회의 생성 요청 (POST /api/meetings)
         CreateMeetingRequest createRequest = new CreateMeetingRequest(
                 "API 설계 회고 미팅", 
                 60, 
-                List.of("EMP002") // 참여자로 EMP002 사번 지정 (총 2인 참여 미팅)
+                List.of("EMP004") // 참여자로 EMP004 사번 지정 (총 2인 참여 미팅)
         );
 
         String createResponseJson = mockMvc.perform(post("/api/meetings")
                         .header("X-Workspace-Id", workspaceId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createRequest))
-                        .with(authentication(getMockAuthentication("EMP001"))) // 호스트 사번 인증 주입
+                        .with(authentication(getMockAuthentication("EMP003"))) // 호스트 사번 인증 주입
                         .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.meetingId").exists())
@@ -125,7 +125,7 @@ class MeetingIntegrationTest {
 
         String meetingId = objectMapper.readTree(createResponseJson).get("meetingId").asText();
 
-        // Step 2. 생성자(호스트)인 EMP001이 참여 가능한 시간대 제출 (POST /api/meetings/{id}/participants/me/times)
+        // Step 2. 생성자(호스트)인 EMP003이 참여 가능한 시간대 제출 (POST /api/meetings/{id}/participants/me/times)
         // 가능 시간대: 6월 15일 10:00 ~ 12:00
         SubmitAvailableTimesRequest hostTimes = new SubmitAvailableTimesRequest(List.of(
                 new TimeSlotRequest(LocalDateTime.of(2026, 6, 15, 10, 0), LocalDateTime.of(2026, 6, 15, 12, 0))
@@ -134,13 +134,13 @@ class MeetingIntegrationTest {
         mockMvc.perform(post("/api/meetings/" + meetingId + "/participants/me/times")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(hostTimes))
-                        .with(authentication(getMockAuthentication("EMP001")))
+                        .with(authentication(getMockAuthentication("EMP003")))
                         .with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.allParticipantsResponded").value(false)) // 아직 EMP002가 제출하지 않아 false
+                .andExpect(jsonPath("$.allParticipantsResponded").value(false)) // 아직 EMP004가 제출하지 않아 false
                 .andExpect(jsonPath("$.status").value("RESPONDED")); // status 필드로 응답 여부 확인 (이전 submit API 결과)
 
-        // Step 3. 나머지 참여자 EMP002가 참여 가능한 시간대 제출 (POST /api/meetings/{id}/participants/me/times)
+        // Step 3. 나머지 참여자 EMP004가 참여 가능한 시간대 제출 (POST /api/meetings/{id}/participants/me/times)
         // 가능 시간대: 6월 15일 09:00 ~ 11:30 (교집합 성립 범위: 10:00 ~ 11:30 = 90분, 회의 소요시간인 60분 충족)
         SubmitAvailableTimesRequest attendeeTimes = new SubmitAvailableTimesRequest(List.of(
                 new TimeSlotRequest(LocalDateTime.of(2026, 6, 15, 9, 0), LocalDateTime.of(2026, 6, 15, 11, 30))
@@ -149,7 +149,7 @@ class MeetingIntegrationTest {
         mockMvc.perform(post("/api/meetings/" + meetingId + "/participants/me/times")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(attendeeTimes))
-                        .with(authentication(getMockAuthentication("EMP002")))
+                        .with(authentication(getMockAuthentication("EMP004")))
                         .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.allParticipantsResponded").value(true)) // 전원 제출 완료로 true
@@ -157,7 +157,7 @@ class MeetingIntegrationTest {
 
         // Step 4. 회의 상세 조회를 통해 백엔드가 교집합 최적 시간(10:00 ~ 11:00)으로 회의를 자동 확정했는지 검증 (GET /api/meetings/{id})
         mockMvc.perform(get("/api/meetings/" + meetingId)
-                        .with(authentication(getMockAuthentication("EMP001"))))
+                        .with(authentication(getMockAuthentication("EMP003"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CONFIRMED")) // 회의 확정 상태 변경 검증
                 .andExpect(jsonPath("$.confirmedStartTime").value("2026-06-15T10:00:00")) // 확정 시작 시각 확인
@@ -166,7 +166,7 @@ class MeetingIntegrationTest {
 
         // Step 5. 내 회의 목록 조회를 통해 내가 참여 중인 회의 목록이 정상 반환되는지 확인 (GET /api/meetings)
         mockMvc.perform(get("/api/meetings")
-                        .with(authentication(getMockAuthentication("EMP001"))))
+                        .with(authentication(getMockAuthentication("EMP003"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].meetingId").value(meetingId))
                 .andExpect(jsonPath("$[0].title").value("API 설계 회고 미팅"))
@@ -176,7 +176,7 @@ class MeetingIntegrationTest {
         mockMvc.perform(get("/api/meetings/participants/me/schedules")
                         .param("startDate", "2026-06-15")
                         .param("endDate", "2026-06-15")
-                        .with(authentication(getMockAuthentication("EMP001"))))
+                        .with(authentication(getMockAuthentication("EMP003"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].meetingId").value(meetingId))
                 .andExpect(jsonPath("$[0].confirmedStartTime").value("2026-06-15T10:00:00"))
