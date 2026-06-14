@@ -87,13 +87,13 @@ public class MeetingService {
     }
 
     @Transactional(readOnly = true)
-    public List<ConfirmedScheduleResponse> getMyConfirmedSchedules(String employeeId, LocalDate startDate, LocalDate endDate) {
+    public List<ConfirmedScheduleResponse> getMyConfirmedSchedules(String workspaceId, String employeeId, LocalDate startDate, LocalDate endDate) {
         var rangeStart = startDate.atStartOfDay();
         var rangeEnd = endDate.plusDays(1).atStartOfDay();
 
         return meetingParticipantRepository
-                .findByEmployeeIdAndMeeting_StatusAndMeeting_ConfirmedStartTimeLessThanAndMeeting_ConfirmedEndTimeGreaterThan(
-                        employeeId, MeetingStatus.CONFIRMED, rangeEnd, rangeStart)
+                .findByEmployeeIdAndMeeting_StatusAndMeeting_Workspace_IdAndMeeting_ConfirmedStartTimeLessThanAndMeeting_ConfirmedEndTimeGreaterThan(
+                        employeeId, MeetingStatus.CONFIRMED, workspaceId, rangeEnd, rangeStart)
                 .stream()
                 .map(participant -> {
                     Meeting meeting = participant.getMeeting();
@@ -107,10 +107,10 @@ public class MeetingService {
     }
 
     @Transactional(readOnly = true)
-    public List<MeetingSummaryResponse> getMyMeetings(String employeeId, MeetingStatus status) {
+    public List<MeetingSummaryResponse> getMyMeetings(String workspaceId, String employeeId, MeetingStatus status) {
         List<MeetingParticipant> participants = status == null
-                ? meetingParticipantRepository.findByEmployeeId(employeeId)
-                : meetingParticipantRepository.findByEmployeeIdAndMeeting_Status(employeeId, status);
+                ? meetingParticipantRepository.findByEmployeeIdAndMeeting_Workspace_Id(employeeId, workspaceId)
+                : meetingParticipantRepository.findByEmployeeIdAndMeeting_StatusAndMeeting_Workspace_Id(employeeId, status, workspaceId);
 
         return participants.stream()
                 .map(MeetingParticipant::getMeeting)

@@ -40,13 +40,13 @@ public class MeetingController implements MeetingAPI {
 
     @Override
     public ResponseEntity<List<ConfirmedScheduleResponse>> getMyConfirmedSchedules(
-            String employeeId, LocalDate startDate, LocalDate endDate) {
-        return ResponseEntity.ok(meetingService.getMyConfirmedSchedules(employeeId, startDate, endDate));
+            String workspaceId, String employeeId, LocalDate startDate, LocalDate endDate) {
+        return ResponseEntity.ok(meetingService.getMyConfirmedSchedules(workspaceId, employeeId, startDate, endDate));
     }
 
     @Override
-    public ResponseEntity<List<MeetingSummaryResponse>> getMyMeetings(String employeeId, MeetingStatus status) {
-        return ResponseEntity.ok(meetingService.getMyMeetings(employeeId, status));
+    public ResponseEntity<List<MeetingSummaryResponse>> getMyMeetings(String workspaceId, String employeeId, MeetingStatus status) {
+        return ResponseEntity.ok(meetingService.getMyMeetings(workspaceId, employeeId, status));
     }
 
     @Override

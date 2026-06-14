@@ -16,13 +16,15 @@ public interface MeetingParticipantRepository extends JpaRepository<MeetingParti
 
     List<MeetingParticipant> findByMeetingId(String meetingId);
 
-    List<MeetingParticipant> findByEmployeeId(String employeeId);
+    List<MeetingParticipant> findByEmployeeIdAndMeeting_Workspace_Id(String employeeId, String workspaceId);
 
-    List<MeetingParticipant> findByEmployeeIdAndMeeting_Status(String employeeId, MeetingStatus status);
+    List<MeetingParticipant> findByEmployeeIdAndMeeting_StatusAndMeeting_Workspace_Id(
+            String employeeId, MeetingStatus status, String workspaceId);
 
-    List<MeetingParticipant> findByEmployeeIdAndMeeting_StatusAndMeeting_ConfirmedStartTimeLessThanAndMeeting_ConfirmedEndTimeGreaterThan(
+    List<MeetingParticipant> findByEmployeeIdAndMeeting_StatusAndMeeting_Workspace_IdAndMeeting_ConfirmedStartTimeLessThanAndMeeting_ConfirmedEndTimeGreaterThan(
             String employeeId,
             MeetingStatus status,
+            String workspaceId,
             LocalDateTime confirmedStartTimeBefore,
             LocalDateTime confirmedEndTimeAfter);
 }

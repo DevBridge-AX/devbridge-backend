@@ -110,11 +110,12 @@ class MeetingControllerTest {
                 LocalDateTime.of(2026, 6, 15, 10, 0), 
                 LocalDateTime.of(2026, 6, 15, 11, 0));
 
-        when(meetingService.getMyConfirmedSchedules(any(), any(), any()))
+        when(meetingService.getMyConfirmedSchedules(any(), any(), any(), any()))
                 .thenReturn(List.of(confirmed));
 
         // when & then
         mockMvc.perform(get("/api/meetings/participants/me/schedules")
+                        .header("X-Workspace-Id", "workspace-1")
                         .param("startDate", "2026-06-15")
                         .param("endDate", "2026-06-21")
                         .with(authentication(getMockAuthentication("EMP002"))))
@@ -132,11 +133,12 @@ class MeetingControllerTest {
         MeetingSummaryResponse summary = new MeetingSummaryResponse(
                 "meeting-uuid-123", "스프린트 회고", MeetingStatus.GATHERING, 60, null, null);
 
-        when(meetingService.getMyMeetings(any(), any()))
+        when(meetingService.getMyMeetings(any(), any(), any()))
                 .thenReturn(List.of(summary));
 
         // when & then
         mockMvc.perform(get("/api/meetings")
+                        .header("X-Workspace-Id", "workspace-1")
                         .param("status", "GATHERING")
                         .with(authentication(getMockAuthentication("EMP002"))))
                 .andExpect(status().isOk())

@@ -264,10 +264,10 @@ class MeetingServiceTest {
                 .role(ParticipantRole.ATTENDEE)
                 .build();
 
-        when(meetingParticipantRepository.findByEmployeeId("EMP001"))
+        when(meetingParticipantRepository.findByEmployeeIdAndMeeting_Workspace_Id("EMP001", "workspace-1"))
                 .thenReturn(List.of(participantOnOlder, participantOnNewer));
 
-        List<MeetingSummaryResponse> result = meetingService.getMyMeetings("EMP001", null);
+        List<MeetingSummaryResponse> result = meetingService.getMyMeetings("workspace-1", "EMP001", null);
 
         assertThat(result).extracting(MeetingSummaryResponse::meetingId)
                 .containsExactly("meeting-new", "meeting-old");
@@ -276,13 +276,13 @@ class MeetingServiceTest {
 
     @Test
     void getMyMeetings_status가주어지면_해당상태의회의만조회한다() {
-        when(meetingParticipantRepository.findByEmployeeIdAndMeeting_Status("EMP001", MeetingStatus.CONFIRMED))
+        when(meetingParticipantRepository.findByEmployeeIdAndMeeting_StatusAndMeeting_Workspace_Id("EMP001", MeetingStatus.CONFIRMED, "workspace-1"))
                 .thenReturn(List.of());
 
-        List<MeetingSummaryResponse> result = meetingService.getMyMeetings("EMP001", MeetingStatus.CONFIRMED);
+        List<MeetingSummaryResponse> result = meetingService.getMyMeetings("workspace-1", "EMP001", MeetingStatus.CONFIRMED);
 
         assertThat(result).isEmpty();
-        verify(meetingParticipantRepository).findByEmployeeIdAndMeeting_Status("EMP001", MeetingStatus.CONFIRMED);
+        verify(meetingParticipantRepository).findByEmployeeIdAndMeeting_StatusAndMeeting_Workspace_Id("EMP001", MeetingStatus.CONFIRMED, "workspace-1");
     }
 
     @Test

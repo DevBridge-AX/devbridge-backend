@@ -43,16 +43,18 @@ public interface MeetingAPI {
             @AuthenticationPrincipal String employeeId,
             @Valid @RequestBody SubmitAvailableTimesRequest request);
 
-    @Operation(summary = "내 확정 일정 조회", description = "로그인한 사용자가 참여 중인 CONFIRMED 상태 회의의 확정 시간 슬롯을 기간 내에서 조회합니다. 캘린더의 선택 불가(Blocked) 영역 렌더링에 사용됩니다.")
+    @Operation(summary = "내 확정 일정 조회", description = "로그인한 사용자가 현재 워크스페이스에서 참여 중인 CONFIRMED 상태 회의의 확정 시간 슬롯을 기간 내에서 조회합니다. 캘린더의 선택 불가(Blocked) 영역 렌더링에 사용됩니다.")
     @GetMapping("/participants/me/schedules")
     ResponseEntity<List<ConfirmedScheduleResponse>> getMyConfirmedSchedules(
+            @RequestHeader("X-Workspace-Id") String workspaceId,
             @AuthenticationPrincipal String employeeId,
             @RequestParam("startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate);
 
-    @Operation(summary = "내 회의 목록 조회", description = "로그인한 사용자가 참여 중인 회의 목록을 조회합니다. 확정(CONFIRMED) 회의와 조율 중인 회의를 모두 포함하며, status 파라미터로 상태를 필터링할 수 있습니다.")
+    @Operation(summary = "내 회의 목록 조회", description = "로그인한 사용자가 현재 워크스페이스에서 참여 중인 회의 목록을 조회합니다. 확정(CONFIRMED) 회의와 조율 중인 회의를 모두 포함하며, status 파라미터로 상태를 필터링할 수 있습니다.")
     @GetMapping
     ResponseEntity<List<MeetingSummaryResponse>> getMyMeetings(
+            @RequestHeader("X-Workspace-Id") String workspaceId,
             @AuthenticationPrincipal String employeeId,
             @RequestParam(value = "status", required = false) MeetingStatus status);
 
