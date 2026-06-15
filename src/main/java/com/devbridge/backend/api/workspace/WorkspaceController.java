@@ -2,6 +2,7 @@ package com.devbridge.backend.api.workspace;
 
 import com.devbridge.backend.domain.workspace.dto.CreateWorkspaceRequest;
 import com.devbridge.backend.domain.workspace.dto.InviteMemberRequest;
+import com.devbridge.backend.domain.workspace.dto.WorkspaceMemberResponse;
 import com.devbridge.backend.domain.workspace.dto.WorkspaceResponse;
 import com.devbridge.backend.domain.workspace.service.WorkspaceService;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +25,7 @@ public class WorkspaceController implements WorkspaceAPI {
         return ResponseEntity.ok(workspaceService.getMyWorkspaces(userId));
     }
 
-    @Override
+    @Override // To-Do: 테스트 이후 더미 삭제
     public ResponseEntity<WorkspaceResponse> createWorkspace(CreateWorkspaceRequest request) {
         WorkspaceResponse response = WorkspaceResponse.builder()
                 .id("dummy-workspace-id")
@@ -46,5 +47,10 @@ public class WorkspaceController implements WorkspaceAPI {
     ) {
         workspaceService.updateLastAccessedAt(userId, workspaceId);
         return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    public ResponseEntity<List<WorkspaceMemberResponse>> searchMembers(String workspaceId, String employeeId, String keyword) {
+        return ResponseEntity.ok(workspaceService.searchMembers(workspaceId, employeeId, keyword));
     }
 }

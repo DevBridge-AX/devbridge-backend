@@ -1,3 +1,6 @@
+.DS_Store
+**/.DS_Store
+
 # Compiled class file
 *.class
 
@@ -50,6 +53,8 @@ bin/
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
+CLAUDE.md
+.claude/*
 
 ### NetBeans ###
 /nbproject/private/
@@ -62,3 +67,10 @@ out/
 .vscode/
 .metadata/
 .agents/
+
+### .env ###
+.env
+
+### Uploaded files ###
+uploads/*/*
+!uploads/*/.gitkeep

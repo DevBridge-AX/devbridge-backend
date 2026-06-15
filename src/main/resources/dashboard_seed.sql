@@ -1,22 +1,22 @@
-USE devbridge_ax;
+USE devbridge;
 
 SET SQL_SAFE_UPDATES = 0;
 SET FOREIGN_KEY_CHECKS = 0;
 
-DELETE FROM notifications;
-DELETE FROM owner_confirmations;
-DELETE FROM chat_messages;
-DELETE FROM chat_sessions;
-DELETE FROM git_commits;
-DELETE FROM knowledge_documents;
-DELETE FROM data_sources;
-DELETE FROM task_status_logs;
-DELETE FROM task_deliverables;
-DELETE FROM tasks;
-DELETE FROM workspace_members;
-DELETE FROM workspace_invitations;
-DELETE FROM workspaces;
-DELETE FROM users;
+-- DELETE FROM notifications;
+-- DELETE FROM owner_confirmations;
+-- DELETE FROM chat_messages;
+-- DELETE FROM chat_sessions;
+-- DELETE FROM git_commits;
+-- DELETE FROM knowledge_documents;
+-- DELETE FROM data_sources;
+-- DELETE FROM task_status_logs;
+-- DELETE FROM task_deliverables;
+-- DELETE FROM tasks;
+-- DELETE FROM workspace_members;
+-- DELETE FROM workspace_invitations;
+-- DELETE FROM workspaces;
+-- DELETE FROM users;
 
 SET FOREIGN_KEY_CHECKS = 1;
 SET SQL_SAFE_UPDATES = 1;
@@ -26,8 +26,9 @@ INSERT INTO users (
     employee_id, email, password_hash, auth_provider,
     name, department, position, system_role
 ) VALUES
-('u001', NOW(), NOW(), NULL, 'EMP001', 'admin@company.com', 'mock-password', 'LOCAL', '김현수', '개발팀', 'Backend Developer', 'ADMIN'),
-('u002', NOW(), NOW(), NULL, 'EMP002', 'choi@company.com', 'mock-password', 'LOCAL', '최형수', '기획팀', 'Product Manager', 'USER');
+('u001', NOW(), NOW(), NULL, 'EMP001', 'admin@company.com', '$2a$10$uAK.crtZC9lnuTPV/i5q7.wIj7jhFZTXbvq7WmKp/63bCEw4i27LO', 'LOCAL', '김현수', '개발팀', 'Backend Developer', 'ADMIN'),
+('u002', NOW(), NOW(), NULL, 'EMP003', 'choie000208@gmail.com', '$2a$10$uAK.crtZC9lnuTPV/i5q7.wIj7jhFZTXbvq7WmKp/63bCEw4i27LO', 'LOCAL', '최형수', '기획팀', '팀장', 'USER'),
+('u003', NOW(), NOW(), NULL, 'EMP004', 'sam000208@naver.com', '$2a$10$uAK.crtZC9lnuTPV/i5q7.wIj7jhFZTXbvq7WmKp/63bCEw4i27LO', 'LOCAL', '최펭수', '개발팀', '대리', 'USER');
 
 INSERT INTO workspaces (
     id, created_at, updated_at, deleted_at,
@@ -42,7 +43,8 @@ INSERT INTO workspace_members (
 ) VALUES
 ('wm001', NOW(), NOW(), NULL, 'ws001', 'u001', 'OWNER', NOW()),
 ('wm002', NOW(), NOW(), NULL, 'ws001', 'u002', 'MEMBER', NOW()),
-('wm003', NOW(), NOW(), NULL, 'ws002', 'u001', 'MEMBER', NOW());
+('wm003', NOW(), NOW(), NULL, 'ws002', 'u001', 'MEMBER', NOW()),
+('wm004', NOW(), NOW(), NULL, 'ws001', 'u003', 'MEMBER', NOW());
 
 INSERT INTO tasks (
     id, created_at, updated_at, deleted_at,
