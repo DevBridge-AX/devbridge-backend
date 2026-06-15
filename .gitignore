@@ -70,3 +70,7 @@ CLAUDE.md
 
 ### .env ###
 .env
+
+### Uploaded files ###
+uploads/*/*
+!uploads/*/.gitkeep
