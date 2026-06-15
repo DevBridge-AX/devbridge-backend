@@ -33,6 +33,15 @@ public class Meeting extends BaseEntity {
     @Column(name = "title", nullable = false, length = 255)
     private String title;
 
+    @Column(name = "purpose", columnDefinition = "TEXT")
+    private String purpose;
+
+    @Column(name = "agenda", columnDefinition = "TEXT")
+    private String agenda;
+
+    @Column(name = "location", length = 255)
+    private String location;
+
     @Column(name = "duration_minutes", nullable = false)
     private Integer durationMinutes;
 
@@ -58,6 +67,13 @@ public class Meeting extends BaseEntity {
     @Builder.Default
     @OneToMany(mappedBy = "meeting", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MeetingReference> references = new ArrayList<>();
+
+    public void updateInfo(String title, String purpose, String agenda, String location) {
+        this.title = title;
+        this.purpose = purpose;
+        this.agenda = agenda;
+        this.location = location;
+    }
 
     public void selectTopCandidateTimes(String topCandidateTimesJson) {
         this.topCandidateTimes = topCandidateTimesJson;

@@ -12,6 +12,12 @@ public record CreateMeetingRequest(
         @NotBlank(message = "회의 제목은 필수입니다.")
         String title,
 
+        String purpose,
+
+        String agenda,
+
+        String location,
+
         @NotNull(message = "소요 시간은 필수입니다.")
         @Positive(message = "소요 시간은 0보다 커야 합니다.")
         Integer durationMinutes,

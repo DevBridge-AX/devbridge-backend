@@ -8,6 +8,9 @@ import java.util.List;
 public record MeetingDetailResponse(
         String meetingId,
         String title,
+        String purpose,
+        String agenda,
+        String location,
         Integer durationMinutes,
         MeetingStatus status,
         LocalDateTime confirmedStartTime,
