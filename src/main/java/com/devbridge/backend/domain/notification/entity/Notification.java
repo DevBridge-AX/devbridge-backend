@@ -31,4 +31,8 @@ public class Notification extends BaseEntity {
     @Builder.Default
     @Column(name = "is_read")
     private Boolean isRead = false; // 읽음 여부
+
+    public void markAsRead() {
+        this.isRead = true;
+    }
 }
