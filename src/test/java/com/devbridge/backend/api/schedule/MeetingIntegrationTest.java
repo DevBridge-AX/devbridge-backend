@@ -108,9 +108,10 @@ class MeetingIntegrationTest {
     void meeting_creation_scheduling_and_confirmation_flow() throws Exception {
         // Step 1. 호스트(EMP003)가 타이틀과 대상을 정해 회의 생성 요청 (POST /api/meetings)
         CreateMeetingRequest createRequest = new CreateMeetingRequest(
-                "API 설계 회고 미팅", 
-                60, 
-                List.of("EMP004") // 참여자로 EMP004 사번 지정 (총 2인 참여 미팅)
+                "API 설계 회고 미팅",
+                60,
+                List.of("EMP004"), // 참여자로 EMP004 사번 지정 (총 2인 참여 미팅)
+                null
         );
 
         String createResponseJson = mockMvc.perform(post("/api/meetings")
@@ -166,6 +167,7 @@ class MeetingIntegrationTest {
 
         // Step 5. 내 회의 목록 조회를 통해 내가 참여 중인 회의 목록이 정상 반환되는지 확인 (GET /api/meetings)
         mockMvc.perform(get("/api/meetings")
+                        .header("X-Workspace-Id", workspaceId)
                         .with(authentication(getMockAuthentication("EMP003"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].meetingId").value(meetingId))
@@ -174,6 +176,7 @@ class MeetingIntegrationTest {
 
         // Step 6. 내 확정 일정 조회를 통해 특정 기간 내의 확정 일정 시간대가 정상 반환되는지 확인 (GET /api/meetings/participants/me/schedules)
         mockMvc.perform(get("/api/meetings/participants/me/schedules")
+                        .header("X-Workspace-Id", workspaceId)
                         .param("startDate", "2026-06-15")
                         .param("endDate", "2026-06-15")
                         .with(authentication(getMockAuthentication("EMP003"))))

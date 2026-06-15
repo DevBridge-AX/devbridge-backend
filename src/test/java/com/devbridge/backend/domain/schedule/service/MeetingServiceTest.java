@@ -53,6 +53,9 @@ class MeetingServiceTest {
     @Mock
     private WorkspaceService workspaceService;
 
+    @Mock
+    private MeetingReferenceService meetingReferenceService;
+
     private ObjectMapper objectMapper;
     private MeetingService meetingService;
 
@@ -60,7 +63,7 @@ class MeetingServiceTest {
     void setUp() {
         objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
         meetingService = new MeetingService(
-                meetingRepository, meetingParticipantRepository, participantAvailableTimeRepository, workspaceRepository, workspaceService, objectMapper);
+                meetingRepository, meetingParticipantRepository, participantAvailableTimeRepository, workspaceRepository, workspaceService, meetingReferenceService, objectMapper);
     }
 
     @Test
@@ -322,6 +325,7 @@ class MeetingServiceTest {
                 .thenReturn(Optional.of(attendee));
         when(meetingRepository.findById("meeting-1")).thenReturn(Optional.of(meeting));
         when(meetingParticipantRepository.findByMeetingId("meeting-1")).thenReturn(List.of(host, attendee));
+        when(meetingReferenceService.getReferences("meeting-1")).thenReturn(List.of());
 
         MeetingDetailResponse response = meetingService.getMeetingDetail("meeting-1", "EMP002");
 
@@ -332,6 +336,7 @@ class MeetingServiceTest {
         assertThat(response.topCandidateTimes()).containsExactly(new CandidateTimeSlot(confirmedStart, confirmedEnd));
         assertThat(response.participants()).extracting("employeeId")
                 .containsExactlyInAnyOrder("EMP001", "EMP002");
+        assertThat(response.references()).isEmpty();
     }
 
     @Test

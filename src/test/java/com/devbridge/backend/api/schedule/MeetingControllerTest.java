@@ -4,6 +4,7 @@ import com.devbridge.backend.domain.schedule.dto.*;
 import com.devbridge.backend.domain.schedule.entity.MeetingStatus;
 import com.devbridge.backend.domain.schedule.entity.ParticipantRole;
 import com.devbridge.backend.domain.schedule.entity.ParticipantStatus;
+import com.devbridge.backend.domain.schedule.service.MeetingReferenceService;
 import com.devbridge.backend.domain.schedule.service.MeetingService;
 import com.devbridge.backend.global.auth.jwt.JwtTokenProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,6 +44,9 @@ class MeetingControllerTest {
     private MeetingService meetingService;
 
     @MockitoBean
+    private MeetingReferenceService meetingReferenceService;
+
+    @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
 
     @MockitoBean
@@ -56,7 +60,7 @@ class MeetingControllerTest {
     @DisplayName("1. 회의 조율 요청 방 생성 API 성공 테스트 (POST /api/meetings)")
     void createMeeting_Success() throws Exception {
         // given
-        CreateMeetingRequest request = new CreateMeetingRequest("스프린트 회고", 60, List.of("EMP002", "EMP003"));
+        CreateMeetingRequest request = new CreateMeetingRequest("스프린트 회고", 60, List.of("EMP002", "EMP003"), null);
         CreateMeetingResponse response = new CreateMeetingResponse("meeting-uuid-123");
 
         when(meetingService.createMeeting(any(), any(), any()))
@@ -162,7 +166,8 @@ class MeetingControllerTest {
                 LocalDateTime.of(2026, 6, 15, 10, 0),
                 LocalDateTime.of(2026, 6, 15, 11, 0),
                 List.of(candidate),
-                List.of(participant1, participant2));
+                List.of(participant1, participant2),
+                List.of());
 
         when(meetingService.getMeetingDetail(any(), any()))
                 .thenReturn(detailResponse);
@@ -182,7 +187,7 @@ class MeetingControllerTest {
     @DisplayName("6. [예외] 회의 생성 API - 비어있는 회의 제목 시 Validation 실패 테스트")
     void createMeeting_ValidationFailure() throws Exception {
         // given
-        CreateMeetingRequest invalidRequest = new CreateMeetingRequest("", 60, List.of("EMP002"));
+        CreateMeetingRequest invalidRequest = new CreateMeetingRequest("", 60, List.of("EMP002"), null);
 
         // when & then
         mockMvc.perform(post("/api/meetings")
