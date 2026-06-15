@@ -16,6 +16,11 @@ public class UserController implements UserAPI {
     private final SettingService settingService;
 
     @Override
+    public ResponseEntity<UserResponse> getMe(String userId) {
+        return ResponseEntity.ok(settingService.getUser(userId));
+    }
+
+    @Override
     public ResponseEntity<UserResponse> getUser(String id) {
         // TODO: 더미 데이터 제거 후 수정
         UserResponse response = UserResponse.builder()

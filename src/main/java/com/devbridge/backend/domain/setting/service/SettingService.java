@@ -3,6 +3,7 @@ package com.devbridge.backend.domain.setting.service;
 import com.devbridge.backend.domain.setting.dto.ProfileResponse;
 import com.devbridge.backend.domain.setting.dto.UpdatePasswordRequest;
 import com.devbridge.backend.domain.setting.dto.UpdateProfileRequest;
+import com.devbridge.backend.domain.user.dto.UserResponse;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,22 @@ public class SettingService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+
+    @Transactional(readOnly = true)
+    public UserResponse getUser(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. id: " + userId));
+
+        return UserResponse.builder()
+                .id(user.getId())
+                .employeeId(user.getEmployeeId())
+                .email(user.getEmail())
+                .name(user.getName())
+                .department(user.getDepartment())
+                .position(user.getPosition())
+                .systemRole(user.getSystemRole())
+                .build();
+    }
 
     @Transactional(readOnly = true)
     public ProfileResponse getProfile(String userId) {
