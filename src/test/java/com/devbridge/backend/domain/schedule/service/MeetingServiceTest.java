@@ -15,6 +15,8 @@ import com.devbridge.backend.domain.schedule.entity.ParticipantStatus;
 import com.devbridge.backend.domain.schedule.repository.MeetingParticipantRepository;
 import com.devbridge.backend.domain.schedule.repository.MeetingRepository;
 import com.devbridge.backend.domain.schedule.repository.ParticipantAvailableTimeRepository;
+import com.devbridge.backend.domain.user.entity.User;
+import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.domain.workspace.repository.WorkspaceRepository;
 import com.devbridge.backend.domain.workspace.service.WorkspaceService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,6 +34,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -56,6 +60,9 @@ class MeetingServiceTest {
     @Mock
     private MeetingReferenceService meetingReferenceService;
 
+    @Mock
+    private UserRepository userRepository;
+
     private ObjectMapper objectMapper;
     private MeetingService meetingService;
 
@@ -63,7 +70,16 @@ class MeetingServiceTest {
     void setUp() {
         objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
         meetingService = new MeetingService(
-                meetingRepository, meetingParticipantRepository, participantAvailableTimeRepository, workspaceRepository, workspaceService, meetingReferenceService, objectMapper);
+                meetingRepository, meetingParticipantRepository, participantAvailableTimeRepository, workspaceRepository, workspaceService, meetingReferenceService, objectMapper, userRepository);
+
+        lenient().when(userRepository.findById(anyString())).thenAnswer(invocation -> {
+            String id = invocation.getArgument(0);
+            return Optional.of(User.builder().id(id).employeeId(id).name("Mock User").systemRole("USER").authProvider("LOCAL").build());
+        });
+        lenient().when(userRepository.findByEmployeeId(anyString())).thenAnswer(invocation -> {
+            String empId = invocation.getArgument(0);
+            return Optional.of(User.builder().id(empId).employeeId(empId).name("Mock User").systemRole("USER").authProvider("LOCAL").build());
+        });
     }
 
     @Test

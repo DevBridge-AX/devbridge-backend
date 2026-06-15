@@ -104,3 +104,20 @@ INSERT INTO notifications (
 ) VALUES
 ('n001', NOW(), NOW(), NULL, 'u001', 'TASK_ASSIGNED', 't001', 0),
 ('n002', NOW(), NOW(), NULL, 'u001', 'OWNER_CONFIRMATION_REQUESTED', 'oc001', 0);
+
+INSERT INTO meetings (
+    id, created_at, updated_at, deleted_at,
+    workspace_id, title, duration_minutes, status,
+    confirmed_start_time, confirmed_end_time, ai_summary, meeting_link, top_candidate_times
+) VALUES
+('meet001', NOW(), NOW(), NULL, 'ws001', '[목업] 파일 업로드 테스트용 회의', 60, 'GATHERING', NULL, NULL, NULL, NULL, NULL),
+('meet002', NOW(), NOW(), NULL, 'ws001', '[목업] 확정된 파일 업로드 테스트용 회의', 60, 'CONFIRMED', DATE_ADD(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 1 DAY), NULL, NULL, NULL);
+
+INSERT INTO meeting_participants (
+    id, created_at, updated_at, deleted_at,
+    meeting_id, employee_id, status, role
+) VALUES
+('meetp001', NOW(), NOW(), NULL, 'meet001', 'EMP003', 'PENDING', 'HOST'),
+('meetp002', NOW(), NOW(), NULL, 'meet001', 'EMP004', 'PENDING', 'ATTENDEE'),
+('meetp003', NOW(), NOW(), NULL, 'meet002', 'EMP003', 'RESPONDED', 'HOST'),
+('meetp004', NOW(), NOW(), NULL, 'meet002', 'EMP004', 'RESPONDED', 'ATTENDEE');

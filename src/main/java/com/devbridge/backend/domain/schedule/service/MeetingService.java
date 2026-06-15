@@ -18,6 +18,8 @@ import com.devbridge.backend.domain.schedule.entity.ParticipantStatus;
 import com.devbridge.backend.domain.schedule.repository.MeetingParticipantRepository;
 import com.devbridge.backend.domain.schedule.repository.MeetingRepository;
 import com.devbridge.backend.domain.schedule.repository.ParticipantAvailableTimeRepository;
+import com.devbridge.backend.domain.user.entity.User;
+import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.repository.WorkspaceRepository;
 import com.devbridge.backend.domain.workspace.service.WorkspaceService;
@@ -49,10 +51,18 @@ public class MeetingService {
     private final WorkspaceService workspaceService;
     private final MeetingReferenceService meetingReferenceService;
     private final ObjectMapper objectMapper;
+    private final UserRepository userRepository;
+
+    private User resolveUser(String identifier) {
+        return userRepository.findById(identifier)
+                .orElseGet(() -> userRepository.findByEmployeeId(identifier)
+                        .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + identifier)));
+    }
 
     @Transactional
-    public CreateMeetingResponse createMeeting(String workspaceId, String hostEmployeeId, CreateMeetingRequest request) {
-        workspaceService.validateMembership(workspaceId, hostEmployeeId);
+    public CreateMeetingResponse createMeeting(String workspaceId, String hostIdentifier, CreateMeetingRequest request) {
+        User host = resolveUser(hostIdentifier);
+        workspaceService.validateMembership(workspaceId, host.getId());
 
         Workspace workspace = workspaceRepository.findById(workspaceId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 워크스페이스가 존재하지 않습니다."));
@@ -68,7 +78,7 @@ public class MeetingService {
         List<MeetingParticipant> participants = new ArrayList<>();
         participants.add(MeetingParticipant.builder()
                 .meeting(meeting)
-                .employeeId(hostEmployeeId)
+                .employeeId(host.getEmployeeId())
                 .status(ParticipantStatus.PENDING)
                 .role(ParticipantRole.HOST)
                 .build());
@@ -86,14 +96,16 @@ public class MeetingService {
 
         if (request.references() != null) {
             request.references().forEach(referenceRequest ->
-                    meetingReferenceService.createReference(meeting, hostEmployeeId, referenceRequest));
+                    meetingReferenceService.createReference(meeting, host.getEmployeeId(), referenceRequest));
         }
 
         return new CreateMeetingResponse(meeting.getId());
     }
 
     @Transactional(readOnly = true)
-    public List<ConfirmedScheduleResponse> getMyConfirmedSchedules(String workspaceId, String employeeId, LocalDate startDate, LocalDate endDate) {
+    public List<ConfirmedScheduleResponse> getMyConfirmedSchedules(String workspaceId, String identifier, LocalDate startDate, LocalDate endDate) {
+        User user = resolveUser(identifier);
+        String employeeId = user.getEmployeeId();
         var rangeStart = startDate.atStartOfDay();
         var rangeEnd = endDate.plusDays(1).atStartOfDay();
 
@@ -113,7 +125,9 @@ public class MeetingService {
     }
 
     @Transactional(readOnly = true)
-    public List<MeetingSummaryResponse> getMyMeetings(String workspaceId, String employeeId, MeetingStatus status) {
+    public List<MeetingSummaryResponse> getMyMeetings(String workspaceId, String identifier, MeetingStatus status) {
+        User user = resolveUser(identifier);
+        String employeeId = user.getEmployeeId();
         List<MeetingParticipant> participants = status == null
                 ? meetingParticipantRepository.findByEmployeeIdAndMeeting_Workspace_Id(employeeId, workspaceId)
                 : meetingParticipantRepository.findByEmployeeIdAndMeeting_StatusAndMeeting_Workspace_Id(employeeId, status, workspaceId);
@@ -132,7 +146,9 @@ public class MeetingService {
     }
 
     @Transactional(readOnly = true)
-    public MeetingDetailResponse getMeetingDetail(String meetingId, String employeeId) {
+    public MeetingDetailResponse getMeetingDetail(String meetingId, String identifier) {
+        User user = resolveUser(identifier);
+        String employeeId = user.getEmployeeId();
         meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회의의 참석자가 아닙니다."));
 
@@ -160,8 +176,10 @@ public class MeetingService {
 
     @Transactional
     public SubmitAvailableTimesResponse submitAvailableTimes(
-            String meetingId, String employeeId, SubmitAvailableTimesRequest request) {
+            String meetingId, String identifier, SubmitAvailableTimesRequest request) {
 
+        User user = resolveUser(identifier);
+        String employeeId = user.getEmployeeId();
         MeetingParticipant participant = meetingParticipantRepository
                 .findByMeetingIdAndEmployeeId(meetingId, employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회의의 참석자가 아닙니다."));

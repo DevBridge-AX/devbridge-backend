@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface MeetingRepository extends JpaRepository<Meeting, String> {
+    boolean existsByWorkspace_IdAndTitle(String workspaceId, String title);
 }
