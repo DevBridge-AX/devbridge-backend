@@ -6,6 +6,7 @@ import com.devbridge.backend.domain.schedule.dto.MeetingSummaryResponse;
 import com.devbridge.backend.domain.schedule.dto.SubmitAvailableTimesRequest;
 import com.devbridge.backend.domain.schedule.dto.SubmitAvailableTimesResponse;
 import com.devbridge.backend.domain.schedule.dto.TimeSlotRequest;
+import com.devbridge.backend.domain.schedule.dto.UpdateMeetingRequest;
 import com.devbridge.backend.domain.schedule.entity.Meeting;
 import com.devbridge.backend.domain.schedule.entity.MeetingParticipant;
 import com.devbridge.backend.domain.schedule.entity.MeetingStatus;
@@ -15,6 +16,9 @@ import com.devbridge.backend.domain.schedule.entity.ParticipantStatus;
 import com.devbridge.backend.domain.schedule.repository.MeetingParticipantRepository;
 import com.devbridge.backend.domain.schedule.repository.MeetingRepository;
 import com.devbridge.backend.domain.schedule.repository.ParticipantAvailableTimeRepository;
+import com.devbridge.backend.domain.notification.service.NotificationService;
+import com.devbridge.backend.domain.user.entity.User;
+import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.domain.workspace.repository.WorkspaceRepository;
 import com.devbridge.backend.domain.workspace.service.WorkspaceService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,6 +36,11 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -56,6 +65,12 @@ class MeetingServiceTest {
     @Mock
     private MeetingReferenceService meetingReferenceService;
 
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private NotificationService notificationService;
+
     private ObjectMapper objectMapper;
     private MeetingService meetingService;
 
@@ -63,7 +78,16 @@ class MeetingServiceTest {
     void setUp() {
         objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
         meetingService = new MeetingService(
-                meetingRepository, meetingParticipantRepository, participantAvailableTimeRepository, workspaceRepository, workspaceService, meetingReferenceService, objectMapper);
+                meetingRepository, meetingParticipantRepository, participantAvailableTimeRepository, workspaceRepository, workspaceService, meetingReferenceService, objectMapper, userRepository, notificationService);
+
+        lenient().when(userRepository.findById(anyString())).thenAnswer(invocation -> {
+            String id = invocation.getArgument(0);
+            return Optional.of(User.builder().id(id).employeeId(id).name("Mock User").systemRole("USER").authProvider("LOCAL").build());
+        });
+        lenient().when(userRepository.findByEmployeeId(anyString())).thenAnswer(invocation -> {
+            String empId = invocation.getArgument(0);
+            return Optional.of(User.builder().id(empId).employeeId(empId).name("Mock User").systemRole("USER").authProvider("LOCAL").build());
+        });
     }
 
     @Test
@@ -347,5 +371,81 @@ class MeetingServiceTest {
         assertThatThrownBy(() -> meetingService.getMeetingDetail("meeting-1", "EMP999"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("해당 회의의 참석자가 아닙니다.");
+    }
+
+    @Test
+    void updateMeeting_Host가요청하면_회의정보가수정되고_다른참석자에게알림이전송된다() {
+        Meeting meeting = Meeting.builder()
+                .id("meeting-1")
+                .title("주간 회의")
+                .durationMinutes(60)
+                .status(MeetingStatus.GATHERING)
+                .build();
+
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .meeting(meeting)
+                .employeeId("EMP001")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        MeetingParticipant attendee = MeetingParticipant.builder()
+                .id("participant-attendee")
+                .meeting(meeting)
+                .employeeId("EMP002")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.ATTENDEE)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP001"))
+                .thenReturn(Optional.of(host));
+        when(meetingRepository.findById("meeting-1")).thenReturn(Optional.of(meeting));
+        when(meetingParticipantRepository.findByMeetingId("meeting-1")).thenReturn(List.of(host, attendee));
+        when(meetingReferenceService.getReferences("meeting-1")).thenReturn(List.of());
+
+        UpdateMeetingRequest request = new UpdateMeetingRequest("수정된 회의", "목적", "아젠다", "회의실 A");
+
+        MeetingDetailResponse response = meetingService.updateMeeting("meeting-1", "EMP001", request);
+
+        assertThat(meeting.getTitle()).isEqualTo("수정된 회의");
+        assertThat(meeting.getPurpose()).isEqualTo("목적");
+        assertThat(meeting.getAgenda()).isEqualTo("아젠다");
+        assertThat(meeting.getLocation()).isEqualTo("회의실 A");
+        assertThat(response.title()).isEqualTo("수정된 회의");
+        assertThat(response.purpose()).isEqualTo("목적");
+        assertThat(response.agenda()).isEqualTo("아젠다");
+        assertThat(response.location()).isEqualTo("회의실 A");
+
+        verify(notificationService).createNotification(any(User.class), eq("MEETING_UPDATED"), eq("meeting-1"));
+    }
+
+    @Test
+    void updateMeeting_Host가아니면_예외가발생하고_알림도전송되지않는다() {
+        Meeting meeting = Meeting.builder()
+                .id("meeting-1")
+                .title("주간 회의")
+                .durationMinutes(60)
+                .status(MeetingStatus.GATHERING)
+                .build();
+
+        MeetingParticipant attendee = MeetingParticipant.builder()
+                .id("participant-attendee")
+                .meeting(meeting)
+                .employeeId("EMP002")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.ATTENDEE)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP002"))
+                .thenReturn(Optional.of(attendee));
+
+        UpdateMeetingRequest request = new UpdateMeetingRequest("수정된 회의", "목적", "아젠다", "회의실 A");
+
+        assertThatThrownBy(() -> meetingService.updateMeeting("meeting-1", "EMP002", request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("회의 주최자만 회의 정보를 수정할 수 있습니다.");
+
+        verify(notificationService, never()).createNotification(any(), any(), any());
     }
 }

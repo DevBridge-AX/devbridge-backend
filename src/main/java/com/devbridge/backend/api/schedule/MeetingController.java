@@ -9,6 +9,7 @@ import com.devbridge.backend.domain.schedule.dto.MeetingReferenceResponse;
 import com.devbridge.backend.domain.schedule.dto.MeetingSummaryResponse;
 import com.devbridge.backend.domain.schedule.dto.SubmitAvailableTimesRequest;
 import com.devbridge.backend.domain.schedule.dto.SubmitAvailableTimesResponse;
+import com.devbridge.backend.domain.schedule.dto.UpdateMeetingRequest;
 import com.devbridge.backend.domain.schedule.entity.MeetingStatus;
 import com.devbridge.backend.domain.schedule.service.MeetingReferenceService;
 import com.devbridge.backend.domain.schedule.service.MeetingService;
@@ -56,6 +57,11 @@ public class MeetingController implements MeetingAPI {
     @Override
     public ResponseEntity<MeetingDetailResponse> getMeetingDetail(String meetingId, String employeeId) {
         return ResponseEntity.ok(meetingService.getMeetingDetail(meetingId, employeeId));
+    }
+
+    @Override
+    public ResponseEntity<MeetingDetailResponse> updateMeeting(String meetingId, String employeeId, UpdateMeetingRequest request) {
+        return ResponseEntity.ok(meetingService.updateMeeting(meetingId, employeeId, request));
     }
 
     @Override

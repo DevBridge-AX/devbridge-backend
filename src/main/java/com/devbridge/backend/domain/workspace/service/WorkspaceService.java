@@ -39,14 +39,14 @@ public class WorkspaceService {
     }
 
     @Transactional(readOnly = true)
-    public List<WorkspaceMemberResponse> searchMembers(String workspaceId, String employeeId, String keyword) {
+    public List<WorkspaceMemberResponse> searchMembers(String workspaceId, String identifier, String keyword) {
         if (keyword == null || keyword.isBlank()) {
             return List.of();
         }
 
-        validateMembership(workspaceId, employeeId);
+        validateMembership(workspaceId, identifier);
 
-        return workspaceMemberRepository.searchByWorkspaceIdAndUserNameContaining(workspaceId, employeeId, keyword).stream()
+        return workspaceMemberRepository.searchByWorkspaceIdAndUserNameContaining(workspaceId, identifier, keyword).stream()
                 .map(member -> WorkspaceMemberResponse.builder()
                         .userId(member.getUser().getId())
                         .employeeId(member.getUser().getEmployeeId())
@@ -58,8 +58,9 @@ public class WorkspaceService {
     }
 
     @Transactional(readOnly = true)
-    public void validateMembership(String workspaceId, String employeeId) {
-        if (!workspaceMemberRepository.existsByWorkspace_IdAndUser_EmployeeId(workspaceId, employeeId)) {
+    public void validateMembership(String workspaceId, String identifier) {
+        if (!workspaceMemberRepository.existsByWorkspace_IdAndUser_EmployeeId(workspaceId, identifier) &&
+                !workspaceMemberRepository.existsByWorkspace_IdAndUser_Id(workspaceId, identifier)) {
             throw new IllegalArgumentException("해당 워크스페이스에 속한 사용자가 아닙니다.");
         }
     }

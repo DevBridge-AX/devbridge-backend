@@ -74,3 +74,6 @@ CLAUDE.md
 ### Uploaded files ###
 uploads/*/*
 !uploads/*/.gitkeep
+
+# Docker data persistency
+.docker-data/

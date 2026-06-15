@@ -9,6 +9,7 @@ import com.devbridge.backend.domain.schedule.dto.MeetingReferenceResponse;
 import com.devbridge.backend.domain.schedule.dto.MeetingSummaryResponse;
 import com.devbridge.backend.domain.schedule.dto.SubmitAvailableTimesRequest;
 import com.devbridge.backend.domain.schedule.dto.SubmitAvailableTimesResponse;
+import com.devbridge.backend.domain.schedule.dto.UpdateMeetingRequest;
 import com.devbridge.backend.domain.schedule.entity.MeetingStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -66,6 +68,13 @@ public interface MeetingAPI {
     ResponseEntity<MeetingDetailResponse> getMeetingDetail(
             @PathVariable("meetingId") String meetingId,
             @AuthenticationPrincipal String employeeId);
+
+    @Operation(summary = "회의 정보 수정", description = "회의 주최자가 제목, 목적, 아젠다, 장소를 수정합니다. 주최자가 아닌 경우 수정할 수 없으며, 수정 시 다른 참석자 전원에게 알림이 전달됩니다.")
+    @PatchMapping("/{meetingId}")
+    ResponseEntity<MeetingDetailResponse> updateMeeting(
+            @PathVariable("meetingId") String meetingId,
+            @AuthenticationPrincipal String employeeId,
+            @Valid @RequestBody UpdateMeetingRequest request);
 
     @Operation(summary = "회의 첨부파일 추가", description = "회의 상세 화면에서 파일 업로드 또는 링크 형태의 첨부파일을 추가합니다.")
     @PostMapping("/{meetingId}/references")

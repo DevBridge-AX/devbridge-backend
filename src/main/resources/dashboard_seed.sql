@@ -35,7 +35,8 @@ INSERT INTO workspaces (
     name, description
 ) VALUES
 ('ws001', NOW(), NOW(), NULL, 'DevBridge AX', '프로젝트 이해 지원 및 협업 자동화 시스템'),
-('ws002', NOW(), NOW(), NULL, 'RestArt', 'AI 기반 전시 리플릿 서비스');
+('ws002', NOW(), NOW(), NULL, 'RestArt', 'AI 기반 전시 리플릿 서비스'),
+('dummy-workspace-id', NOW(), NOW(), NULL, '더미 워크스페이스', '임시 테스트용 워크스페이스');
 
 INSERT INTO workspace_members (
     id, created_at, updated_at, deleted_at,
@@ -44,7 +45,10 @@ INSERT INTO workspace_members (
 ('wm001', NOW(), NOW(), NULL, 'ws001', 'u001', 'OWNER', NOW()),
 ('wm002', NOW(), NOW(), NULL, 'ws001', 'u002', 'MEMBER', NOW()),
 ('wm003', NOW(), NOW(), NULL, 'ws002', 'u001', 'MEMBER', NOW()),
-('wm004', NOW(), NOW(), NULL, 'ws001', 'u003', 'MEMBER', NOW());
+('wm004', NOW(), NOW(), NULL, 'ws001', 'u003', 'MEMBER', NOW()),
+('wm005', NOW(), NOW(), NULL, 'dummy-workspace-id', 'u001', 'OWNER', NOW()),
+('wm006', NOW(), NOW(), NULL, 'dummy-workspace-id', 'u002', 'MEMBER', NOW()),
+('wm007', NOW(), NOW(), NULL, 'dummy-workspace-id', 'u003', 'MEMBER', NOW());
 
 INSERT INTO tasks (
     id, created_at, updated_at, deleted_at,
@@ -104,3 +108,26 @@ INSERT INTO notifications (
 ) VALUES
 ('n001', NOW(), NOW(), NULL, 'u001', 'TASK_ASSIGNED', 't001', 0),
 ('n002', NOW(), NOW(), NULL, 'u001', 'OWNER_CONFIRMATION_REQUESTED', 'oc001', 0);
+
+INSERT INTO meetings (
+    id, created_at, updated_at, deleted_at,
+    workspace_id, title, duration_minutes, status,
+    confirmed_start_time, confirmed_end_time, ai_summary, meeting_link, top_candidate_times
+) VALUES
+('meet001', NOW(), NOW(), NULL, 'ws001', '[목업] 파일 업로드 테스트용 회의', 60, 'GATHERING', NULL, NULL, NULL, NULL, NULL),
+('meet002', NOW(), NOW(), NULL, 'ws001', '[목업] 확정된 파일 업로드 테스트용 회의', 60, 'CONFIRMED', DATE_ADD(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 1 DAY), NULL, NULL, NULL),
+('meet003', NOW(), NOW(), NULL, 'dummy-workspace-id', '[목업] 파일 업로드 테스트용 회의', 60, 'GATHERING', NULL, NULL, NULL, NULL, NULL),
+('meet004', NOW(), NOW(), NULL, 'dummy-workspace-id', '[목업] 확정된 파일 업로드 테스트용 회의', 60, 'CONFIRMED', DATE_ADD(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 1 DAY), NULL, NULL, NULL);
+
+INSERT INTO meeting_participants (
+    id, created_at, updated_at, deleted_at,
+    meeting_id, employee_id, status, role
+) VALUES
+('meetp001', NOW(), NOW(), NULL, 'meet001', 'EMP003', 'PENDING', 'HOST'),
+('meetp002', NOW(), NOW(), NULL, 'meet001', 'EMP004', 'PENDING', 'ATTENDEE'),
+('meetp003', NOW(), NOW(), NULL, 'meet002', 'EMP003', 'RESPONDED', 'HOST'),
+('meetp004', NOW(), NOW(), NULL, 'meet002', 'EMP004', 'RESPONDED', 'ATTENDEE'),
+('meetp005', NOW(), NOW(), NULL, 'meet003', 'EMP003', 'PENDING', 'HOST'),
+('meetp006', NOW(), NOW(), NULL, 'meet003', 'EMP004', 'PENDING', 'ATTENDEE'),
+('meetp007', NOW(), NOW(), NULL, 'meet004', 'EMP003', 'RESPONDED', 'HOST'),
+('meetp008', NOW(), NOW(), NULL, 'meet004', 'EMP004', 'RESPONDED', 'ATTENDEE');

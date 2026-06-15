@@ -41,12 +41,15 @@ public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember
     @Query("SELECT wm FROM WorkspaceMember wm "
             + "JOIN FETCH wm.user u "
             + "WHERE wm.workspace.id = :workspaceId "
-            + "AND u.employeeId <> :employeeId "
+            + "AND u.employeeId <> :identifier "
+            + "AND u.id <> :identifier "
             + "AND u.name LIKE CONCAT('%', :keyword, '%')")
     List<WorkspaceMember> searchByWorkspaceIdAndUserNameContaining(
             @Param("workspaceId") String workspaceId,
-            @Param("employeeId") String employeeId,
+            @Param("identifier") String identifier,
             @Param("keyword") String keyword);
 
     boolean existsByWorkspace_IdAndUser_EmployeeId(String workspaceId, String employeeId);
+
+    boolean existsByWorkspace_IdAndUser_Id(String workspaceId, String userId);
 }

@@ -9,6 +9,8 @@ import com.devbridge.backend.domain.schedule.entity.MeetingReference;
 import com.devbridge.backend.domain.schedule.repository.MeetingParticipantRepository;
 import com.devbridge.backend.domain.schedule.repository.MeetingReferenceRepository;
 import com.devbridge.backend.domain.schedule.repository.MeetingRepository;
+import com.devbridge.backend.domain.user.entity.User;
+import com.devbridge.backend.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,9 +25,18 @@ public class MeetingReferenceService {
     private final MeetingReferenceRepository meetingReferenceRepository;
     private final MeetingParticipantRepository meetingParticipantRepository;
     private final KnowledgeDocumentRepository knowledgeDocumentRepository;
+    private final UserRepository userRepository;
+
+    private User resolveUser(String identifier) {
+        return userRepository.findById(identifier)
+                .orElseGet(() -> userRepository.findByEmployeeId(identifier)
+                        .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + identifier)));
+    }
 
     @Transactional
-    public MeetingReferenceResponse addReference(String meetingId, String employeeId, MeetingReferenceRequest request) {
+    public MeetingReferenceResponse addReference(String meetingId, String identifier, MeetingReferenceRequest request) {
+        User user = resolveUser(identifier);
+        String employeeId = user.getEmployeeId();
         meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회의의 참석자가 아닙니다."));
 
@@ -38,7 +49,9 @@ public class MeetingReferenceService {
     }
 
     @Transactional
-    public void deleteReference(String meetingId, String referenceId, String employeeId) {
+    public void deleteReference(String meetingId, String referenceId, String identifier) {
+        User user = resolveUser(identifier);
+        String employeeId = user.getEmployeeId();
         meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회의의 참석자가 아닙니다."));
 

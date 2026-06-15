@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -60,7 +61,7 @@ class MeetingControllerTest {
     @DisplayName("1. 회의 조율 요청 방 생성 API 성공 테스트 (POST /api/meetings)")
     void createMeeting_Success() throws Exception {
         // given
-        CreateMeetingRequest request = new CreateMeetingRequest("스프린트 회고", 60, List.of("EMP002", "EMP003"), null);
+        CreateMeetingRequest request = new CreateMeetingRequest("스프린트 회고", "회고 진행", "지난 스프린트 회고", "회의실 A", 60, List.of("EMP002", "EMP003"), null);
         CreateMeetingResponse response = new CreateMeetingResponse("meeting-uuid-123");
 
         when(meetingService.createMeeting(any(), any(), any()))
@@ -162,7 +163,7 @@ class MeetingControllerTest {
                 LocalDateTime.of(2026, 6, 15, 12, 0));
 
         MeetingDetailResponse detailResponse = new MeetingDetailResponse(
-                "meeting-uuid-123", "스프린트 회고", 60, MeetingStatus.CONFIRMED,
+                "meeting-uuid-123", "스프린트 회고", "회고 진행", "지난 스프린트 회고", "회의실 A", 60, MeetingStatus.CONFIRMED,
                 LocalDateTime.of(2026, 6, 15, 10, 0),
                 LocalDateTime.of(2026, 6, 15, 11, 0),
                 List.of(candidate),
@@ -187,7 +188,7 @@ class MeetingControllerTest {
     @DisplayName("6. [예외] 회의 생성 API - 비어있는 회의 제목 시 Validation 실패 테스트")
     void createMeeting_ValidationFailure() throws Exception {
         // given
-        CreateMeetingRequest invalidRequest = new CreateMeetingRequest("", 60, List.of("EMP002"), null);
+        CreateMeetingRequest invalidRequest = new CreateMeetingRequest("", null, null, null, 60, List.of("EMP002"), null);
 
         // when & then
         mockMvc.perform(post("/api/meetings")
@@ -195,6 +196,50 @@ class MeetingControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidRequest))
                         .with(authentication(getMockAuthentication("EMP001")))
+                        .with(csrf()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("7. 회의 정보 수정 API 성공 테스트 (PATCH /api/meetings/{meetingId})")
+    void updateMeeting_Success() throws Exception {
+        // given
+        UpdateMeetingRequest request = new UpdateMeetingRequest("수정된 회의", "목적", "아젠다", "회의실 A");
+
+        MeetingDetailResponse detailResponse = new MeetingDetailResponse(
+                "meeting-uuid-123", "수정된 회의", "목적", "아젠다", "회의실 A", 60, MeetingStatus.GATHERING,
+                null, null, List.of(), List.of(), List.of());
+
+        when(meetingService.updateMeeting(any(), any(), any()))
+                .thenReturn(detailResponse);
+
+        // when & then
+        mockMvc.perform(patch("/api/meetings/meeting-uuid-123")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .with(authentication(getMockAuthentication("EMP001")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("수정된 회의"))
+                .andExpect(jsonPath("$.purpose").value("목적"))
+                .andExpect(jsonPath("$.agenda").value("아젠다"))
+                .andExpect(jsonPath("$.location").value("회의실 A"));
+    }
+
+    @Test
+    @DisplayName("8. [예외] 회의 정보 수정 API - 주최자가 아닌 경우 예외 테스트")
+    void updateMeeting_NotHost_Failure() throws Exception {
+        // given
+        UpdateMeetingRequest request = new UpdateMeetingRequest("수정된 회의", "목적", "아젠다", "회의실 A");
+
+        when(meetingService.updateMeeting(any(), any(), any()))
+                .thenThrow(new IllegalArgumentException("회의 주최자만 회의 정보를 수정할 수 있습니다."));
+
+        // when & then
+        mockMvc.perform(patch("/api/meetings/meeting-uuid-123")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .with(authentication(getMockAuthentication("EMP002")))
                         .with(csrf()))
                 .andExpect(status().isBadRequest());
     }
