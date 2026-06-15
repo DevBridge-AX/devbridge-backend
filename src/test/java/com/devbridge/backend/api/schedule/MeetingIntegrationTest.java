@@ -26,6 +26,7 @@ import java.util.List;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -51,6 +52,7 @@ class MeetingIntegrationTest {
     private WorkspaceMemberRepository workspaceMemberRepository;
 
     private String workspaceId;
+    private String user2Id;
 
     @BeforeEach
     void setUp() {
@@ -79,7 +81,7 @@ class MeetingIntegrationTest {
                 .systemRole("USER")
                 .authProvider("LOCAL")
                 .build();
-        userRepository.save(user2);
+        this.user2Id = userRepository.save(user2).getId();
 
         // 워크스페이스 멤버 매핑 저장
         WorkspaceMember member1 = WorkspaceMember.builder()
@@ -109,6 +111,9 @@ class MeetingIntegrationTest {
         // Step 1. 호스트(EMP003)가 타이틀과 대상을 정해 회의 생성 요청 (POST /api/meetings)
         CreateMeetingRequest createRequest = new CreateMeetingRequest(
                 "API 설계 회고 미팅",
+                "API 설계 회고",
+                "지난 스프린트 API 설계 리뷰",
+                "회의실 A",
                 60,
                 List.of("EMP004"), // 참여자로 EMP004 사번 지정 (총 2인 참여 미팅)
                 null
@@ -184,5 +189,34 @@ class MeetingIntegrationTest {
                 .andExpect(jsonPath("$[0].meetingId").value(meetingId))
                 .andExpect(jsonPath("$[0].confirmedStartTime").value("2026-06-15T10:00:00"))
                 .andExpect(jsonPath("$[0].confirmedEndTime").value("2026-06-15T11:00:00"));
+
+        // Step 7. 주최자가 아닌 EMP004가 회의 정보 수정을 시도하면 거부됨 (PATCH /api/meetings/{id})
+        UpdateMeetingRequest updateRequest = new UpdateMeetingRequest("API 설계 회고 미팅(수정)", "API 설계 회고(수정)", "지난 스프린트 API 설계 리뷰 및 차기 계획", "회의실 B");
+
+        mockMvc.perform(patch("/api/meetings/" + meetingId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest))
+                        .with(authentication(getMockAuthentication("EMP004")))
+                        .with(csrf()))
+                .andExpect(status().isBadRequest());
+
+        // Step 8. 주최자(EMP003)가 회의 정보를 수정하면 정상 반영됨 (PATCH /api/meetings/{id})
+        mockMvc.perform(patch("/api/meetings/" + meetingId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest))
+                        .with(authentication(getMockAuthentication("EMP003")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("API 설계 회고 미팅(수정)"))
+                .andExpect(jsonPath("$.purpose").value("API 설계 회고(수정)"))
+                .andExpect(jsonPath("$.agenda").value("지난 스프린트 API 설계 리뷰 및 차기 계획"))
+                .andExpect(jsonPath("$.location").value("회의실 B"));
+
+        // Step 9. 회의 정보 수정으로 인해 다른 참석자(EMP004)에게 알림이 전달되었는지 확인 (GET /api/notifications/users/{userId})
+        mockMvc.perform(get("/api/notifications/users/" + user2Id)
+                        .with(authentication(getMockAuthentication("EMP004"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].type").value("MEETING_UPDATED"))
+                .andExpect(jsonPath("$[0].referenceId").value(meetingId));
     }
 }
