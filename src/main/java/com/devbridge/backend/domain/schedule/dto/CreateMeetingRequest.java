@@ -1,5 +1,6 @@
 package com.devbridge.backend.domain.schedule.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -16,6 +17,9 @@ public record CreateMeetingRequest(
         Integer durationMinutes,
 
         @NotEmpty(message = "참석 대상자 목록은 비어있을 수 없습니다.")
-        List<String> participantEmployeeIds
+        List<String> participantEmployeeIds,
+
+        @Valid
+        List<MeetingReferenceRequest> references
 ) {
 }

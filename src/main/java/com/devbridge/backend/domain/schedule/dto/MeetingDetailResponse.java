@@ -13,6 +13,7 @@ public record MeetingDetailResponse(
         LocalDateTime confirmedStartTime,
         LocalDateTime confirmedEndTime,
         List<CandidateTimeSlot> topCandidateTimes,
-        List<MeetingParticipantResponse> participants
+        List<MeetingParticipantResponse> participants,
+        List<MeetingReferenceResponse> references
 ) {
 }

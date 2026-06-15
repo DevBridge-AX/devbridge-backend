@@ -47,6 +47,7 @@ public class MeetingService {
     private final ParticipantAvailableTimeRepository participantAvailableTimeRepository;
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceService workspaceService;
+    private final MeetingReferenceService meetingReferenceService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -82,6 +83,11 @@ public class MeetingService {
         );
 
         meetingParticipantRepository.saveAll(participants);
+
+        if (request.references() != null) {
+            request.references().forEach(referenceRequest ->
+                    meetingReferenceService.createReference(meeting, hostEmployeeId, referenceRequest));
+        }
 
         return new CreateMeetingResponse(meeting.getId());
     }
@@ -148,7 +154,8 @@ public class MeetingService {
                 meeting.getConfirmedStartTime(),
                 meeting.getConfirmedEndTime(),
                 fromJson(meeting.getTopCandidateTimes()),
-                participants);
+                participants,
+                meetingReferenceService.getReferences(meetingId));
     }
 
     @Transactional

@@ -4,6 +4,8 @@ import com.devbridge.backend.domain.schedule.dto.ConfirmedScheduleResponse;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingRequest;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingResponse;
 import com.devbridge.backend.domain.schedule.dto.MeetingDetailResponse;
+import com.devbridge.backend.domain.schedule.dto.MeetingReferenceRequest;
+import com.devbridge.backend.domain.schedule.dto.MeetingReferenceResponse;
 import com.devbridge.backend.domain.schedule.dto.MeetingSummaryResponse;
 import com.devbridge.backend.domain.schedule.dto.SubmitAvailableTimesRequest;
 import com.devbridge.backend.domain.schedule.dto.SubmitAvailableTimesResponse;
@@ -14,6 +16,7 @@ import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -58,9 +61,23 @@ public interface MeetingAPI {
             @AuthenticationPrincipal String employeeId,
             @RequestParam(value = "status", required = false) MeetingStatus status);
 
-    @Operation(summary = "회의 상세 조회", description = "회의의 확정 시간, 후보 시간, 참석자 목록, 상태 등 상세 정보를 조회합니다.")
+    @Operation(summary = "회의 상세 조회", description = "회의의 확정 시간, 후보 시간, 참석자 목록, 첨부파일 목록, 상태 등 상세 정보를 조회합니다.")
     @GetMapping("/{meetingId}")
     ResponseEntity<MeetingDetailResponse> getMeetingDetail(
             @PathVariable("meetingId") String meetingId,
+            @AuthenticationPrincipal String employeeId);
+
+    @Operation(summary = "회의 첨부파일 추가", description = "회의 상세 화면에서 파일 업로드 또는 링크 형태의 첨부파일을 추가합니다.")
+    @PostMapping("/{meetingId}/references")
+    ResponseEntity<MeetingReferenceResponse> addReference(
+            @PathVariable("meetingId") String meetingId,
+            @AuthenticationPrincipal String employeeId,
+            @Valid @RequestBody MeetingReferenceRequest request);
+
+    @Operation(summary = "회의 첨부파일 삭제", description = "회의 상세 화면에서 첨부파일을 삭제합니다.")
+    @DeleteMapping("/{meetingId}/references/{referenceId}")
+    ResponseEntity<Void> deleteReference(
+            @PathVariable("meetingId") String meetingId,
+            @PathVariable("referenceId") String referenceId,
             @AuthenticationPrincipal String employeeId);
 }
