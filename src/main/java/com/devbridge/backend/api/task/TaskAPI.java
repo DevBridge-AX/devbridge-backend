@@ -1,6 +1,7 @@
 package com.devbridge.backend.api.task;
 
 import com.devbridge.backend.domain.task.dto.CreateTaskRequest;
+import com.devbridge.backend.domain.task.dto.TaskDetailResponse;
 import com.devbridge.backend.domain.task.dto.TaskResponse;
 import com.devbridge.backend.domain.task.dto.UpdateTaskStatusRequest;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,6 +18,10 @@ public interface TaskAPI {
     @Operation(summary = "Task 목록 조회", description = "Workspace ID 기준으로 Task 목록을 조회합니다.")
     @GetMapping
     ResponseEntity<List<TaskResponse>> getTasksByWorkspace(@RequestParam("workspaceId") String workspaceId);
+
+    @Operation(summary = "Task 상세 조회", description = "Task ID 기준으로 Task 상세 정보를 조회합니다.")
+    @GetMapping("/{id}")
+    ResponseEntity<TaskDetailResponse> getTaskDetail(@PathVariable("id") String id);
 
     @Operation(summary = "Task 생성", description = "Workspace 안에 새로운 Task를 생성합니다.")
     @PostMapping

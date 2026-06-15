@@ -1,6 +1,7 @@
 package com.devbridge.backend.api.task;
 
 import com.devbridge.backend.domain.task.dto.CreateTaskRequest;
+import com.devbridge.backend.domain.task.dto.TaskDetailResponse;
 import com.devbridge.backend.domain.task.dto.TaskResponse;
 import com.devbridge.backend.domain.task.dto.UpdateTaskStatusRequest;
 import com.devbridge.backend.domain.task.service.TaskService;
@@ -19,6 +20,11 @@ public class TaskController implements TaskAPI {
     @Override
     public ResponseEntity<List<TaskResponse>> getTasksByWorkspace(String workspaceId) {
         return ResponseEntity.ok(taskService.getTasksByWorkspace(workspaceId));
+    }
+
+    @Override
+    public ResponseEntity<TaskDetailResponse> getTaskDetail(String id) {
+        return ResponseEntity.ok(taskService.getTaskDetail(id));
     }
 
     @Override
