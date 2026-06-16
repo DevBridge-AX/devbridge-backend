@@ -23,10 +23,27 @@ public class DocumentResponse {
     private String sourceStatus;
 
     private String title;
+    private String documentType;
+private String description;
+
     private String vectorId;
 
     private String summary;
+    private String keywords;
     private String analysisStatus;
+    private LocalDateTime analyzedAt;
+
+    private String originalFileName;
+    private String storedFileName;
+    private String fileUrl;
+    private String previewUrl;
+    private String downloadUrl;
+    private String contentType;
+    private Long fileSize;
+
+    private String uploadedById;
+    private String uploadedByName;
+    private String uploadedByEmail;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
