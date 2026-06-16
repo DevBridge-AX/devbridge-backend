@@ -1,20 +1,24 @@
 package com.devbridge.backend.api.document;
 
-import com.devbridge.backend.domain.document.dto.PresignedUrlRequest;
-import com.devbridge.backend.domain.document.dto.PresignedUrlResponse;
+import com.devbridge.backend.domain.datasource.dto.DocumentResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "Document", description = "문서 업로드용 Presigned URL 발급 API")
+import java.util.List;
+
+@Tag(name = "Document", description = "Document API")
 @RequestMapping("/api/documents")
 public interface DocumentAPI {
 
-    @Operation(summary = "파일 업로드용 Presigned URL 발급", description = "파일명과 콘텐츠 타입을 입력받아 업로드 URL, 파일 키, 파일 접근 URL을 발급합니다.")
-    @PostMapping("/presigned-url")
-    ResponseEntity<PresignedUrlResponse> getPresignedUrl(@Valid @RequestBody PresignedUrlRequest request);
+    @Operation(summary = "Document 목록 조회", description = "Workspace ID 기준으로 문서 목록을 조회합니다.")
+    @GetMapping
+    ResponseEntity<List<DocumentResponse>> getDocumentsByWorkspace(
+            @RequestParam("workspaceId") String workspaceId
+    );
+
+    @Operation(summary = "Document 상세 조회", description = "Document ID 기준으로 문서 상세 정보를 조회합니다.")
+    @GetMapping("/{id}")
+    ResponseEntity<DocumentResponse> getDocumentDetail(@PathVariable("id") String id);
 }

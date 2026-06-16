@@ -8,4 +8,6 @@ import java.util.List;
 public interface KnowledgeDocumentRepository extends JpaRepository<KnowledgeDocument, String> {
 
     List<KnowledgeDocument> findTop5ByDataSource_Workspace_IdOrderByCreatedAtDesc(String workspaceId);
+
+    List<KnowledgeDocument> findByDataSource_Workspace_IdOrderByCreatedAtDesc(String workspaceId);
 }
