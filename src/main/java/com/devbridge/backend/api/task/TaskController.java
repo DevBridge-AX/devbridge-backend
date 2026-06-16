@@ -3,6 +3,7 @@ package com.devbridge.backend.api.task;
 import com.devbridge.backend.domain.task.dto.CreateTaskRequest;
 import com.devbridge.backend.domain.task.dto.TaskDetailResponse;
 import com.devbridge.backend.domain.task.dto.TaskResponse;
+import com.devbridge.backend.domain.task.dto.UpdateTaskRequest;
 import com.devbridge.backend.domain.task.dto.UpdateTaskStatusRequest;
 import com.devbridge.backend.domain.task.service.TaskService;
 import lombok.RequiredArgsConstructor;
@@ -29,21 +30,23 @@ public class TaskController implements TaskAPI {
 
     @Override
     public ResponseEntity<TaskResponse> createTask(CreateTaskRequest request) {
-        TaskResponse response = TaskResponse.builder()
-                .id("dummy-task-id")
-                .workspaceId(request.getWorkspaceId())
-                .requesterId(request.getRequesterId())
-                .assigneeId(request.getAssigneeId())
-                .title(request.getTitle())
-                .description(request.getDescription())
-                .status("ASSIGNED")
-                .dueDate(request.getDueDate())
-                .build();
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(taskService.createTask(request));
+    }
+
+    @Override
+    public ResponseEntity<TaskResponse> updateTask(String id, UpdateTaskRequest request) {
+        return ResponseEntity.ok(taskService.updateTask(id, request));
     }
 
     @Override
     public ResponseEntity<Void> updateTaskStatus(String id, UpdateTaskStatusRequest request) {
+        taskService.updateTaskStatus(id, request);
         return ResponseEntity.ok().build();
+    }
+
+    @Override
+    public ResponseEntity<Void> deleteTask(String id) {
+        taskService.deleteTask(id);
+        return ResponseEntity.noContent().build();
     }
 }

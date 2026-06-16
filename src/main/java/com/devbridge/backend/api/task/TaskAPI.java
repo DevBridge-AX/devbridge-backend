@@ -3,6 +3,7 @@ package com.devbridge.backend.api.task;
 import com.devbridge.backend.domain.task.dto.CreateTaskRequest;
 import com.devbridge.backend.domain.task.dto.TaskDetailResponse;
 import com.devbridge.backend.domain.task.dto.TaskResponse;
+import com.devbridge.backend.domain.task.dto.UpdateTaskRequest;
 import com.devbridge.backend.domain.task.dto.UpdateTaskStatusRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,7 +28,21 @@ public interface TaskAPI {
     @PostMapping
     ResponseEntity<TaskResponse> createTask(@RequestBody CreateTaskRequest request);
 
+    @Operation(summary = "Task 수정", description = "Task의 제목, 설명, 담당자, 마감일을 수정합니다.")
+    @PutMapping("/{id}")
+    ResponseEntity<TaskResponse> updateTask(
+            @PathVariable("id") String id,
+            @RequestBody UpdateTaskRequest request
+    );
+
     @Operation(summary = "Task 상태 업데이트", description = "Task 진행 상태를 업데이트합니다.")
     @PutMapping("/{id}/status")
-    ResponseEntity<Void> updateTaskStatus(@PathVariable("id") String id, @RequestBody UpdateTaskStatusRequest request);
+    ResponseEntity<Void> updateTaskStatus(
+            @PathVariable("id") String id,
+            @RequestBody UpdateTaskStatusRequest request
+    );
+
+    @Operation(summary = "Task 삭제", description = "Task를 삭제합니다. 실제 DB에서는 soft delete 처리됩니다.")
+    @DeleteMapping("/{id}")
+    ResponseEntity<Void> deleteTask(@PathVariable("id") String id);
 }
