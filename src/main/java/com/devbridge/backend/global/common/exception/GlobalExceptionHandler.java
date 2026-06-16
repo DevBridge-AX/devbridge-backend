@@ -21,6 +21,18 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleUserNotFound(UserNotFoundException e) {
+        log.warn("[404 Not Found] {}", e.getMessage());
+        return buildResponse(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
+    @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleConstraintViolation(jakarta.validation.ConstraintViolationException e) {
+        log.warn("[400 Validation] {}", e.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException e) {
         log.warn("[409 Conflict] {}", e.getMessage());
