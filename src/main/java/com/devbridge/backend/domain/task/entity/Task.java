@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -22,30 +23,41 @@ public class Task extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", columnDefinition = "VARCHAR(36)")
-    private String id; // 업무 ID
+    private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "workspace_id", nullable = false)
-    private Workspace workspace; // 워크스페이스 ID
+    private Workspace workspace;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "requester_id", nullable = false)
-    private User requester; // 지시자
+    private User requester;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assignee_id")
-    private User assignee; // 담당자
+    private User assignee;
 
     @Column(name = "title", nullable = false, length = 255)
-    private String title; // 업무명
+    private String title;
 
     @Column(name = "description", columnDefinition = "TEXT")
-    private String description; // 업무 내용
+    private String description;
 
     @Builder.Default
     @Column(name = "status", nullable = false, length = 50)
-    private String status = "ASSIGNED"; // 진행 상태
+    private String status = "ASSIGNED";
 
     @Column(name = "due_date")
-    private LocalDateTime dueDate; // 마감일
+    private LocalDateTime dueDate;
+
+    public void updateTask(User assignee, String title, String description, LocalDateTime dueDate) {
+        this.assignee = assignee;
+        this.title = title;
+        this.description = description;
+        this.dueDate = dueDate;
+    }
+
+    public void updateStatus(String status) {
+        this.status = status;
+    }
 }
