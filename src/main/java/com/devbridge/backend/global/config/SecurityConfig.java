@@ -1,8 +1,10 @@
 package com.devbridge.backend.global.config;
 
+import com.devbridge.backend.global.auth.internal.InternalApiKeyAuthenticationFilter;
 import com.devbridge.backend.global.auth.jwt.JwtAuthenticationFilter;
 import com.devbridge.backend.global.auth.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -21,6 +23,9 @@ public class SecurityConfig {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final StringRedisTemplate redisTemplate;
+
+    @Value("${internal.api.key}")
+    private String internalApiKey;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -42,6 +47,7 @@ public class SecurityConfig {
                                 "/h2-console/**",
                                 "/documents/**"
                         ).permitAll()
+                        .requestMatchers("/internal/**").hasRole("INTERNAL")
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form.disable())
@@ -49,6 +55,10 @@ public class SecurityConfig {
                 .addFilterBefore(
                         new JwtAuthenticationFilter(jwtTokenProvider, redisTemplate),
                         UsernamePasswordAuthenticationFilter.class
+                )
+                .addFilterBefore(
+                        new InternalApiKeyAuthenticationFilter(internalApiKey),
+                        JwtAuthenticationFilter.class
                 );
 
         return http.build();

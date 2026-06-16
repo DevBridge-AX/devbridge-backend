@@ -1,8 +1,5 @@
 package com.devbridge.backend.domain.chat.entity;
 
-import com.devbridge.backend.domain.datasource.entity.DatabaseSchema;
-import com.devbridge.backend.domain.datasource.entity.GitCommit;
-import com.devbridge.backend.domain.datasource.entity.KnowledgeDocument;
 import com.devbridge.backend.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -25,20 +22,17 @@ public class MessageCitation extends BaseEntity {
     @JoinColumn(name = "message_id", nullable = false)
     private ChatMessage message; // 대상 메시지
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "document_id")
-    private KnowledgeDocument document; // 참조 문서 (RAG)
+    @Column(name = "source_type", nullable = false, length = 20)
+    private CitationSourceType sourceType; // document, git_commit, db_schema
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "db_schema_id")
-    private DatabaseSchema dbSchema; // 참조 스키마 (Text2SQL)
+    @Column(name = "source_id", nullable = false)
+    private Integer sourceId; // 원본 테이블 PK (FK 제약 없음)
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "git_commit_id")
-    private GitCommit gitCommit; // 참조 커밋
+    @Column(name = "vector_chunk_id", nullable = false)
+    private Integer vectorChunkId; // document_chunks.id (FK 제약 없음)
 
-    @Column(name = "vector_chunk_id", length = 255)
-    private String vectorChunkId; // Vector DB 청크 ID
+    @Column(name = "title", nullable = false, length = 255)
+    private String title; // 프론트 표시용 라벨
 
     @Column(name = "similarity_score", precision = 5, scale = 4)
     private BigDecimal similarityScore; // 유사도
