@@ -6,16 +6,22 @@ import com.devbridge.backend.domain.datasource.entity.DataSource;
 import com.devbridge.backend.domain.datasource.repository.DataSourceRepository;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.repository.WorkspaceRepository;
+import com.devbridge.backend.global.config.fastapi.FastApiClient;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DataSourceService {
 
     private final DataSourceRepository dataSourceRepository;
     private final WorkspaceRepository workspaceRepository;
+    private final FastApiClient fastApiClient;
 
     @Transactional
     public DataSourceResponse connectDataSource(ConnectDataSourceRequest request) {
@@ -47,6 +53,8 @@ public class DataSourceService {
 
         DataSource savedDataSource = dataSourceRepository.save(dataSource);
 
+        triggerIngestion(savedDataSource);
+
         return toDataSourceResponse(savedDataSource);
     }
 
@@ -60,6 +68,38 @@ public class DataSourceService {
                 .orElseThrow(() -> new IllegalArgumentException("DataSource not found: " + dataSourceId));
 
         return toDataSourceResponse(dataSource);
+    }
+
+    private void triggerIngestion(DataSource dataSource) {
+        String sourceType = dataSource.getSourceType();
+        String workspaceId = dataSource.getWorkspace().getId();
+        String dataSourceId = dataSource.getId();
+
+        if ("DOC".equals(sourceType)) {
+            Map<String, Object> request = Map.of(
+                    "workspace_id", workspaceId,
+                    "data_source_id", dataSourceId,
+                    "title", dataSource.getSourceName(),
+                    "doc_type", "general",
+                    "file_path", ""
+            );
+            fastApiClient.ingestDocument(request)
+                    .subscribe(
+                            unused -> {},
+                            e -> log.error("문서 인덱싱 요청 실패: {}", e.getMessage())
+                    );
+        } else if ("GIT".equals(sourceType)) {
+            Map<String, Object> request = Map.of(
+                    "workspace_id", workspaceId,
+                    "data_source_id", dataSourceId,
+                    "commits", java.util.List.of()
+            );
+            fastApiClient.ingestGit(request)
+                    .subscribe(
+                            unused -> {},
+                            e -> log.error("Git 인덱싱 요청 실패: {}", e.getMessage())
+                    );
+        }
     }
 
     private DataSourceResponse toDataSourceResponse(DataSource dataSource) {
