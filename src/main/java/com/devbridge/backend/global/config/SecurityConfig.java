@@ -45,7 +45,8 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/error",
                                 "/h2-console/**",
-                                "/documents/**"
+                                "/documents/**",
+                                "/ws/**"
                         ).permitAll()
                         .requestMatchers("/internal/**").hasRole("INTERNAL")
                         .anyRequest().authenticated()
