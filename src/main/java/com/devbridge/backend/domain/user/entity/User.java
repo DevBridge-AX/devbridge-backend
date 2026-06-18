@@ -43,13 +43,18 @@ public class User extends BaseEntity {
     @Column(name = "position", length = 100)
     private String position; // 직급
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "job_role", length = 50)
+    private JobRole jobRole; // 직무 (PLANNER, DEVELOPER, QA, DESIGNER, OPERATOR, NEWCOMER)
+
     @Column(name = "system_role", nullable = false, length = 50)
     private String systemRole; // 권한 (ADMIN, USER)
 
-    public void updateProfile(String name, String department, String position) {
+    public void updateProfile(String name, String department, String position, JobRole jobRole) {
         if (name != null) this.name = name;
         if (department != null) this.department = department;
         if (position != null) this.position = position;
+        if (jobRole != null) this.jobRole = jobRole;
     }
 
     public void changePassword(String newPasswordHash) {
