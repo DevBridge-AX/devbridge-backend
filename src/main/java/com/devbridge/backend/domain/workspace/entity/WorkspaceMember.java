@@ -27,8 +27,8 @@ public class WorkspaceMember extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user; // 사용자 ID
 
-    @Column(name = "member_role", nullable = false, length = 50)
-    private String memberRole; // OWNER, MEMBER, GUEST
+    @Column(name = "permission", nullable = false, length = 50)
+    private String permission; // OWNER, MEMBER, GUEST
 
     @Column(name = "joined_at", nullable = false)
     private LocalDateTime joinedAt; // 참여일

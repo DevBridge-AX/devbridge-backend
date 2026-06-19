@@ -15,4 +15,5 @@ public class WorkspaceMemberResponse {
     private String name;
     private String department;
     private String position;
+    private String permission;
 }

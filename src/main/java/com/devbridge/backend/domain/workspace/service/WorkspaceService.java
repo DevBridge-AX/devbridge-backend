@@ -1,8 +1,8 @@
 package com.devbridge.backend.domain.workspace.service;
 
+import com.devbridge.backend.domain.workspace.dto.WorkspaceMemberResponse;
 import com.devbridge.backend.domain.workspace.dto.WorkspaceResponse;
 import com.devbridge.backend.domain.workspace.entity.WorkspaceMember;
-import com.devbridge.backend.domain.workspace.dto.WorkspaceMemberResponse;
 import com.devbridge.backend.domain.workspace.repository.WorkspaceMemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -53,6 +53,7 @@ public class WorkspaceService {
                         .name(member.getUser().getName())
                         .department(member.getUser().getDepartment())
                         .position(member.getUser().getPosition())
+                        .permission(member.getPermission())
                         .build())
                 .toList();
     }
@@ -62,6 +63,17 @@ public class WorkspaceService {
         if (!workspaceMemberRepository.existsByWorkspace_IdAndUser_EmployeeId(workspaceId, identifier) &&
                 !workspaceMemberRepository.existsByWorkspace_IdAndUser_Id(workspaceId, identifier)) {
             throw new IllegalArgumentException("해당 워크스페이스에 속한 사용자가 아닙니다.");
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public void validatePermission(String workspaceId, String userId, String requiredPermission) {
+        WorkspaceMember member = workspaceMemberRepository
+                .findByUser_IdAndWorkspace_Id(userId, workspaceId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 워크스페이스에 속한 사용자가 아닙니다."));
+
+        if (!requiredPermission.equals(member.getPermission())) {
+            throw new IllegalArgumentException("해당 작업에 대한 권한이 없습니다.");
         }
     }
 }
