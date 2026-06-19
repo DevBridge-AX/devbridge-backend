@@ -44,5 +44,22 @@ internal:
   api:
     key: ${INTERNAL_API_KEY:}
 
+fastapi:
+  base-url: ${FASTAPI_BASE_URL:http://localhost:8000}
+  internal-api-key: ${INTERNAL_API_KEY:changeme}
+  credit-rates:
+    claude-sonnet-4-6:
+      input: 0.03
+      output: 0.15
+    claude-haiku-4-5-20251001:
+      input: 0.01
+      output: 0.05
+    gpt-5.4-nano:
+      input: 0.001
+      output: 0.004
+    gemini-3.5-flash-lite:
+      input: 0.001
+      output: 0.004
+
 server:
   port: 8080

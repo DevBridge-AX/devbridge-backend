@@ -5,12 +5,13 @@ services:
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: devbridge
-      MYSQL_USER: ssafy
-      MYSQL_PASSWORD: "1234"
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE}"
+      MYSQL_USER: "${MYSQL_USER}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD}"
     volumes:
       - ./.docker-data/mysql:/var/lib/mysql
+      - ./init-db/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - devbridge-network
     healthcheck:
@@ -42,11 +43,14 @@ services:
     environment:
       SPRING_DATASOURCE_HOST: mysql
       SPRING_DATASOURCE_PORT: 3306
-      SPRING_DATASOURCE_DATABASE: devbridge
-      SPRING_DATASOURCE_USERNAME: ssafy
-      SPRING_DATASOURCE_PASSWORD: "1234"
+      SPRING_DATASOURCE_DATABASE: "${MYSQL_DATABASE}"
+      SPRING_DATASOURCE_USERNAME: "${MYSQL_USER}"
+      SPRING_DATASOURCE_PASSWORD: "${MYSQL_PASSWORD}"
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
+      INTERNAL_API_KEY: "${INTERNAL_API_KEY}"
+      SPRING_MAIL_USERNAME: "${SPRING_MAIL_USERNAME}"
+      SPRING_MAIL_PASSWORD: "${SPRING_MAIL_PASSWORD}"
     depends_on:
       mysql:
         condition: service_healthy
@@ -54,6 +58,26 @@ services:
         condition: service_healthy
     networks:
       - devbridge-network
+
+  ai-engine:
+    build:
+      context: ../devbridge-ai-engine
+      dockerfile: Dockerfile
+    container_name: devbridge-ai-engine
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../devbridge-ai-engine/.env
+    environment:
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/devbridge_ai
+      SPRING_BACKEND_BASE_URL: http://app:8080
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - devbridge-network
+    command: >
+      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
 networks:
   devbridge-network:

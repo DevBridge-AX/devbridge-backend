@@ -43,6 +43,12 @@ dependencies {
     // MyBatis
     implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:4.0.1'
 
+    // WebSocket (순수 WebSocket, STOMP 미사용)
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+
+    // WebFlux (WebClient — SSE 스트리밍 수신용, MVC와 공존)
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
     // Developer Tools (Lombok 및 핫리로드)
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

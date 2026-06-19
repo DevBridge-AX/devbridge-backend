@@ -141,7 +141,7 @@ public class MeetingDataInitializer implements ApplicationRunner {
             WorkspaceMember member = WorkspaceMember.builder()
                     .workspace(workspace)
                     .user(user)
-                    .memberRole("MEMBER")
+                    .permission("MEMBER")
                     .joinedAt(java.time.LocalDateTime.now())
                     .build();
             workspaceMemberRepository.save(member);

@@ -130,6 +130,7 @@ public class AuthService {
                 .position(hr.getPosition())
                 .passwordHash(passwordEncoder.encode(request.password()))
                 .authProvider("LOCAL")
+                .jobRole(request.jobRole())
                 .systemRole(systemRole)
                 .build();
 

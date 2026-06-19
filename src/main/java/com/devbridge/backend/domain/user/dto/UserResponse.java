@@ -16,5 +16,6 @@ public class UserResponse {
     private String name;
     private String department;
     private String position;
+    private String jobRole;
     private String systemRole;
 }

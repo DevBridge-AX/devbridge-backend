@@ -30,6 +30,7 @@ public class SettingService {
                 .name(user.getName())
                 .department(user.getDepartment())
                 .position(user.getPosition())
+                .jobRole(user.getJobRole() != null ? user.getJobRole().name() : null)
                 .systemRole(user.getSystemRole())
                 .build();
     }
@@ -45,7 +46,8 @@ public class SettingService {
                 user.getName(),
                 user.getEmail(),
                 user.getDepartment(),
-                user.getPosition()
+                user.getPosition(),
+                user.getJobRole() != null ? user.getJobRole().name() : null
         );
     }
 
@@ -54,7 +56,7 @@ public class SettingService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. id: " + userId));
 
-        user.updateProfile(request.name(), request.department(), request.position());
+        user.updateProfile(request.name(), request.department(), request.position(), request.jobRole());
     }
 
     @Transactional

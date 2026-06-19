@@ -6,5 +6,6 @@ public record ProfileResponse(
         String name,
         String email,
         String department,
-        String position
+        String position,
+        String jobRole
 ) {}

@@ -87,7 +87,7 @@ class MeetingIntegrationTest {
         WorkspaceMember member1 = WorkspaceMember.builder()
                 .workspace(savedWorkspace)
                 .user(user1)
-                .memberRole("OWNER")
+                .permission("OWNER")
                 .joinedAt(LocalDateTime.now())
                 .build();
         workspaceMemberRepository.save(member1);
@@ -95,7 +95,7 @@ class MeetingIntegrationTest {
         WorkspaceMember member2 = WorkspaceMember.builder()
                 .workspace(savedWorkspace)
                 .user(user2)
-                .memberRole("MEMBER")
+                .permission("MEMBER")
                 .joinedAt(LocalDateTime.now())
                 .build();
         workspaceMemberRepository.save(member2);
