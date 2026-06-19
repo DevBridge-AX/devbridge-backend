@@ -16,8 +16,8 @@ public class UserController implements UserAPI {
     private final SettingService settingService;
 
     @Override
-    public ResponseEntity<UserResponse> getMe(String userId) {
-        return ResponseEntity.ok(settingService.getUser(userId));
+    public ResponseEntity<UserResponse> getMe(String employeeId) {
+        return ResponseEntity.ok(settingService.getUser(employeeId));
     }
 
     @Override

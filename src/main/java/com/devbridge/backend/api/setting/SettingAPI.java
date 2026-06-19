@@ -13,5 +13,5 @@ public interface SettingAPI {
 
     @Operation(summary = "사용자 프로필 조회")
     @GetMapping("/profile")
-    ResponseEntity<ProfileResponse> getProfile(String userId);
+    ResponseEntity<ProfileResponse> getProfile(String employeeId);
 }

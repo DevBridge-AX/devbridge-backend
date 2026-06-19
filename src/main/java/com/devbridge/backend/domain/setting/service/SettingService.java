@@ -19,9 +19,9 @@ public class SettingService {
     private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
-    public UserResponse getUser(String userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. id: " + userId));
+    public UserResponse getUser(String employeeId) {
+        User user = userRepository.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. employeeId: " + employeeId));
 
         return UserResponse.builder()
                 .id(user.getId())
@@ -36,9 +36,9 @@ public class SettingService {
     }
 
     @Transactional(readOnly = true)
-    public ProfileResponse getProfile(String userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+    public ProfileResponse getProfile(String employeeId) {
+        User user = userRepository.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. employeeId: " + employeeId));
 
         return new ProfileResponse(
                 user.getId(),
