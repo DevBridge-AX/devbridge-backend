@@ -29,8 +29,8 @@ public class WorkspaceInvitation extends BaseEntity {
     @JoinColumn(name = "invited_by", nullable = false)
     private User invitedBy; // 초대 발송자
 
-    @Column(name = "assigned_role", nullable = false, length = 50)
-    private String assignedRole; // 부여할 권한
+    @Column(name = "assigned_permission", nullable = false, length = 50)
+    private String assignedPermission; // 부여할 권한
 
     @Builder.Default
     @Column(name = "status", nullable = false, length = 50)
