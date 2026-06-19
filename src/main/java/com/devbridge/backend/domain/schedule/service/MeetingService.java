@@ -58,16 +58,15 @@ public class MeetingService {
 
     private static final String NOTIFICATION_TYPE_MEETING_UPDATED = "MEETING_UPDATED";
 
-    private User resolveUser(String identifier) {
-        return userRepository.findById(identifier)
-                .orElseGet(() -> userRepository.findByEmployeeId(identifier)
-                        .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + identifier)));
+    private User resolveUser(String employeeId) {
+        return userRepository.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + employeeId));
     }
 
     @Transactional
-    public CreateMeetingResponse createMeeting(String workspaceId, String hostIdentifier, CreateMeetingRequest request) {
-        User host = resolveUser(hostIdentifier);
-        workspaceService.validateMembership(workspaceId, host.getId());
+    public CreateMeetingResponse createMeeting(String workspaceId, String hostEmployeeId, CreateMeetingRequest request) {
+        User host = resolveUser(hostEmployeeId);
+        workspaceService.validateMembership(workspaceId, hostEmployeeId);
 
         Workspace workspace = workspaceRepository.findById(workspaceId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 워크스페이스가 존재하지 않습니다."));
@@ -111,9 +110,8 @@ public class MeetingService {
     }
 
     @Transactional(readOnly = true)
-    public List<ConfirmedScheduleResponse> getMyConfirmedSchedules(String workspaceId, String identifier, LocalDate startDate, LocalDate endDate) {
-        User user = resolveUser(identifier);
-        String employeeId = user.getEmployeeId();
+    public List<ConfirmedScheduleResponse> getMyConfirmedSchedules(String workspaceId, String employeeId, LocalDate startDate, LocalDate endDate) {
+        User user = resolveUser(employeeId);
         var rangeStart = startDate.atStartOfDay();
         var rangeEnd = endDate.plusDays(1).atStartOfDay();
 
@@ -133,9 +131,8 @@ public class MeetingService {
     }
 
     @Transactional(readOnly = true)
-    public List<MeetingSummaryResponse> getMyMeetings(String workspaceId, String identifier, MeetingStatus status) {
-        User user = resolveUser(identifier);
-        String employeeId = user.getEmployeeId();
+    public List<MeetingSummaryResponse> getMyMeetings(String workspaceId, String employeeId, MeetingStatus status) {
+        User user = resolveUser(employeeId);
         List<MeetingParticipant> participants = status == null
                 ? meetingParticipantRepository.findByEmployeeIdAndMeeting_Workspace_Id(employeeId, workspaceId)
                 : meetingParticipantRepository.findByEmployeeIdAndMeeting_StatusAndMeeting_Workspace_Id(employeeId, status, workspaceId);
@@ -154,9 +151,8 @@ public class MeetingService {
     }
 
     @Transactional(readOnly = true)
-    public MeetingDetailResponse getMeetingDetail(String meetingId, String identifier) {
-        User user = resolveUser(identifier);
-        String employeeId = user.getEmployeeId();
+    public MeetingDetailResponse getMeetingDetail(String meetingId, String employeeId) {
+        User user = resolveUser(employeeId);
         meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회의의 참석자가 아닙니다."));
 
@@ -167,9 +163,8 @@ public class MeetingService {
     }
 
     @Transactional
-    public MeetingDetailResponse updateMeeting(String meetingId, String identifier, UpdateMeetingRequest request) {
-        User user = resolveUser(identifier);
-        String employeeId = user.getEmployeeId();
+    public MeetingDetailResponse updateMeeting(String meetingId, String employeeId, UpdateMeetingRequest request) {
+        User user = resolveUser(employeeId);
 
         MeetingParticipant participant = meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회의의 참석자가 아닙니다."));
@@ -221,10 +216,9 @@ public class MeetingService {
 
     @Transactional
     public SubmitAvailableTimesResponse submitAvailableTimes(
-            String meetingId, String identifier, SubmitAvailableTimesRequest request) {
+            String meetingId, String employeeId, SubmitAvailableTimesRequest request) {
 
-        User user = resolveUser(identifier);
-        String employeeId = user.getEmployeeId();
+        User user = resolveUser(employeeId);
         MeetingParticipant participant = meetingParticipantRepository
                 .findByMeetingIdAndEmployeeId(meetingId, employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회의의 참석자가 아닙니다."));

@@ -16,9 +16,9 @@ public class WorkspaceAccessService {
     private final WorkspaceMemberRepository workspaceMemberRepository;
 
     @Transactional(readOnly = true)
-    public String findLastWorkspaceIdByUserId(String userId) {
+    public String findLastWorkspaceIdByEmployeeId(String employeeId) {
         return workspaceMemberRepository
-                .findRecentWorkspaceMembershipsByUserId(userId, PageRequest.of(0, 1))
+                .findRecentWorkspaceMembershipsByUserEmployeeId(employeeId, PageRequest.of(0, 1))
                 .stream()
                 .findFirst()
                 .map(workspaceMember -> workspaceMember.getWorkspace().getId())
@@ -26,9 +26,9 @@ public class WorkspaceAccessService {
     }
 
     @Transactional
-    public void updateLastAccessedAt(String userId, String workspaceId) {
+    public void updateLastAccessedAt(String employeeId, String workspaceId) {
         WorkspaceMember workspaceMember = workspaceMemberRepository
-                .findByUser_IdAndWorkspace_Id(userId, workspaceId)
+                .findByUser_EmployeeIdAndWorkspace_Id(employeeId, workspaceId)
                 .orElseThrow(() -> new IllegalArgumentException("워크스페이스 접근 권한이 없습니다."));
 
         workspaceMember.updateLastAccessedAt(LocalDateTime.now());

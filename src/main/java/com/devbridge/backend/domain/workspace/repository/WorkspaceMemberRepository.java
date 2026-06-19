@@ -1,6 +1,7 @@
 package com.devbridge.backend.domain.workspace.repository;
 
 import com.devbridge.backend.domain.workspace.entity.WorkspaceMember;
+import com.devbridge.backend.domain.workspace.entity.WorkspacePermission;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -21,37 +22,38 @@ public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember
             select wm
             from WorkspaceMember wm
             join fetch wm.workspace
-            where wm.user.id = :userId
+            where wm.user.employeeId = :employeeId
             order by wm.joinedAt desc
             """)
-    List<WorkspaceMember> findAllWithWorkspaceByUserId(@Param("userId") String userId);
+    List<WorkspaceMember> findAllWithWorkspaceByUserEmployeeId(@Param("employeeId") String employeeId);
 
     @Query("""
             select wm
             from WorkspaceMember wm
             join fetch wm.workspace
-            where wm.user.id = :userId
+            where wm.user.employeeId = :employeeId
             order by coalesce(wm.lastAccessedAt, wm.joinedAt) desc
             """)
-    List<WorkspaceMember> findRecentWorkspaceMembershipsByUserId(
-            @Param("userId") String userId,
+    List<WorkspaceMember> findRecentWorkspaceMembershipsByUserEmployeeId(
+            @Param("employeeId") String employeeId,
             Pageable pageable
     );
 
     @Query("SELECT wm FROM WorkspaceMember wm "
             + "JOIN FETCH wm.user u "
             + "WHERE wm.workspace.id = :workspaceId "
-            + "AND u.employeeId <> :identifier "
-            + "AND u.id <> :identifier "
+            + "AND u.employeeId <> :employeeId "
             + "AND u.name LIKE CONCAT('%', :keyword, '%')")
     List<WorkspaceMember> searchByWorkspaceIdAndUserNameContaining(
             @Param("workspaceId") String workspaceId,
-            @Param("identifier") String identifier,
+            @Param("employeeId") String employeeId,
             @Param("keyword") String keyword);
 
     boolean existsByWorkspace_IdAndUser_EmployeeId(String workspaceId, String employeeId);
 
     boolean existsByWorkspace_IdAndUser_Id(String workspaceId, String userId);
 
-    List<WorkspaceMember> findByWorkspace_IdAndPermission(String workspaceId, String permission);
+    Optional<WorkspaceMember> findByUser_EmployeeIdAndWorkspace_Id(String employeeId, String workspaceId);
+
+    List<WorkspaceMember> findByWorkspace_IdAndPermission(String workspaceId, WorkspacePermission permission);
 }

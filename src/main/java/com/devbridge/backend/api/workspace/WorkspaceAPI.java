@@ -30,7 +30,7 @@ public interface WorkspaceAPI {
     @Operation(summary = "내 Workspace 목록 조회", description = "로그인 사용자가 참여 중인 Workspace 목록을 조회합니다.")
     @GetMapping
     ResponseEntity<List<WorkspaceResponse>> getMyWorkspaces(
-            @AuthenticationPrincipal String userId
+            @AuthenticationPrincipal String employeeId
     );
 
     @Operation(summary = "멤버 초대", description = "워크스페이스에 사용자를 멤버로 초대합니다.")
@@ -40,7 +40,7 @@ public interface WorkspaceAPI {
     @Operation(summary = "Workspace 최근 접속 시간 갱신", description = "사용자가 Workspace에 진입하거나 선택했을 때 최근 접속 시간을 갱신합니다.")
     @PatchMapping("/{workspaceId}/access")
     ResponseEntity<Void> updateWorkspaceAccess(
-            @AuthenticationPrincipal String userId,
+            @AuthenticationPrincipal String employeeId,
             @PathVariable String workspaceId
     );
 

@@ -33,13 +33,12 @@ public class JwtTokenProvider {
         this.key = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String createAccessToken(String userId, String role) {
+    public String createAccessToken(String employeeId, String role) {
         Date now = new Date();
         Date validity = new Date(now.getTime() + expirationTime);
 
         return Jwts.builder()
-                .subject(userId)
-                .claim("id", userId)
+                .subject(employeeId)
                 .claim("role", role)
                 .issuedAt(now)
                 .expiration(validity)
@@ -75,14 +74,14 @@ public class JwtTokenProvider {
                 .parseSignedClaims(token)
                 .getPayload();
 
-        String userId = claims.getSubject();
+        String employeeId = claims.getSubject();
         String role = claims.get("role", String.class);
 
         List<GrantedAuthority> authorities = Collections.singletonList(
                 new SimpleGrantedAuthority("ROLE_" + role)
         );
 
-        return new UsernamePasswordAuthenticationToken(userId, token, authorities);
+        return new UsernamePasswordAuthenticationToken(employeeId, token, authorities);
     }
 
     public Long getExpiration(String token) {

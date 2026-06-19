@@ -15,8 +15,8 @@ public class SettingController implements SettingAPI {
 
     @Override
     public ResponseEntity<ProfileResponse> getProfile(
-            @AuthenticationPrincipal String userId
+            @AuthenticationPrincipal String employeeId
     ) {
-        return ResponseEntity.ok(settingService.getProfile(userId));
+        return ResponseEntity.ok(settingService.getProfile(employeeId));
     }
 }

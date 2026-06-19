@@ -148,8 +148,8 @@ public class AuthService {
             throw new IllegalArgumentException("사번 또는 비밀번호가 일치하지 않습니다.");
         }
 
-        String accessToken = jwtTokenProvider.createAccessToken(user.getId(), user.getSystemRole());
-        String lastWorkspaceId = workspaceAccessService.findLastWorkspaceIdByUserId(user.getId());
+        String accessToken = jwtTokenProvider.createAccessToken(user.getEmployeeId(), user.getSystemRole());
+        String lastWorkspaceId = workspaceAccessService.findLastWorkspaceIdByEmployeeId(user.getEmployeeId());
 
         return SignInResponse.builder()
             .accessToken(accessToken)

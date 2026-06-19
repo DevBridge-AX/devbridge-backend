@@ -23,7 +23,7 @@ public interface UserAPI {
 
     @Operation(summary = "내 정보 조회", description = "인증된 사용자 본인의 정보를 조회합니다.")
     @GetMapping("/me")
-    ResponseEntity<UserResponse> getMe(@AuthenticationPrincipal String userId);
+    ResponseEntity<UserResponse> getMe(@AuthenticationPrincipal String employeeId);
 
     @Operation(summary = "사용자 조회", description = "사용자 ID에 해당하는 사용자 정보를 상세 조회합니다.")
     @GetMapping("/{id}")

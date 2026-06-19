@@ -27,16 +27,14 @@ public class MeetingReferenceService {
     private final KnowledgeDocumentRepository knowledgeDocumentRepository;
     private final UserRepository userRepository;
 
-    private User resolveUser(String identifier) {
-        return userRepository.findById(identifier)
-                .orElseGet(() -> userRepository.findByEmployeeId(identifier)
-                        .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + identifier)));
+    private User resolveUser(String employeeId) {
+        return userRepository.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + employeeId));
     }
 
     @Transactional
-    public MeetingReferenceResponse addReference(String meetingId, String identifier, MeetingReferenceRequest request) {
-        User user = resolveUser(identifier);
-        String employeeId = user.getEmployeeId();
+    public MeetingReferenceResponse addReference(String meetingId, String employeeId, MeetingReferenceRequest request) {
+        User user = resolveUser(employeeId);
         meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회의의 참석자가 아닙니다."));
 
@@ -49,9 +47,8 @@ public class MeetingReferenceService {
     }
 
     @Transactional
-    public void deleteReference(String meetingId, String referenceId, String identifier) {
-        User user = resolveUser(identifier);
-        String employeeId = user.getEmployeeId();
+    public void deleteReference(String meetingId, String referenceId, String employeeId) {
+        User user = resolveUser(employeeId);
         meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회의의 참석자가 아닙니다."));
 

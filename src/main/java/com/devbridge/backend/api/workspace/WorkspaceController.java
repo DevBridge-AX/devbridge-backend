@@ -20,9 +20,9 @@ public class WorkspaceController implements WorkspaceAPI {
 
     @Override
     public ResponseEntity<List<WorkspaceResponse>> getMyWorkspaces(
-            @AuthenticationPrincipal String userId
+            @AuthenticationPrincipal String employeeId
     ) {
-        return ResponseEntity.ok(workspaceService.getMyWorkspaces(userId));
+        return ResponseEntity.ok(workspaceService.getMyWorkspaces(employeeId));
     }
 
     @Override // To-Do: 테스트 이후 더미 삭제
@@ -42,10 +42,10 @@ public class WorkspaceController implements WorkspaceAPI {
 
     @Override
     public ResponseEntity<Void> updateWorkspaceAccess(
-            @AuthenticationPrincipal String userId,
+            @AuthenticationPrincipal String employeeId,
             String workspaceId
     ) {
-        workspaceService.updateLastAccessedAt(userId, workspaceId);
+        workspaceService.updateLastAccessedAt(employeeId, workspaceId);
         return ResponseEntity.noContent().build();
     }
 
