@@ -19,16 +19,16 @@ public class WorkspaceService {
     private final WorkspaceAccessService workspaceAccessService;
 
     @Transactional(readOnly = true)
-    public List<WorkspaceResponse> getMyWorkspaces(String userId) {
-        return workspaceMemberRepository.findAllWithWorkspaceByUserId(userId)
+    public List<WorkspaceResponse> getMyWorkspaces(String employeeId) {
+        return workspaceMemberRepository.findAllWithWorkspaceByUserEmployeeId(employeeId)
                 .stream()
                 .map(this::toWorkspaceResponse)
                 .toList();
     }
 
     @Transactional
-    public void updateLastAccessedAt(String userId, String workspaceId) {
-        workspaceAccessService.updateLastAccessedAt(userId, workspaceId);
+    public void updateLastAccessedAt(String employeeId, String workspaceId) {
+        workspaceAccessService.updateLastAccessedAt(employeeId, workspaceId);
     }
 
     private WorkspaceResponse toWorkspaceResponse(WorkspaceMember workspaceMember) {
@@ -40,14 +40,14 @@ public class WorkspaceService {
     }
 
     @Transactional(readOnly = true)
-    public List<WorkspaceMemberResponse> searchMembers(String workspaceId, String identifier, String keyword) {
+    public List<WorkspaceMemberResponse> searchMembers(String workspaceId, String employeeId, String keyword) {
         if (keyword == null || keyword.isBlank()) {
             return List.of();
         }
 
-        validateMembership(workspaceId, identifier);
+        validateMembership(workspaceId, employeeId);
 
-        return workspaceMemberRepository.searchByWorkspaceIdAndUserNameContaining(workspaceId, identifier, keyword).stream()
+        return workspaceMemberRepository.searchByWorkspaceIdAndUserNameContaining(workspaceId, employeeId, keyword).stream()
                 .map(member -> WorkspaceMemberResponse.builder()
                         .userId(member.getUser().getId())
                         .employeeId(member.getUser().getEmployeeId())
@@ -60,9 +60,8 @@ public class WorkspaceService {
     }
 
     @Transactional(readOnly = true)
-    public void validateMembership(String workspaceId, String identifier) {
-        if (!workspaceMemberRepository.existsByWorkspace_IdAndUser_EmployeeId(workspaceId, identifier) &&
-                !workspaceMemberRepository.existsByWorkspace_IdAndUser_Id(workspaceId, identifier)) {
+    public void validateMembership(String workspaceId, String employeeId) {
+        if (!workspaceMemberRepository.existsByWorkspace_IdAndUser_EmployeeId(workspaceId, employeeId)) {
             throw new IllegalArgumentException("해당 워크스페이스에 속한 사용자가 아닙니다.");
         }
     }

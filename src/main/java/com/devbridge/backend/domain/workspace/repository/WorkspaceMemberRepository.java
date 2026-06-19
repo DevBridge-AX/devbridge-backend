@@ -22,32 +22,31 @@ public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember
             select wm
             from WorkspaceMember wm
             join fetch wm.workspace
-            where wm.user.id = :userId
+            where wm.user.employeeId = :employeeId
             order by wm.joinedAt desc
             """)
-    List<WorkspaceMember> findAllWithWorkspaceByUserId(@Param("userId") String userId);
+    List<WorkspaceMember> findAllWithWorkspaceByUserEmployeeId(@Param("employeeId") String employeeId);
 
     @Query("""
             select wm
             from WorkspaceMember wm
             join fetch wm.workspace
-            where wm.user.id = :userId
+            where wm.user.employeeId = :employeeId
             order by coalesce(wm.lastAccessedAt, wm.joinedAt) desc
             """)
-    List<WorkspaceMember> findRecentWorkspaceMembershipsByUserId(
-            @Param("userId") String userId,
+    List<WorkspaceMember> findRecentWorkspaceMembershipsByUserEmployeeId(
+            @Param("employeeId") String employeeId,
             Pageable pageable
     );
 
     @Query("SELECT wm FROM WorkspaceMember wm "
             + "JOIN FETCH wm.user u "
             + "WHERE wm.workspace.id = :workspaceId "
-            + "AND u.employeeId <> :identifier "
-            + "AND u.id <> :identifier "
+            + "AND u.employeeId <> :employeeId "
             + "AND u.name LIKE CONCAT('%', :keyword, '%')")
     List<WorkspaceMember> searchByWorkspaceIdAndUserNameContaining(
             @Param("workspaceId") String workspaceId,
-            @Param("identifier") String identifier,
+            @Param("employeeId") String employeeId,
             @Param("keyword") String keyword);
 
     boolean existsByWorkspace_IdAndUser_EmployeeId(String workspaceId, String employeeId);
