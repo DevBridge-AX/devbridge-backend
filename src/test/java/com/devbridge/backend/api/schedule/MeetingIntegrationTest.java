@@ -6,6 +6,7 @@ import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.entity.WorkspaceMember;
+import com.devbridge.backend.domain.workspace.entity.WorkspacePermission;
 import com.devbridge.backend.domain.workspace.repository.WorkspaceMemberRepository;
 import com.devbridge.backend.domain.workspace.repository.WorkspaceRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -87,7 +88,7 @@ class MeetingIntegrationTest {
         WorkspaceMember member1 = WorkspaceMember.builder()
                 .workspace(savedWorkspace)
                 .user(user1)
-                .permission("OWNER")
+                .permission(WorkspacePermission.OWNER)
                 .joinedAt(LocalDateTime.now())
                 .build();
         workspaceMemberRepository.save(member1);
@@ -95,7 +96,7 @@ class MeetingIntegrationTest {
         WorkspaceMember member2 = WorkspaceMember.builder()
                 .workspace(savedWorkspace)
                 .user(user2)
-                .permission("MEMBER")
+                .permission(WorkspacePermission.MEMBER)
                 .joinedAt(LocalDateTime.now())
                 .build();
         workspaceMemberRepository.save(member2);

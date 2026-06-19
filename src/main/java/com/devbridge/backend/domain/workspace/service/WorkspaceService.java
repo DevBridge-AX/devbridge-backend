@@ -3,6 +3,7 @@ package com.devbridge.backend.domain.workspace.service;
 import com.devbridge.backend.domain.workspace.dto.WorkspaceMemberResponse;
 import com.devbridge.backend.domain.workspace.dto.WorkspaceResponse;
 import com.devbridge.backend.domain.workspace.entity.WorkspaceMember;
+import com.devbridge.backend.domain.workspace.entity.WorkspacePermission;
 import com.devbridge.backend.domain.workspace.repository.WorkspaceMemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -53,7 +54,7 @@ public class WorkspaceService {
                         .name(member.getUser().getName())
                         .department(member.getUser().getDepartment())
                         .position(member.getUser().getPosition())
-                        .permission(member.getPermission())
+                        .permission(member.getPermission().name())
                         .build())
                 .toList();
     }
@@ -67,12 +68,12 @@ public class WorkspaceService {
     }
 
     @Transactional(readOnly = true)
-    public void validatePermission(String workspaceId, String userId, String requiredPermission) {
+    public void validatePermission(String workspaceId, String employeeId, WorkspacePermission requiredPermission) {
         WorkspaceMember member = workspaceMemberRepository
-                .findByUser_IdAndWorkspace_Id(userId, workspaceId)
+                .findByUser_EmployeeIdAndWorkspace_Id(employeeId, workspaceId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 워크스페이스에 속한 사용자가 아닙니다."));
 
-        if (!requiredPermission.equals(member.getPermission())) {
+        if (!member.getPermission().hasAtLeast(requiredPermission)) {
             throw new IllegalArgumentException("해당 작업에 대한 권한이 없습니다.");
         }
     }

@@ -1,6 +1,7 @@
 package com.devbridge.backend.domain.workspace.repository;
 
 import com.devbridge.backend.domain.workspace.entity.WorkspaceMember;
+import com.devbridge.backend.domain.workspace.entity.WorkspacePermission;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -53,5 +54,7 @@ public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember
 
     boolean existsByWorkspace_IdAndUser_Id(String workspaceId, String userId);
 
-    List<WorkspaceMember> findByWorkspace_IdAndPermission(String workspaceId, String permission);
+    Optional<WorkspaceMember> findByUser_EmployeeIdAndWorkspace_Id(String employeeId, String workspaceId);
+
+    List<WorkspaceMember> findByWorkspace_IdAndPermission(String workspaceId, WorkspacePermission permission);
 }
