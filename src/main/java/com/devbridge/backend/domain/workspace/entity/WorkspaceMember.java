@@ -28,8 +28,8 @@ public class WorkspaceMember extends BaseEntity {
     private User user; // 사용자 ID
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "permission", nullable = false, length = 50)
-    private WorkspacePermission permission; // OWNER, MEMBER, GUEST
+    @Column(name = "member_role", nullable = false, length = 50)
+    private WorkspacePermission permission;
 
     @Column(name = "joined_at", nullable = false)
     private LocalDateTime joinedAt; // 참여일

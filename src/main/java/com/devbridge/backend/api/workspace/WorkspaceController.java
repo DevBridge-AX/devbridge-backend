@@ -2,6 +2,7 @@ package com.devbridge.backend.api.workspace;
 
 import com.devbridge.backend.domain.workspace.dto.CreateWorkspaceRequest;
 import com.devbridge.backend.domain.workspace.dto.InviteMemberRequest;
+import com.devbridge.backend.domain.workspace.dto.WorkspaceInvitationResponse;
 import com.devbridge.backend.domain.workspace.dto.WorkspaceMemberResponse;
 import com.devbridge.backend.domain.workspace.dto.WorkspaceResponse;
 import com.devbridge.backend.domain.workspace.service.WorkspaceService;
@@ -19,24 +20,43 @@ public class WorkspaceController implements WorkspaceAPI {
     private final WorkspaceService workspaceService;
 
     @Override
+    public ResponseEntity<WorkspaceResponse> createWorkspace(
+            @AuthenticationPrincipal String employeeId,
+            CreateWorkspaceRequest request
+    ) {
+        return ResponseEntity.ok(workspaceService.createWorkspace(employeeId, request));
+    }
+
+    @Override
     public ResponseEntity<List<WorkspaceResponse>> getMyWorkspaces(
             @AuthenticationPrincipal String employeeId
     ) {
         return ResponseEntity.ok(workspaceService.getMyWorkspaces(employeeId));
     }
 
-    @Override // To-Do: 테스트 이후 더미 삭제
-    public ResponseEntity<WorkspaceResponse> createWorkspace(CreateWorkspaceRequest request) {
-        WorkspaceResponse response = WorkspaceResponse.builder()
-                .id("dummy-workspace-id")
-                .name(request.getName())
-                .description(request.getDescription())
-                .build();
-        return ResponseEntity.ok(response);
+    @Override
+    public ResponseEntity<Void> inviteMember(
+            String workspaceId,
+            @AuthenticationPrincipal String employeeId,
+            InviteMemberRequest request
+    ) {
+        workspaceService.inviteMember(workspaceId, employeeId, request);
+        return ResponseEntity.ok().build();
     }
 
     @Override
-    public ResponseEntity<Void> inviteMember(InviteMemberRequest request) {
+    public ResponseEntity<List<WorkspaceInvitationResponse>> getReceivedInvitations(
+            @AuthenticationPrincipal String employeeId
+    ) {
+        return ResponseEntity.ok(workspaceService.getReceivedInvitations(employeeId));
+    }
+
+    @Override
+    public ResponseEntity<Void> acceptInvitation(
+            @AuthenticationPrincipal String employeeId,
+            String invitationId
+    ) {
+        workspaceService.acceptInvitation(employeeId, invitationId);
         return ResponseEntity.ok().build();
     }
 
@@ -50,7 +70,11 @@ public class WorkspaceController implements WorkspaceAPI {
     }
 
     @Override
-    public ResponseEntity<List<WorkspaceMemberResponse>> searchMembers(String workspaceId, String employeeId, String keyword) {
+    public ResponseEntity<List<WorkspaceMemberResponse>> searchMembers(
+            String workspaceId,
+            String employeeId,
+            String keyword
+    ) {
         return ResponseEntity.ok(workspaceService.searchMembers(workspaceId, employeeId, keyword));
     }
 }
