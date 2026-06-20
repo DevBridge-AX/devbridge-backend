@@ -69,7 +69,7 @@ services:
     env_file:
       - ../devbridge-ai-engine/.env
     environment:
-      DATABASE_URL: mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/devbridge_ai
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER_AI}:${MYSQL_PASSWORD_AI}@devbridge-mysql:3306/devbridge
       SPRING_BACKEND_BASE_URL: http://app:8080
     depends_on:
       mysql:
