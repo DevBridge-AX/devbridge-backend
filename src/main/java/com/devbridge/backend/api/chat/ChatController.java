@@ -4,21 +4,20 @@ import com.devbridge.backend.domain.chat.dto.ChatMessageResponse;
 import com.devbridge.backend.domain.chat.dto.ChatSessionResponse;
 import com.devbridge.backend.domain.chat.dto.CreateChatSessionRequest;
 import com.devbridge.backend.domain.chat.dto.SendMessageRequest;
+import com.devbridge.backend.domain.chat.service.ChatSessionService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@RequiredArgsConstructor
 public class ChatController implements ChatAPI {
 
+    private final ChatSessionService chatSessionService;
+
     @Override
-    public ResponseEntity<ChatSessionResponse> createChatSession(CreateChatSessionRequest request) {
-        ChatSessionResponse response = ChatSessionResponse.builder()
-                .id("dummy-session-id")
-                .workspaceId(request.getWorkspaceId())
-                .userId(request.getUserId())
-                .sessionTitle(request.getSessionTitle())
-                .build();
-        return ResponseEntity.ok(response);
+    public ResponseEntity<ChatSessionResponse> createChatSession(String workspaceId, String employeeId, CreateChatSessionRequest request) {
+        return ResponseEntity.ok(chatSessionService.createSession(workspaceId, employeeId, request));
     }
 
     @Override

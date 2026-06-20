@@ -12,6 +12,6 @@ import lombok.NoArgsConstructor;
 public class ChatSessionResponse {
     private String id;
     private String workspaceId;
-    private String userId;
+    private String employeeId;
     private String sessionTitle;
 }

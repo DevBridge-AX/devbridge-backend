@@ -10,7 +10,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class CreateChatSessionRequest {
-    private String workspaceId;
-    private String userId;
     private String sessionTitle;
 }
