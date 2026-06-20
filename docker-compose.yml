@@ -76,8 +76,10 @@ services:
         condition: service_healthy
     networks:
       - devbridge-network
+    # TODO: FastAPI models.py를 Spring 스키마에 맞춰 동기화한 뒤 alembic upgrade head 복원 필요
+    # sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
     command: >
-      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+      sh -c "uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
 networks:
   devbridge-network:
