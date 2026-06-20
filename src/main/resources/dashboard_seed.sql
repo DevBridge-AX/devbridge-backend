@@ -24,11 +24,14 @@ SET SQL_SAFE_UPDATES = 1;
 INSERT INTO users (
     id, created_at, updated_at, deleted_at,
     employee_id, email, password_hash, auth_provider,
-    name, department, position, system_role
+    name, department, position, job_role, system_role
 ) VALUES
-('u001', NOW(), NOW(), NULL, 'EMP001', 'admin@company.com', '$2a$10$uAK.crtZC9lnuTPV/i5q7.wIj7jhFZTXbvq7WmKp/63bCEw4i27LO', 'LOCAL', '김현수', '개발팀', 'Backend Developer', 'ADMIN'),
-('u002', NOW(), NOW(), NULL, 'EMP003', 'choie000208@gmail.com', '$2a$10$uAK.crtZC9lnuTPV/i5q7.wIj7jhFZTXbvq7WmKp/63bCEw4i27LO', 'LOCAL', '최형수', '기획팀', '팀장', 'USER'),
-('u003', NOW(), NOW(), NULL, 'EMP004', 'sam000208@naver.com', '$2a$10$uAK.crtZC9lnuTPV/i5q7.wIj7jhFZTXbvq7WmKp/63bCEw4i27LO', 'LOCAL', '최펭수', '개발팀', '대리', 'USER');
+('u001', NOW(), NOW(), NULL, 'EMP001', 'admin@company.com', '$2a$10$uAK.crtZC9lnuTPV/i5q7.wIj7jhFZTXbvq7WmKp/63bCEw4i27LO', 'LOCAL', '김현수', '개발팀', 'Backend Developer', 'DEVELOPER', 'ADMIN'),
+('u002', NOW(), NOW(), NULL, 'EMP003', 'choie000208@gmail.com', '$2a$10$uAK.crtZC9lnuTPV/i5q7.wIj7jhFZTXbvq7WmKp/63bCEw4i27LO', 'LOCAL', '최형수', '기획팀', '팀장', 'PLANNER', 'USER'),
+('u003', NOW(), NOW(), NULL, 'EMP004', 'sam000208@naver.com', '$2a$10$uAK.crtZC9lnuTPV/i5q7.wIj7jhFZTXbvq7WmKp/63bCEw4i27LO', 'LOCAL', '최펭수', '개발팀', '대리', 'QA', 'USER'),
+('u004', NOW(), NOW(), NULL, 'EMP005', 'designer@company.com', '$2a$10$uAK.crtZC9lnuTPV/i5q7.wIj7jhFZTXbvq7WmKp/63bCEw4i27LO', 'LOCAL', '홍길동', '디자인팀', '디자이너', 'DESIGNER', 'USER'),
+('u005', NOW(), NOW(), NULL, 'EMP006', 'operator@company.com', '$2a$10$uAK.crtZC9lnuTPV/i5q7.wIj7jhFZTXbvq7WmKp/63bCEw4i27LO', 'LOCAL', '이순신', '운영팀', '대리', 'OPERATOR', 'USER'),
+('u006', NOW(), NOW(), NULL, 'EMP007', 'newcomer@company.com', '$2a$10$uAK.crtZC9lnuTPV/i5q7.wIj7jhFZTXbvq7WmKp/63bCEw4i27LO', 'LOCAL', '강감찬', '인사팀', '사원', 'NEWCOMER', 'USER');
 
 INSERT INTO workspaces (
     id, created_at, updated_at, deleted_at,
@@ -40,7 +43,7 @@ INSERT INTO workspaces (
 
 INSERT INTO workspace_members (
     id, created_at, updated_at, deleted_at,
-    workspace_id, user_id, member_role, joined_at
+    workspace_id, user_id, permission, joined_at
 ) VALUES
 ('wm001', NOW(), NOW(), NULL, 'ws001', 'u001', 'OWNER', NOW()),
 ('wm002', NOW(), NOW(), NULL, 'ws001', 'u002', 'MEMBER', NOW()),
@@ -48,7 +51,13 @@ INSERT INTO workspace_members (
 ('wm004', NOW(), NOW(), NULL, 'ws001', 'u003', 'MEMBER', NOW()),
 ('wm005', NOW(), NOW(), NULL, 'dummy-workspace-id', 'u001', 'OWNER', NOW()),
 ('wm006', NOW(), NOW(), NULL, 'dummy-workspace-id', 'u002', 'MEMBER', NOW()),
-('wm007', NOW(), NOW(), NULL, 'dummy-workspace-id', 'u003', 'MEMBER', NOW());
+('wm007', NOW(), NOW(), NULL, 'dummy-workspace-id', 'u003', 'MEMBER', NOW()),
+('wm008', NOW(), NOW(), NULL, 'ws001', 'u004', 'MEMBER', NOW()),
+('wm009', NOW(), NOW(), NULL, 'ws001', 'u005', 'MEMBER', NOW()),
+('wm010', NOW(), NOW(), NULL, 'ws001', 'u006', 'MEMBER', NOW()),
+('wm011', NOW(), NOW(), NULL, 'dummy-workspace-id', 'u004', 'MEMBER', NOW()),
+('wm012', NOW(), NOW(), NULL, 'dummy-workspace-id', 'u005', 'MEMBER', NOW()),
+('wm013', NOW(), NOW(), NULL, 'dummy-workspace-id', 'u006', 'MEMBER', NOW());
 
 INSERT INTO tasks (
     id, created_at, updated_at, deleted_at,
