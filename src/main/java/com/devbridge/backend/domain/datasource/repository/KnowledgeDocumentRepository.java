@@ -10,4 +10,10 @@ public interface KnowledgeDocumentRepository extends JpaRepository<KnowledgeDocu
     List<KnowledgeDocument> findTop5ByDataSource_Workspace_IdOrderByCreatedAtDesc(String workspaceId);
 
     List<KnowledgeDocument> findByDataSource_Workspace_IdOrderByCreatedAtDesc(String workspaceId);
+
+    List<KnowledgeDocument> findByTask_IdOrderByCreatedAtDesc(String taskId);
+
+    List<KnowledgeDocument> findTop5ByTask_IdOrderByCreatedAtDesc(String taskId);
+
+    long countByTask_Id(String taskId);
 }

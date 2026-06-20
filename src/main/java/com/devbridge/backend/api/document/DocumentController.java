@@ -35,18 +35,19 @@ public class DocumentController implements DocumentAPI {
     }
 
     @Override
-public ResponseEntity<DocumentResponse> updateDocument(
-        String id,
-        UpdateDocumentRequest request
-) {
-    return ResponseEntity.ok(documentFileService.updateDocument(id, request));
-}
+    public ResponseEntity<DocumentResponse> updateDocument(
+            String id,
+            UpdateDocumentRequest request
+    ) {
+        return ResponseEntity.ok(documentFileService.updateDocument(id, request));
+    }
 
     @Override
     public ResponseEntity<DocumentResponse> uploadDocument(
             String workspaceId,
             String dataSourceId,
             String uploadedById,
+            String taskId,
             String documentType,
             String description,
             MultipartFile file
@@ -56,6 +57,7 @@ public ResponseEntity<DocumentResponse> updateDocument(
                         workspaceId,
                         dataSourceId,
                         uploadedById,
+                        taskId,
                         documentType,
                         description,
                         file
