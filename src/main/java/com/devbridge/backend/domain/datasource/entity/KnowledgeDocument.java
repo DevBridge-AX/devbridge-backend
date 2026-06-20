@@ -1,5 +1,6 @@
 package com.devbridge.backend.domain.datasource.entity;
 
+import com.devbridge.backend.domain.task.entity.Task;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.global.common.BaseEntity;
 import jakarta.persistence.*;
@@ -32,12 +33,16 @@ public class KnowledgeDocument extends BaseEntity {
     @JoinColumn(name = "uploaded_by")
     private User uploadedBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "task_id")
+    private Task task;
+
     @Column(name = "title", nullable = false, length = 255)
     private String title;
 
     @Column(name = "document_type", length = 50)
     private String documentType;
-    
+
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
@@ -89,16 +94,16 @@ public class KnowledgeDocument extends BaseEntity {
     }
 
     public void updateDocumentInfo(String title, String documentType, String description) {
-    if (title != null && !title.isBlank()) {
-        this.title = title.trim();
-    }
+        if (title != null && !title.isBlank()) {
+            this.title = title.trim();
+        }
 
-    if (documentType != null && !documentType.isBlank()) {
-        this.documentType = documentType.trim().toUpperCase();
-    }
+        if (documentType != null && !documentType.isBlank()) {
+            this.documentType = documentType.trim().toUpperCase();
+        }
 
-    this.description = description != null && !description.isBlank()
-            ? description.trim()
-            : null;
-}
+        this.description = description != null && !description.isBlank()
+                ? description.trim()
+                : null;
+    }
 }

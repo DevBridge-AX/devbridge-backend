@@ -22,9 +22,12 @@ public class DocumentResponse {
     private String sourceType;
     private String sourceStatus;
 
+    private String taskId;
+    private String taskTitle;
+
     private String title;
     private String documentType;
-private String description;
+    private String description;
 
     private String vectorId;
 

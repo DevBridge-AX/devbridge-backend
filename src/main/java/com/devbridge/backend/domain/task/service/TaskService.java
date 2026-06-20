@@ -1,5 +1,7 @@
 package com.devbridge.backend.domain.task.service;
 
+import com.devbridge.backend.domain.datasource.entity.KnowledgeDocument;
+import com.devbridge.backend.domain.datasource.repository.KnowledgeDocumentRepository;
 import com.devbridge.backend.domain.task.dto.CreateTaskRequest;
 import com.devbridge.backend.domain.task.dto.TaskDetailResponse;
 import com.devbridge.backend.domain.task.dto.TaskResponse;
@@ -30,6 +32,7 @@ public class TaskService {
     private final TaskRepository taskRepository;
     private final WorkspaceRepository workspaceRepository;
     private final UserRepository userRepository;
+    private final KnowledgeDocumentRepository knowledgeDocumentRepository;
 
     @Transactional(readOnly = true)
     public List<TaskResponse> getTasksByWorkspace(String workspaceId) {
@@ -191,6 +194,11 @@ public class TaskService {
     }
 
     private TaskDetailResponse toTaskDetailResponse(Task task) {
+        List<KnowledgeDocument> recentDocuments =
+                knowledgeDocumentRepository.findTop5ByTask_IdOrderByCreatedAtDesc(task.getId());
+
+        long documentCount = knowledgeDocumentRepository.countByTask_Id(task.getId());
+
         return TaskDetailResponse.builder()
                 .id(task.getId())
                 .workspaceId(task.getWorkspace().getId())
@@ -208,48 +216,88 @@ public class TaskService {
                 .dueDate(task.getDueDate())
                 .createdAt(task.getCreatedAt())
                 .updatedAt(task.getUpdatedAt())
-                .aiSummary(null)
-                .progressSummary(buildProgressSummary(task))
-                .nextAction(buildNextAction(task))
-                .riskLevel(buildRiskLevel(task))
-                .documentCount(0)
+                .aiSummary(buildTaskAiSummary(task, documentCount))
+                .progressSummary(buildProgressSummary(task, documentCount))
+                .nextAction(buildNextAction(task, documentCount))
+                .riskLevel(buildRiskLevel(task, documentCount))
+                .documentCount((int) documentCount)
                 .commitCount(0)
                 .deliverableCount(0)
                 .activityCount(0)
-                .recentDocuments(List.of())
+                .recentDocuments(
+                        recentDocuments.stream()
+                                .map(this::toRelatedDocumentPreview)
+                                .toList()
+                )
                 .recentCommits(List.of())
                 .recentDeliverables(List.of())
                 .recentActivities(List.of())
                 .build();
     }
 
-    private String buildProgressSummary(Task task) {
-        if (STATUS_DONE.equalsIgnoreCase(task.getStatus())) {
-            return "업무가 완료된 상태입니다.";
-        }
-
-        if (STATUS_IN_PROGRESS.equalsIgnoreCase(task.getStatus())) {
-            return "업무가 진행 중입니다. 관련 문서와 변경 이력을 연결하면 진행 상황을 더 정확히 확인할 수 있습니다.";
-        }
-
-        return "업무가 배정된 상태입니다. 상세 문서, 산출물, Git 변경 이력을 연결해 진행 정보를 보강할 수 있습니다.";
+    private TaskDetailResponse.RelatedDocumentPreview toRelatedDocumentPreview(
+            KnowledgeDocument document
+    ) {
+        return TaskDetailResponse.RelatedDocumentPreview.builder()
+                .id(document.getId())
+                .title(document.getTitle())
+                .summary(document.getSummary())
+                .analysisStatus(document.getAnalysisStatus())
+                .uploadedAt(document.getCreatedAt())
+                .build();
     }
 
-    private String buildNextAction(Task task) {
-        if (STATUS_DONE.equalsIgnoreCase(task.getStatus())) {
-            return "산출물과 관련 문서를 최종 확인하세요.";
+    private String buildTaskAiSummary(Task task, long documentCount) {
+        if (documentCount == 0) {
+            return "아직 이 업무에 연결된 문서가 없습니다. 문서를 업로드하면 AI 분석 요약이 이 영역에 표시됩니다.";
         }
 
-        if (STATUS_IN_PROGRESS.equalsIgnoreCase(task.getStatus())) {
-            return "최근 작업 내역과 관련 문서를 확인하고 다음 작업을 이어가세요.";
-        }
-
-        return "업무 착수 전 필요한 문서와 요구사항을 확인하세요.";
+        return "이 업무에는 " + documentCount + "개의 문서가 연결되어 있습니다. 문서별 AI 분석 결과를 기반으로 업무 요약을 생성할 수 있습니다.";
     }
 
-    private String buildRiskLevel(Task task) {
+    private String buildProgressSummary(Task task, long documentCount) {
+        if (STATUS_DONE.equalsIgnoreCase(task.getStatus())) {
+            return "업무가 완료된 상태입니다. 연결 문서와 산출물을 최종 확인하세요.";
+        }
+
         if (STATUS_IN_PROGRESS.equalsIgnoreCase(task.getStatus())) {
+            if (documentCount > 0) {
+                return "업무가 진행 중이며 연결 문서가 등록되어 있습니다. 문서 분석 결과와 최근 변경 이력을 함께 확인하세요.";
+            }
+
+            return "업무가 진행 중이지만 아직 연결 문서가 없습니다. 담당자는 관련 문서를 업로드해야 합니다.";
+        }
+
+        if (documentCount > 0) {
+            return "업무가 배정된 상태이며 연결 문서가 등록되어 있습니다. 문서를 검토하고 진행 상태를 갱신하세요.";
+        }
+
+        return "업무가 배정된 상태입니다. 필요한 문서와 요구사항을 확인하고 작업을 시작하세요.";
+    }
+
+    private String buildNextAction(Task task, long documentCount) {
+        if (STATUS_DONE.equalsIgnoreCase(task.getStatus())) {
+            return "연결 문서와 산출물을 최종 검토하세요.";
+        }
+
+        if (documentCount == 0) {
+            return "업무 수행에 필요한 문서를 업로드하세요.";
+        }
+
+        if (STATUS_IN_PROGRESS.equalsIgnoreCase(task.getStatus())) {
+            return "연결 문서의 AI 분석 결과를 확인하고 다음 작업을 진행하세요.";
+        }
+
+        return "업무 상태를 진행 중으로 변경하고 연결 문서를 검토하세요.";
+    }
+
+    private String buildRiskLevel(Task task, long documentCount) {
+        if (documentCount == 0 && STATUS_IN_PROGRESS.equalsIgnoreCase(task.getStatus())) {
             return "MEDIUM";
+        }
+
+        if (STATUS_IN_PROGRESS.equalsIgnoreCase(task.getStatus())) {
+            return "LOW";
         }
 
         return "LOW";

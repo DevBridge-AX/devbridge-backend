@@ -5,8 +5,10 @@ import com.devbridge.backend.domain.datasource.entity.DataSource;
 import com.devbridge.backend.domain.datasource.entity.KnowledgeDocument;
 import com.devbridge.backend.domain.datasource.repository.DataSourceRepository;
 import com.devbridge.backend.domain.datasource.repository.KnowledgeDocumentRepository;
-import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.document.dto.UpdateDocumentRequest;
+import com.devbridge.backend.domain.task.entity.Task;
+import com.devbridge.backend.domain.task.repository.TaskRepository;
+import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,6 +31,7 @@ public class DocumentFileService {
     private final KnowledgeDocumentRepository knowledgeDocumentRepository;
     private final DataSourceRepository dataSourceRepository;
     private final UserRepository userRepository;
+    private final TaskRepository taskRepository;
 
     @Value("${devbridge.file.upload-dir:uploads/documents}")
     private String uploadDir;
@@ -38,6 +41,7 @@ public class DocumentFileService {
             String workspaceId,
             String dataSourceId,
             String uploadedById,
+            String taskId,
             String documentType,
             String description,
             MultipartFile file
@@ -67,6 +71,16 @@ public class DocumentFileService {
                     .orElseThrow(() -> new IllegalArgumentException("Uploader not found: " + uploadedById));
         }
 
+        Task task = null;
+        if (taskId != null && !taskId.isBlank()) {
+            task = taskRepository.findById(taskId)
+                    .orElseThrow(() -> new IllegalArgumentException("Task not found: " + taskId));
+
+            if (!workspaceId.equals(task.getWorkspace().getId())) {
+                throw new IllegalArgumentException("Task does not belong to workspace: " + workspaceId);
+            }
+        }
+
         String originalFileName = file.getOriginalFilename();
         String safeOriginalFileName = originalFileName != null ? originalFileName : "document";
         String storedFileName = UUID.randomUUID() + "_" + safeOriginalFileName;
@@ -82,6 +96,7 @@ public class DocumentFileService {
             KnowledgeDocument document = KnowledgeDocument.builder()
                     .dataSource(dataSource)
                     .uploadedBy(uploadedBy)
+                    .task(task)
                     .title(safeOriginalFileName)
                     .documentType(normalizedDocumentType)
                     .analysisStatus("PENDING")
@@ -125,24 +140,24 @@ public class DocumentFileService {
     }
 
     @Transactional
-public DocumentResponse updateDocument(
-        String documentId,
-        UpdateDocumentRequest request
-) {
-    if (request == null) {
-        throw new IllegalArgumentException("Update document request is required.");
+    public DocumentResponse updateDocument(
+            String documentId,
+            UpdateDocumentRequest request
+    ) {
+        if (request == null) {
+            throw new IllegalArgumentException("Update document request is required.");
+        }
+
+        KnowledgeDocument document = findDocumentById(documentId);
+
+        document.updateDocumentInfo(
+                request.getTitle(),
+                request.getDocumentType(),
+                request.getDescription()
+        );
+
+        return toDocumentResponse(document);
     }
-
-    KnowledgeDocument document = findDocumentById(documentId);
-
-    document.updateDocumentInfo(
-        request.getTitle(),
-        request.getDocumentType(),
-        request.getDescription()
-    );
-
-    return toDocumentResponse(document);
-}
 
     @Transactional
     public void deleteDocument(String documentId) {
@@ -177,6 +192,7 @@ public DocumentResponse updateDocument(
 
     private DocumentResponse toDocumentResponse(KnowledgeDocument document) {
         User uploadedBy = document.getUploadedBy();
+        Task task = document.getTask();
         String documentId = document.getId();
 
         return DocumentResponse.builder()
@@ -187,6 +203,8 @@ public DocumentResponse updateDocument(
                 .sourceName(document.getDataSource().getSourceName())
                 .sourceType(document.getDataSource().getSourceType())
                 .sourceStatus(document.getDataSource().getStatus())
+                .taskId(task != null ? task.getId() : null)
+                .taskTitle(task != null ? task.getTitle() : null)
                 .title(document.getTitle())
                 .documentType(document.getDocumentType())
                 .description(document.getDescription())

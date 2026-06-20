@@ -35,12 +35,13 @@ public interface DocumentAPI {
     @Operation(summary = "Document 파일 업로드", description = "문서 파일을 업로드하고 문서 메타데이터를 저장합니다.")
     @PostMapping("/upload")
     ResponseEntity<DocumentResponse> uploadDocument(
-        @RequestParam("workspaceId") String workspaceId,
-        @RequestParam("dataSourceId") String dataSourceId,
-        @RequestParam(value = "uploadedById", required = false) String uploadedById,
-        @RequestParam(value = "documentType", required = false) String documentType,
-        @RequestParam(value = "description", required = false) String description,
-        @RequestPart("file") MultipartFile file
+            @RequestParam("workspaceId") String workspaceId,
+            @RequestParam("dataSourceId") String dataSourceId,
+            @RequestParam(value = "uploadedById", required = false) String uploadedById,
+            @RequestParam(value = "taskId", required = false) String taskId,
+            @RequestParam(value = "documentType", required = false) String documentType,
+            @RequestParam(value = "description", required = false) String description,
+            @RequestPart("file") MultipartFile file
     );
 
     @Operation(summary = "Document 파일 다운로드", description = "Document ID 기준으로 저장된 원본 파일을 다운로드합니다.")
