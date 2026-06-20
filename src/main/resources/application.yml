@@ -63,3 +63,10 @@ fastapi:
 
 server:
   port: 8080
+
+devbridge:
+  ai-engine:
+    base-url: ${AI_ENGINE_BASE_URL:http://127.0.0.1:8010}
+    internal-api-key: ${AI_ENGINE_INTERNAL_API_KEY:changeme}
+    document-analysis-path: ${AI_ENGINE_DOCUMENT_ANALYSIS_PATH:/api/analysis/document}
+    timeout-seconds: ${AI_ENGINE_TIMEOUT_SECONDS:30}

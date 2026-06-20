@@ -59,7 +59,13 @@ public class TaskDetailResponse {
         private String id;
         private String title;
         private String summary;
+        private String keywords;
+        private String riskLevel;
+        private String nextAction;
         private String analysisStatus;
+        private String analysisModel;
+        private String analysisMode;
+        private LocalDateTime analyzedAt;
         private LocalDateTime uploadedAt;
     }
 

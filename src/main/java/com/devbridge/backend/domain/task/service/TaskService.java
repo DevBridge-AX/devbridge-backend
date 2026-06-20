@@ -236,13 +236,19 @@ public class TaskService {
     }
 
     private TaskDetailResponse.RelatedDocumentPreview toRelatedDocumentPreview(
-            KnowledgeDocument document
+        KnowledgeDocument document
     ) {
         return TaskDetailResponse.RelatedDocumentPreview.builder()
                 .id(document.getId())
                 .title(document.getTitle())
                 .summary(document.getSummary())
+                .keywords(document.getKeywords())
+                .riskLevel(document.getRiskLevel())
+                .nextAction(document.getNextAction())
                 .analysisStatus(document.getAnalysisStatus())
+                .analysisModel(document.getAnalysisModel())
+                .analysisMode(document.getAnalysisMode())
+                .analyzedAt(document.getAnalyzedAt())
                 .uploadedAt(document.getCreatedAt())
                 .build();
     }

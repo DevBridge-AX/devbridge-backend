@@ -56,6 +56,18 @@ public class KnowledgeDocument extends BaseEntity {
     @Column(name = "keywords", columnDefinition = "TEXT")
     private String keywords;
 
+    @Column(name = "risk_level", length = 50)
+    private String riskLevel;
+
+    @Column(name = "next_action", columnDefinition = "TEXT")
+    private String nextAction;
+
+    @Column(name = "analysis_model", length = 100)
+    private String analysisModel;
+
+    @Column(name = "analysis_mode", length = 50)
+    private String analysisMode;
+
     @Column(name = "analyzed_at")
     private LocalDateTime analyzedAt;
 
@@ -77,9 +89,20 @@ public class KnowledgeDocument extends BaseEntity {
     @Column(name = "file_size")
     private Long fileSize;
 
-    public void updateAnalysisResult(String summary, String keywords) {
+    public void updateAnalysisResult(
+            String summary,
+            String keywords,
+            String riskLevel,
+            String nextAction,
+            String analysisModel,
+            String analysisMode
+    ) {
         this.summary = summary;
         this.keywords = keywords;
+        this.riskLevel = riskLevel;
+        this.nextAction = nextAction;
+        this.analysisModel = analysisModel;
+        this.analysisMode = analysisMode;
         this.analysisStatus = "COMPLETED";
         this.analyzedAt = LocalDateTime.now();
     }

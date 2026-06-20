@@ -32,6 +32,10 @@ public interface DocumentAPI {
             @RequestBody UpdateDocumentRequest request
     );
 
+    @Operation(summary = "Document AI 분석 실행", description = "Document ID 기준으로 AI Engine 분석을 실행하고 결과를 저장합니다.")
+    @PostMapping("/{id}/analyze")
+    ResponseEntity<DocumentResponse> analyzeDocument(@PathVariable("id") String id);
+
     @Operation(summary = "Document 파일 업로드", description = "문서 파일을 업로드하고 문서 메타데이터를 저장합니다.")
     @PostMapping("/upload")
     ResponseEntity<DocumentResponse> uploadDocument(
