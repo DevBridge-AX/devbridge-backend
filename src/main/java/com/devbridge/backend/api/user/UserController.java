@@ -36,20 +36,20 @@ public class UserController implements UserAPI {
     }
 
     @Override
-    public ResponseEntity<Void> updateProfile(String userId, UpdateProfileRequest request) {
-        settingService.updateProfile(userId, request);
+    public ResponseEntity<Void> updateProfile(String employeeId, UpdateProfileRequest request) {
+        settingService.updateProfile(employeeId, request);
         return ResponseEntity.ok().build();
     }
 
     @Override
-    public ResponseEntity<Void> updatePassword(String userId, UpdatePasswordRequest request) {
-        settingService.changePassword(userId, request);
+    public ResponseEntity<Void> updatePassword(String employeeId, UpdatePasswordRequest request) {
+        settingService.changePassword(employeeId, request);
         return ResponseEntity.ok().build();
     }
 
     @Override
-    public ResponseEntity<Void> verifyPassword(String userId, VerifyPasswordRequest request) {
-        settingService.verifyPassword(userId, request.password());
+    public ResponseEntity<Void> verifyPassword(String employeeId, VerifyPasswordRequest request) {
+        settingService.verifyPassword(employeeId, request.password());
         return ResponseEntity.ok().build();
     }
 }

@@ -52,17 +52,17 @@ public class SettingService {
     }
 
     @Transactional
-    public void updateProfile(String userId, UpdateProfileRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. id: " + userId));
+    public void updateProfile(String employeeId, UpdateProfileRequest request) {
+        User user = userRepository.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. employeeId: " + employeeId));
 
         user.updateProfile(request.name(), request.department(), request.position(), request.jobRole());
     }
 
     @Transactional
-    public void changePassword(String userId, UpdatePasswordRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. id: " + userId));
+    public void changePassword(String employeeId, UpdatePasswordRequest request) {
+        User user = userRepository.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. employeeId: " + employeeId));
 
         if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
             throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
@@ -73,9 +73,9 @@ public class SettingService {
     }
 
     @Transactional(readOnly = true)
-    public void verifyPassword(String userId, String password) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. id: " + userId));
+    public void verifyPassword(String employeeId, String password) {
+        User user = userRepository.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. employeeId: " + employeeId));
 
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
