@@ -3,6 +3,9 @@ package com.devbridge.backend.domain.chat.service;
 import com.devbridge.backend.domain.chat.dto.fastapi.FastApiChatRequest;
 import com.devbridge.backend.domain.chat.dto.fastapi.FastApiDoneEvent;
 import com.devbridge.backend.domain.chat.entity.ChatMessage;
+import com.devbridge.backend.domain.user.entity.JobRole;
+import com.devbridge.backend.domain.user.entity.User;
+import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.global.config.fastapi.FastApiClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -29,6 +32,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private final FastApiClient fastApiClient;
     private final ChatMessageService chatMessageService;
     private final OwnerConfirmationService ownerConfirmationService;
+    private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
 
     private final ConcurrentHashMap<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
@@ -63,7 +67,9 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private void handleChatMessage(WebSocketSession session, JsonNode payload) {
         String sessionId = payload.path("session_id").asText();
         String content = payload.path("content").asText();
-        String role = payload.has("role") ? payload.path("role").asText() : "developer";
+
+        String employeeId = (String) session.getAttributes().get("employeeId");
+        String role = resolveRole(employeeId);
 
         chatMessageService.saveUserMessage(sessionId, content);
 
@@ -179,6 +185,16 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         } catch (JsonProcessingException e) {
             sendMessage(session, createErrorMessage("AI 서비스 오류가 발생했습니다."));
         }
+    }
+
+    private String resolveRole(String employeeId) {
+        if (employeeId == null) {
+            return JobRole.NEWCOMER.name().toLowerCase();
+        }
+        return userRepository.findByEmployeeId(employeeId)
+                .map(User::getJobRole)
+                .map(jobRole -> jobRole.name().toLowerCase())
+                .orElse(JobRole.NEWCOMER.name().toLowerCase());
     }
 
     private List<FastApiChatRequest.ConversationMessage> buildConversationHistory(

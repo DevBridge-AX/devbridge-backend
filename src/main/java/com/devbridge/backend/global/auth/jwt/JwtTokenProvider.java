@@ -84,6 +84,15 @@ public class JwtTokenProvider {
         return new UsernamePasswordAuthenticationToken(employeeId, token, authorities);
     }
 
+    public String extractEmployeeId(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+        return claims.getSubject();
+    }
+
     public Long getExpiration(String token) {
         try {
             Claims claims = Jwts.parser()
