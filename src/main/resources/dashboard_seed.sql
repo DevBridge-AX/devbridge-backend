@@ -29,7 +29,7 @@ INSERT INTO users (
 ('u001', NOW(), NOW(), NULL, 'EMP001', 'admin@company.com', '$2a$10$uAK.crtZC9lnuTPV/i5q7.wIj7jhFZTXbvq7WmKp/63bCEw4i27LO', 'LOCAL', '김현수', '개발팀', 'Backend Developer', 'DEVELOPER', 'ADMIN'),
 ('u002', NOW(), NOW(), NULL, 'EMP003', 'choie000208@gmail.com', '$2a$10$uAK.crtZC9lnuTPV/i5q7.wIj7jhFZTXbvq7WmKp/63bCEw4i27LO', 'LOCAL', '최형수', '기획팀', '팀장', 'PLANNER', 'USER'),
 ('u003', NOW(), NOW(), NULL, 'EMP004', 'sam000208@naver.com', '$2a$10$uAK.crtZC9lnuTPV/i5q7.wIj7jhFZTXbvq7WmKp/63bCEw4i27LO', 'LOCAL', '최펭수', '개발팀', '대리', 'QA', 'USER'),
-('u004', NOW(), NOW(), NULL, 'EMP005', 'designer@company.com', '$2a$10$uAK.crtZC9lnuTPV/i5q7.wIj7jhFZTXbvq7WmKp/63bCEw4i27LO', 'LOCAL', '홍길동', '디자인팀', '디자이너', 'DESIGNER', 'USER'),
+('u004', NOW(), NOW(), NULL, 'EMP005', 'designer@company.com', '$2b$12$4iwz6DVqmDU36V/Q8sjN8eiK.7zRjCTgShy7ZRFFYsRSr4ch7eRCS', 'LOCAL', '홍길동', '디자인팀', '디자이너', 'DESIGNER', 'USER'),
 ('u005', NOW(), NOW(), NULL, 'EMP006', 'operator@company.com', '$2a$10$uAK.crtZC9lnuTPV/i5q7.wIj7jhFZTXbvq7WmKp/63bCEw4i27LO', 'LOCAL', '이순신', '운영팀', '대리', 'OPERATOR', 'USER'),
 ('u006', NOW(), NOW(), NULL, 'EMP007', 'newcomer@company.com', '$2a$10$uAK.crtZC9lnuTPV/i5q7.wIj7jhFZTXbvq7WmKp/63bCEw4i27LO', 'LOCAL', '강감찬', '인사팀', '사원', 'NEWCOMER', 'USER');
 
@@ -78,11 +78,11 @@ INSERT INTO data_sources (
 
 INSERT INTO knowledge_documents (
     id, created_at, updated_at, deleted_at,
-    source_id, title, vector_id
+    source_id, title, vector_id, analysis_status
 ) VALUES
-('doc001', NOW(), NOW(), NULL, 'ds001', '요구사항 정의서', 'vec_req_001'),
-('doc002', NOW(), NOW(), NULL, 'ds001', 'API 설계 문서 v2.3', 'vec_api_002'),
-('doc003', NOW(), NOW(), NULL, 'ds001', 'Figma 와이어프레임', 'vec_figma_003');
+('doc001', NOW(), NOW(), NULL, 'ds001', '요구사항 정의서', 'vec_req_001', 'COMPLETED'),
+('doc002', NOW(), NOW(), NULL, 'ds001', 'API 설계 문서 v2.3', 'vec_api_002', 'COMPLETED'),
+('doc003', NOW(), NOW(), NULL, 'ds001', 'Figma 와이어프레임', 'vec_figma_003', 'COMPLETED');
 
 INSERT INTO git_commits (
     id, created_at, updated_at, deleted_at,
@@ -99,10 +99,10 @@ INSERT INTO chat_sessions (
 
 INSERT INTO chat_messages (
     id, created_at, updated_at, deleted_at,
-    session_id, sender_type, content, prompt_tokens, completion_tokens
+    session_id, sender_type, content, prompt_tokens, completion_tokens, context_truncated
 ) VALUES
-('cm001', NOW(), NOW(), NULL, 'cs001', 'USER', 'API 응답 형식은 어디 문서를 보면 되나요?', 12, 0),
-('cm002', NOW(), NOW(), NULL, 'cs001', 'AI', 'API 설계 문서 v2.3을 먼저 확인하면 됩니다.', 12, 30);
+('cm001', NOW(), NOW(), NULL, 'cs001', 'USER', 'API 응답 형식은 어디 문서를 보면 되나요?', 12, 0, false),
+('cm002', NOW(), NOW(), NULL, 'cs001', 'AI', 'API 설계 문서 v2.3을 먼저 확인하면 됩니다.', 12, 30, false);
 
 INSERT INTO owner_confirmations (
     id, created_at, updated_at, deleted_at,
