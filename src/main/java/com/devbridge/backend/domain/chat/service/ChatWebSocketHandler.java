@@ -1,5 +1,6 @@
 package com.devbridge.backend.domain.chat.service;
 
+import com.devbridge.backend.domain.chat.dto.ConversationContext;
 import com.devbridge.backend.domain.chat.dto.fastapi.FastApiChatRequest;
 import com.devbridge.backend.domain.chat.dto.fastapi.FastApiDoneEvent;
 import com.devbridge.backend.domain.chat.entity.ChatMessage;
@@ -17,8 +18,6 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
@@ -88,21 +87,16 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
         sendMessage(session, createSearchingMessage());
 
-        List<ChatMessage> history = chatMessageService.getConversationHistory(sessionId);
-        List<FastApiChatRequest.ConversationMessage> conversationHistory = buildConversationHistory(history);
-
-        ChatMessage latestUserMsg = history.getLast();
-        String workspaceId = latestUserMsg.getSession().getWorkspace().getId();
-        String userId = latestUserMsg.getSession().getUser().getId();
+        ConversationContext context = chatMessageService.getConversationContext(sessionId);
 
         String messageId = java.util.UUID.randomUUID().toString();
 
         FastApiChatRequest request = FastApiChatRequest.builder()
                 .sessionId(sessionId)
                 .content(content)
-                .conversationHistory(conversationHistory)
-                .workspaceId(workspaceId)
-                .userId(userId)
+                .conversationHistory(context.getConversationHistory())
+                .workspaceId(context.getWorkspaceId())
+                .userId(context.getUserId())
                 .role(role)
                 .build();
 
@@ -200,18 +194,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    private List<FastApiChatRequest.ConversationMessage> buildConversationHistory(
-            List<ChatMessage> messages) {
-        List<FastApiChatRequest.ConversationMessage> history = new ArrayList<>();
-        for (ChatMessage msg : messages) {
-            String role = "USER".equals(msg.getSenderType()) ? "user" : "assistant";
-            history.add(FastApiChatRequest.ConversationMessage.builder()
-                    .role(role)
-                    .content(msg.getContent())
-                    .build());
-        }
-        return history;
-    }
+
 
     private String createSearchingMessage() {
         try {

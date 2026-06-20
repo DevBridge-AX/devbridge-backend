@@ -16,7 +16,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
+
+import com.devbridge.backend.domain.chat.dto.ConversationContext;
+import com.devbridge.backend.domain.chat.dto.fastapi.FastApiChatRequest;
 
 @Slf4j
 @Service
@@ -81,6 +85,31 @@ public class ChatMessageService {
     @Transactional(readOnly = true)
     public List<ChatMessage> getConversationHistory(String sessionId) {
         return chatMessageRepository.findBySession_IdOrderByCreatedAtAsc(sessionId);
+    }
+
+    @Transactional(readOnly = true)
+    public ConversationContext getConversationContext(String sessionId) {
+        ChatSession session = chatSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("세션을 찾을 수 없습니다: " + sessionId));
+
+        String workspaceId = session.getWorkspace().getId();
+        String userId = session.getUser().getId();
+
+        List<ChatMessage> messages = chatMessageRepository.findBySession_IdOrderByCreatedAtAsc(sessionId);
+        List<FastApiChatRequest.ConversationMessage> history = new ArrayList<>();
+        for (ChatMessage msg : messages) {
+            String role = "USER".equals(msg.getSenderType()) ? "user" : "assistant";
+            history.add(FastApiChatRequest.ConversationMessage.builder()
+                    .role(role)
+                    .content(msg.getContent())
+                    .build());
+        }
+
+        return ConversationContext.builder()
+                .workspaceId(workspaceId)
+                .userId(userId)
+                .conversationHistory(history)
+                .build();
     }
 
     private void saveCitations(ChatMessage message, List<FastApiDoneEvent.CitationData> citations) {
