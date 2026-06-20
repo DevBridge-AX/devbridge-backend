@@ -29,24 +29,24 @@ public interface UserAPI {
     @GetMapping("/{id}")
     ResponseEntity<UserResponse> getUser(@PathVariable("id") String id);
 
-    @Operation(summary = "사용자 프로필 수정")
-    @PatchMapping("/{userId}/profile")
+    @Operation(summary = "사용자 프로필 수정", description = "JWT 인증된 본인의 프로필 정보를 수정합니다.")
+    @PatchMapping("/me/profile")
     ResponseEntity<Void> updateProfile(
-            @PathVariable("userId") String userId,
+            @AuthenticationPrincipal String employeeId,
             @Valid @RequestBody UpdateProfileRequest request
     );
 
-    @Operation(summary = "비밀번호 변경")
-    @PutMapping("/{userId}/password")
+    @Operation(summary = "비밀번호 변경", description = "JWT 인증된 본인의 비밀번호를 변경합니다.")
+    @PutMapping("/me/password")
     ResponseEntity<Void> updatePassword(
-            @PathVariable("userId") String userId,
+            @AuthenticationPrincipal String employeeId,
             @Valid @RequestBody UpdatePasswordRequest request
     );
 
-    @Operation(summary = "현재 비밀번호 검증")
-    @PostMapping("/{userId}/password/verify")
+    @Operation(summary = "현재 비밀번호 검증", description = "JWT 인증된 본인의 현재 비밀번호를 검증합니다.")
+    @PostMapping("/me/password/verify")
     ResponseEntity<Void> verifyPassword(
-            @PathVariable("userId") String userId,
+            @AuthenticationPrincipal String employeeId,
             @Valid @RequestBody VerifyPasswordRequest request
     );
 }
