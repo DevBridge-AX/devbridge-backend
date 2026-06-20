@@ -1,5 +1,8 @@
 package com.devbridge.backend.global.config.websocket;
 
+import com.devbridge.backend.domain.user.entity.JobRole;
+import com.devbridge.backend.domain.user.entity.User;
+import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.global.auth.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +24,7 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final StringRedisTemplate redisTemplate;
+    private final UserRepository userRepository;
 
     @Override
     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
@@ -30,18 +34,20 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
                 .getQueryParams()
                 .getFirst("token");
 
-        if (token == null || !jwtTokenProvider.validateToken(token)) {
-            log.warn("WebSocket 핸드셰이크 거부: 유효하지 않은 토큰");
-            return false;
-        }
-
-        if (isBlacklisted(token)) {
-            log.warn("WebSocket 핸드셰이크 거부: 블랙리스트 토큰");
-            return false;
+        if (token == null || !jwtTokenProvider.validateToken(token) || isBlacklisted(token)) {
+            return true;
         }
 
         String employeeId = jwtTokenProvider.extractEmployeeId(token);
         attributes.put("employeeId", employeeId);
+
+        String jobRole = userRepository.findByEmployeeId(employeeId)
+                .map(User::getJobRole)
+                .map(JobRole::name)
+                .map(String::toLowerCase)
+                .orElse(JobRole.NEWCOMER.name().toLowerCase());
+        attributes.put("jobRole", jobRole);
+
         return true;
     }
 

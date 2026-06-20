@@ -3,9 +3,6 @@ package com.devbridge.backend.domain.chat.service;
 import com.devbridge.backend.domain.chat.dto.fastapi.FastApiChatRequest;
 import com.devbridge.backend.domain.chat.dto.fastapi.FastApiDoneEvent;
 import com.devbridge.backend.domain.chat.entity.ChatMessage;
-import com.devbridge.backend.domain.user.entity.JobRole;
-import com.devbridge.backend.domain.user.entity.User;
-import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.global.config.fastapi.FastApiClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -32,15 +29,23 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private final FastApiClient fastApiClient;
     private final ChatMessageService chatMessageService;
     private final OwnerConfirmationService ownerConfirmationService;
-    private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
 
     private final ConcurrentHashMap<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
 
+    private static final CloseStatus CLOSE_AUTH_FAILED = new CloseStatus(4401, "Authentication required");
+
     @Override
-    public void afterConnectionEstablished(WebSocketSession session) {
+    public void afterConnectionEstablished(WebSocketSession session) throws IOException {
+        if (session.getAttributes().get("employeeId") == null) {
+            String remoteAddr = session.getRemoteAddress() != null
+                    ? session.getRemoteAddress().toString() : "unknown";
+            log.warn("WebSocket 인증 실패로 연결 종료: sessionId={}, remoteAddr={}", session.getId(), remoteAddr);
+            session.close(CLOSE_AUTH_FAILED);
+            return;
+        }
         sessions.put(session.getId(), session);
-        log.info("WebSocket 연결 수립: {}", session.getId());
+        log.info("WebSocket 연결 수립: {} (employeeId={})", session.getId(), session.getAttributes().get("employeeId"));
     }
 
     @Override
@@ -51,6 +56,15 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+        if (session.getAttributes().get("employeeId") == null) {
+            try {
+                session.close(CLOSE_AUTH_FAILED);
+            } catch (IOException e) {
+                log.error("인증 미완료 세션 종료 실패: {}", e.getMessage());
+            }
+            return;
+        }
+
         try {
             JsonNode payload = objectMapper.readTree(message.getPayload());
             String type = payload.path("type").asText();
@@ -68,8 +82,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         String sessionId = payload.path("session_id").asText();
         String content = payload.path("content").asText();
 
-        String employeeId = (String) session.getAttributes().get("employeeId");
-        String role = resolveRole(employeeId);
+        String role = (String) session.getAttributes().get("jobRole");
 
         chatMessageService.saveUserMessage(sessionId, content);
 
@@ -185,16 +198,6 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         } catch (JsonProcessingException e) {
             sendMessage(session, createErrorMessage("AI 서비스 오류가 발생했습니다."));
         }
-    }
-
-    private String resolveRole(String employeeId) {
-        if (employeeId == null) {
-            return JobRole.NEWCOMER.name().toLowerCase();
-        }
-        return userRepository.findByEmployeeId(employeeId)
-                .map(User::getJobRole)
-                .map(jobRole -> jobRole.name().toLowerCase())
-                .orElse(JobRole.NEWCOMER.name().toLowerCase());
     }
 
     private List<FastApiChatRequest.ConversationMessage> buildConversationHistory(
