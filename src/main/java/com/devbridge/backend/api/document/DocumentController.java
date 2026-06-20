@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import com.devbridge.backend.domain.document.service.DocumentAnalysisService;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -23,6 +24,12 @@ public class DocumentController implements DocumentAPI {
 
     private final DocumentService documentService;
     private final DocumentFileService documentFileService;
+    private final DocumentAnalysisService documentAnalysisService;
+
+    @Override
+    public ResponseEntity<DocumentResponse> analyzeDocument(String id) {
+        return ResponseEntity.ok(documentAnalysisService.analyzeDocument(id));
+    }
 
     @Override
     public ResponseEntity<List<DocumentResponse>> getDocumentsByWorkspace(String workspaceId) {
