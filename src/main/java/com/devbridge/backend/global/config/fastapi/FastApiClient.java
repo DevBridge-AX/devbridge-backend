@@ -23,7 +23,7 @@ public class FastApiClient {
 
     public Flux<ServerSentEvent<String>> streamChat(FastApiChatRequest request) {
         return fastApiWebClient.post()
-                .uri("/chat")
+                .uri("/api/chat/")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .retrieve()
@@ -32,7 +32,7 @@ public class FastApiClient {
 
     public Mono<Void> ingestDocument(Map<String, Object> request) {
         return fastApiWebClient.post()
-                .uri("/ingestion/document")
+                .uri("/api/ingestion/document")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .retrieve()
@@ -42,7 +42,7 @@ public class FastApiClient {
 
     public Mono<Void> ingestGit(Map<String, Object> request) {
         return fastApiWebClient.post()
-                .uri("/ingestion/git")
+                .uri("/api/ingestion/git")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .retrieve()
@@ -53,7 +53,7 @@ public class FastApiClient {
     public Mono<UsageSummaryResponse> getUsageSummary(String workspaceId) {
         return fastApiWebClient.get()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/usage/summary")
+                        .path("/api/usage/summary")
                         .queryParam("workspace_id", workspaceId)
                         .build())
                 .retrieve()
