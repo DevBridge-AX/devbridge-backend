@@ -36,7 +36,7 @@ public class FastApiDoneEvent {
         private String sourceType;
 
         @JsonProperty("source_id")
-        private Integer sourceId;
+        private String sourceId;
 
         @JsonProperty("chunk_id")
         private Integer chunkId;

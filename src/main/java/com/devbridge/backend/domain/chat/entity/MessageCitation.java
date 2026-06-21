@@ -25,8 +25,8 @@ public class MessageCitation extends BaseEntity {
     @Column(name = "source_type", nullable = false, length = 20)
     private CitationSourceType sourceType; // document, git_commit, db_schema
 
-    @Column(name = "source_id", nullable = false)
-    private Integer sourceId; // 원본 테이블 PK (FK 제약 없음)
+    @Column(name = "source_id", nullable = false, length = 36)
+    private String sourceId; // 원본 테이블 PK (UUID, FK 제약 없음)
 
     @Column(name = "vector_chunk_id", nullable = false)
     private Integer vectorChunkId; // document_chunks.id (FK 제약 없음)
