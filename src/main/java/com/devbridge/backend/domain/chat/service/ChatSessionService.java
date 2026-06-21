@@ -12,6 +12,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 public class ChatSessionService {
@@ -31,7 +35,7 @@ public class ChatSessionService {
         ChatSession session = ChatSession.builder()
                 .workspace(workspace)
                 .user(user)
-                .sessionTitle(request.getSessionTitle() != null ? request.getSessionTitle() : "새로운 대화")
+                .sessionTitle(request.sessionTitle() != null ? request.sessionTitle() : "새로운 대화")
                 .build();
 
         ChatSession saved = chatSessionRepository.save(session);
@@ -41,6 +45,32 @@ public class ChatSessionService {
                 .workspaceId(workspace.getId())
                 .employeeId(user.getEmployeeId())
                 .sessionTitle(saved.getSessionTitle())
+                .lastMessageAt(saved.getCreatedAt())
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ChatSessionResponse> getSessions(String workspaceId, String employeeId) {
+        List<Object[]> results = chatSessionRepository.findSessionsSortedByLastMessage(workspaceId, employeeId);
+        return results.stream()
+                .map(row -> {
+                    ChatSession session = (ChatSession) row[0];
+                    LocalDateTime lastMessageAt = (LocalDateTime) row[1];
+                    return ChatSessionResponse.builder()
+                            .id(session.getId())
+                            .workspaceId(session.getWorkspace().getId())
+                            .employeeId(session.getUser().getEmployeeId())
+                            .sessionTitle(session.getSessionTitle())
+                            .lastMessageAt(lastMessageAt)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void deleteSession(String sessionId) {
+        ChatSession session = chatSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("세션을 찾을 수 없습니다: " + sessionId));
+        chatSessionRepository.delete(session);
     }
 }

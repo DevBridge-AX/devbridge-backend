@@ -1,15 +1,11 @@
 package com.devbridge.backend.domain.chat.dto;
 
-import lombok.AllArgsConstructor;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 
-@Getter
-@NoArgsConstructor
-@AllArgsConstructor
 @Builder
-public class SendMessageRequest {
-    private String senderType;
-    private String content;
-}
+public record SendMessageRequest(
+    String senderType,
+    @NotBlank(message = "메시지 내용은 필수입니다.")
+    String content
+) {}

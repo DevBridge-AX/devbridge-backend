@@ -10,6 +10,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @Tag(name = "Chat", description = "AI 채팅방 및 메시지 API 명세")
 @RequestMapping("/api/chats")
 public interface ChatAPI {
@@ -26,4 +28,20 @@ public interface ChatAPI {
     ResponseEntity<ChatMessageResponse> sendMessage(
             @PathVariable("sessionId") String sessionId,
             @RequestBody SendMessageRequest request);
+
+    @Operation(summary = "채팅방 목록 조회", description = "최근 메시지 시간 기준 내림차순으로 채팅방 목록을 조회합니다.")
+    @GetMapping("/sessions")
+    ResponseEntity<List<ChatSessionResponse>> getChatSessions(
+            @RequestHeader("X-Workspace-Id") String workspaceId,
+            @AuthenticationPrincipal String employeeId);
+
+    @Operation(summary = "채팅 메시지 목록 조회", description = "특정 채팅방의 메시지 내역을 조회합니다.")
+    @GetMapping("/sessions/{sessionId}/messages")
+    ResponseEntity<List<ChatMessageResponse>> getChatMessages(
+            @PathVariable("sessionId") String sessionId);
+
+    @Operation(summary = "채팅방 삭제", description = "특정 채팅방을 삭제합니다.")
+    @DeleteMapping("/sessions/{sessionId}")
+    ResponseEntity<Void> deleteChatSession(
+            @PathVariable("sessionId") String sessionId);
 }
