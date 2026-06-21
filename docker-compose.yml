@@ -67,6 +67,8 @@ services:
     container_name: devbridge-ai-engine
     ports:
       - "8000:8000"
+    volumes:
+      - ./.docker-data/vector_store:/app/data/vector_store
     env_file:
       - ../devbridge-ai-engine/.env
     environment:
