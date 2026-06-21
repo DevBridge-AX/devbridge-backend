@@ -47,7 +47,7 @@ public class ChatMessageService {
     }
 
     @Transactional
-    public ChatMessage saveAiMessage(String sessionId, String messageId,
+    public ChatMessage saveAiMessage(String sessionId,
                                      String fullContent, FastApiDoneEvent doneEvent) {
         ChatSession session = chatSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("세션을 찾을 수 없습니다: " + sessionId));
@@ -59,7 +59,6 @@ public class ChatMessageService {
         BigDecimal estimatedCost = calculateEstimatedCost(main, rewrite);
 
         ChatMessage aiMessage = ChatMessage.builder()
-                .id(messageId)
                 .session(session)
                 .senderType("AI")
                 .content(fullContent)
