@@ -213,11 +213,11 @@ class MeetingIntegrationTest {
                 .andExpect(jsonPath("$.agenda").value("지난 스프린트 API 설계 리뷰 및 차기 계획"))
                 .andExpect(jsonPath("$.location").value("회의실 B"));
 
-        // Step 9. 회의 정보 수정으로 인해 다른 참석자(EMP004)에게 알림이 전달되었는지 확인 (GET /api/notifications/users/{userId})
-        mockMvc.perform(get("/api/notifications/users/" + user2Id)
+        // Step 9. 회의 정보 수정으로 인해 다른 참석자(EMP004)에게 알림이 전달되었는지 확인 (GET /api/notifications/users/{employeeId})
+        mockMvc.perform(get("/api/notifications/users/EMP004")
                         .with(authentication(getMockAuthentication("EMP004"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].type").value("MEETING_UPDATED"))
-                .andExpect(jsonPath("$[0].referenceId").value(meetingId));
+                .andExpect(jsonPath("$.content[0].type").value("MEETING_UPDATED"))
+                .andExpect(jsonPath("$.content[0].referenceId").value(meetingId));
     }
 }

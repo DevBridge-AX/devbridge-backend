@@ -8,11 +8,12 @@ import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -56,10 +57,11 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
-    public List<NotificationResponse> getNotifications(String userId) {
-        return notificationRepository.findByUser_IdOrderByCreatedAtDesc(userId).stream()
-                .map(NotificationResponse::from)
-                .toList();
+    public Page<NotificationResponse> getNotifications(String employeeId, Boolean isRead, Pageable pageable) {
+        Page<Notification> page = isRead != null
+                ? notificationRepository.findByUser_EmployeeIdAndIsReadAndDeletedAtIsNull(employeeId, isRead, pageable)
+                : notificationRepository.findByUser_EmployeeIdAndDeletedAtIsNull(employeeId, pageable);
+        return page.map(NotificationResponse::from);
     }
 
     @Transactional

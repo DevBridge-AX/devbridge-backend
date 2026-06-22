@@ -27,6 +27,22 @@ public class OwnerConfirmationService {
     private final KnowledgeDocumentRepository knowledgeDocumentRepository;
     private final NotificationService notificationService;
 
+    /**
+     * [보존 메서드 - 자동 트리거 재사용 용도]
+     *
+     * RAG 신뢰도 부족 시 Git 커밋 이력 기반으로 추천된 담당자(suggestedOwnerId)에게
+     * 자동으로 OwnerConfirmation을 생성하고 알림을 전송하는 메서드.
+     *
+     * 현재는 사용자가 명시적으로 담당자를 선택하는 방식(createOwnerConfirmationFromChat)으로
+     * 전환되어 직접 호출되는 곳이 없으나, 아래 케이스에서 재사용 가능:
+     * - RAG 부족 후 일정 시간(예: 48시간) 내 사용자 미응답 시 자동 배정
+     * - 시스템이 자동으로 담당자를 지정해야 하는 배치/스케줄러 케이스
+     *
+     * 재사용 시 참고:
+     * - suggestedOwnerId: FastAPI done 이벤트의 getSuggestedOwnerId() (Git author UUID)
+     * - 호출 전 동일 messageId로 이미 PENDING 상태 OwnerConfirmation이 있는지 중복 체크 필요
+     *   (createOwnerConfirmationFromChat의 existsByQuestionMessage_IdAndStatus 참고)
+     */
     @Transactional
     public Optional<String> triggerOwnerConfirmation(String messageId, String suggestedOwnerId) {
         User owner = userRepository.findById(suggestedOwnerId).orElse(null);

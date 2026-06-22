@@ -12,12 +12,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -89,30 +94,60 @@ class NotificationServiceTest {
     }
 
     @Test
-    void getNotifications_사용자의알림목록을최신순으로반환한다() {
+    void getNotifications_isReadFalse시_미읽은알림만반환된다() {
         User recipient = createTestUser();
-        Notification notification = Notification.builder()
-                .id("notification-1")
-                .user(recipient)
-                .type("MEETING_UPDATED")
-                .referenceId("meeting-1")
-                .title("회의 일정이 변경되었습니다")
-                .message("상세 정보가 변경되었습니다.")
-                .build();
+        Notification unread = Notification.builder()
+                .id("n-1").user(recipient).type("MEETING_INVITED")
+                .referenceId("m-1").title("회의 초대").message("초대됨").build();
 
-        when(notificationRepository.findByUser_IdOrderByCreatedAtDesc("user-1"))
-                .thenReturn(List.of(notification));
+        PageRequest pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
+        when(notificationRepository.findByUser_EmployeeIdAndIsReadAndDeletedAtIsNull("EMP002", false, pageable))
+                .thenReturn(new PageImpl<>(List.of(unread), pageable, 1));
 
-        List<NotificationResponse> responses = notificationService.getNotifications("user-1");
+        Page<NotificationResponse> result = notificationService.getNotifications("EMP002", false, pageable);
 
-        assertThat(responses).hasSize(1);
-        assertThat(responses.get(0).getId()).isEqualTo("notification-1");
-        assertThat(responses.get(0).getUserId()).isEqualTo("user-1");
-        assertThat(responses.get(0).getType()).isEqualTo("MEETING_UPDATED");
-        assertThat(responses.get(0).getReferenceId()).isEqualTo("meeting-1");
-        assertThat(responses.get(0).getTitle()).isEqualTo("회의 일정이 변경되었습니다");
-        assertThat(responses.get(0).getMessage()).isEqualTo("상세 정보가 변경되었습니다.");
-        assertThat(responses.get(0).getIsRead()).isFalse();
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getIsRead()).isFalse();
+        verify(notificationRepository).findByUser_EmployeeIdAndIsReadAndDeletedAtIsNull("EMP002", false, pageable);
+    }
+
+    @Test
+    void getNotifications_isReadNull시_전체알림이반환된다() {
+        User recipient = createTestUser();
+        Notification n1 = Notification.builder()
+                .id("n-1").user(recipient).type("MEETING_INVITED")
+                .referenceId("m-1").title("초대").message("초대됨").build();
+        Notification n2 = Notification.builder()
+                .id("n-2").user(recipient).type("MEETING_UPDATED")
+                .referenceId("m-2").title("변경").message("변경됨").build();
+
+        PageRequest pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
+        when(notificationRepository.findByUser_EmployeeIdAndDeletedAtIsNull("EMP002", pageable))
+                .thenReturn(new PageImpl<>(List.of(n1, n2), pageable, 2));
+
+        Page<NotificationResponse> result = notificationService.getNotifications("EMP002", null, pageable);
+
+        assertThat(result.getContent()).hasSize(2);
+        verify(notificationRepository).findByUser_EmployeeIdAndDeletedAtIsNull("EMP002", pageable);
+        verify(notificationRepository, never()).findByUser_EmployeeIdAndIsReadAndDeletedAtIsNull(any(), any(), any());
+    }
+
+    @Test
+    void getNotifications_페이징이적용된다() {
+        User recipient = createTestUser();
+        Notification n1 = Notification.builder()
+                .id("n-1").user(recipient).type("MEETING_INVITED")
+                .referenceId("m-1").title("초대").message("초대됨").build();
+
+        PageRequest pageable = PageRequest.of(1, 5, Sort.by(Sort.Direction.DESC, "createdAt"));
+        when(notificationRepository.findByUser_EmployeeIdAndDeletedAtIsNull("EMP002", pageable))
+                .thenReturn(new PageImpl<>(List.of(n1), pageable, 6));
+
+        Page<NotificationResponse> result = notificationService.getNotifications("EMP002", null, pageable);
+
+        assertThat(result.getNumber()).isEqualTo(1);
+        assertThat(result.getSize()).isEqualTo(5);
+        assertThat(result.getTotalElements()).isEqualTo(6);
     }
 
     @Test
