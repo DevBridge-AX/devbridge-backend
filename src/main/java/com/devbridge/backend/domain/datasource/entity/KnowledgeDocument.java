@@ -2,6 +2,7 @@ package com.devbridge.backend.domain.datasource.entity;
 
 import com.devbridge.backend.domain.task.entity.Task;
 import com.devbridge.backend.domain.user.entity.User;
+import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -11,7 +12,9 @@ import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "KNOWLEDGE_DOCUMENTS")
+@Table(name = "KNOWLEDGE_DOCUMENTS", indexes = {
+        @Index(name = "idx_knowledge_documents_workspace_id", columnList = "workspace_id")
+})
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -28,6 +31,10 @@ public class KnowledgeDocument extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "source_id", nullable = false)
     private DataSource dataSource;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "workspace_id", nullable = false)
+    private Workspace workspace;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "uploaded_by")

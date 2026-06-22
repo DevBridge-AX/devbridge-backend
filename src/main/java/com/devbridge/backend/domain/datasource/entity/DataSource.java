@@ -35,4 +35,8 @@ public class DataSource extends BaseEntity {
     @Builder.Default
     @Column(name = "status", nullable = false, length = 50)
     private String status = "CONNECTED"; // 연동 상태
+
+    // secret, token, password 등 민감 정보는 저장하지 않는다
+    @Column(name = "config", columnDefinition = "JSON")
+    private String config; // 연동 설정 (비민감 정보만)
 }
