@@ -1,5 +1,9 @@
 package com.devbridge.backend.domain.chat.service;
 
+import com.devbridge.backend.domain.chat.entity.ChatMessage;
+import com.devbridge.backend.domain.chat.entity.OwnerConfirmation;
+import com.devbridge.backend.domain.chat.repository.ChatMessageRepository;
+import com.devbridge.backend.domain.chat.repository.OwnerConfirmationRepository;
 import com.devbridge.backend.domain.notification.service.NotificationService;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
@@ -16,6 +20,8 @@ import java.util.Optional;
 public class OwnerConfirmationService {
 
     private final UserRepository userRepository;
+    private final ChatMessageRepository chatMessageRepository;
+    private final OwnerConfirmationRepository ownerConfirmationRepository;
     private final NotificationService notificationService;
 
     @Transactional
@@ -26,7 +32,17 @@ public class OwnerConfirmationService {
             return Optional.empty();
         }
 
-        notificationService.createNotification(owner, "OWNER_CONFIRMATION", messageId,
+        ChatMessage chatMessage = chatMessageRepository.findById(messageId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 채팅 메시지가 존재하지 않습니다: " + messageId));
+
+        OwnerConfirmation ownerConfirmation = OwnerConfirmation.builder()
+                .workspace(chatMessage.getSession().getWorkspace())
+                .questionMessage(chatMessage)
+                .assignedOwner(owner)
+                .build();
+        ownerConfirmationRepository.save(ownerConfirmation);
+
+        notificationService.createNotification(owner, "OWNER_CONFIRMATION", ownerConfirmation.getId(),
                 "담당자 확인 요청",
                 "문서 근거가 부족한 질문이 배정되었습니다. 확인 후 답변해 주세요.");
 
