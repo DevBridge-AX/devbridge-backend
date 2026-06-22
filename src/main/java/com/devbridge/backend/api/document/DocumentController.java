@@ -1,5 +1,7 @@
 package com.devbridge.backend.api.document;
 
+import com.devbridge.backend.domain.chat.dto.CreateDocumentOwnerConfirmationRequest;
+import com.devbridge.backend.domain.chat.service.OwnerConfirmationService;
 import com.devbridge.backend.domain.datasource.dto.DocumentResponse;
 import com.devbridge.backend.domain.datasource.entity.KnowledgeDocument;
 import com.devbridge.backend.domain.datasource.service.DocumentService;
@@ -25,6 +27,7 @@ public class DocumentController implements DocumentAPI {
     private final DocumentService documentService;
     private final DocumentFileService documentFileService;
     private final DocumentAnalysisService documentAnalysisService;
+    private final OwnerConfirmationService ownerConfirmationService;
 
     @Override
     public ResponseEntity<DocumentResponse> analyzeDocument(String id) {
@@ -123,6 +126,14 @@ public class DocumentController implements DocumentAPI {
     public ResponseEntity<Void> deleteDocument(String id) {
         documentFileService.deleteDocument(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    public ResponseEntity<Void> createDocumentOwnerConfirmation(String documentId, String employeeId,
+                                                                CreateDocumentOwnerConfirmationRequest request) {
+        ownerConfirmationService.createOwnerConfirmationFromDocument(
+                documentId, request.questionContent(), employeeId);
+        return ResponseEntity.ok().build();
     }
 
     private MediaType resolveMediaType(String contentType) {

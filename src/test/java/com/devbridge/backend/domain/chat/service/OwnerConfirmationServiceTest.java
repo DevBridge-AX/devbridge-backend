@@ -5,6 +5,9 @@ import com.devbridge.backend.domain.chat.entity.ChatSession;
 import com.devbridge.backend.domain.chat.entity.OwnerConfirmation;
 import com.devbridge.backend.domain.chat.repository.ChatMessageRepository;
 import com.devbridge.backend.domain.chat.repository.OwnerConfirmationRepository;
+import com.devbridge.backend.domain.datasource.entity.DataSource;
+import com.devbridge.backend.domain.datasource.entity.KnowledgeDocument;
+import com.devbridge.backend.domain.datasource.repository.KnowledgeDocumentRepository;
 import com.devbridge.backend.domain.notification.service.NotificationService;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
@@ -37,6 +40,9 @@ class OwnerConfirmationServiceTest {
     private OwnerConfirmationRepository ownerConfirmationRepository;
 
     @Mock
+    private KnowledgeDocumentRepository knowledgeDocumentRepository;
+
+    @Mock
     private NotificationService notificationService;
 
     private OwnerConfirmationService ownerConfirmationService;
@@ -44,7 +50,8 @@ class OwnerConfirmationServiceTest {
     @BeforeEach
     void setUp() {
         ownerConfirmationService = new OwnerConfirmationService(
-                userRepository, chatMessageRepository, ownerConfirmationRepository, notificationService);
+                userRepository, chatMessageRepository, ownerConfirmationRepository,
+                knowledgeDocumentRepository, notificationService);
     }
 
     @Test
@@ -178,6 +185,89 @@ class OwnerConfirmationServiceTest {
 
         verify(ownerConfirmationRepository, never()).save(any());
         verify(notificationService, never()).createNotification(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void createOwnerConfirmationFromDocument_정상케이스_저장과알림이수행되고relatedDocument가연결된다() {
+        User uploader = User.builder()
+                .id("uploader-1").employeeId("EMP020").name("박등록")
+                .systemRole("USER").authProvider("LOCAL").build();
+        User requester = User.builder()
+                .id("requester-1").employeeId("EMP030").name("이요청")
+                .systemRole("USER").authProvider("LOCAL").build();
+
+        Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
+        DataSource dataSource = DataSource.builder()
+                .id("ds-1").workspace(workspace).sourceType("DOC").sourceName("테스트 소스").build();
+        KnowledgeDocument document = KnowledgeDocument.builder()
+                .id("doc-1").dataSource(dataSource).uploadedBy(uploader).title("설계 문서").build();
+
+        when(knowledgeDocumentRepository.findById("doc-1")).thenReturn(Optional.of(document));
+        when(userRepository.findByEmployeeId("EMP030")).thenReturn(Optional.of(requester));
+        when(ownerConfirmationRepository.save(any(OwnerConfirmation.class))).thenAnswer(invocation -> {
+            OwnerConfirmation oc = invocation.getArgument(0);
+            org.springframework.test.util.ReflectionTestUtils.setField(oc, "id", "oc-doc-1");
+            return oc;
+        });
+
+        ownerConfirmationService.createOwnerConfirmationFromDocument("doc-1", "이 문서에 대해 질문이 있습니다", "EMP030");
+
+        ArgumentCaptor<OwnerConfirmation> captor = ArgumentCaptor.forClass(OwnerConfirmation.class);
+        verify(ownerConfirmationRepository).save(captor.capture());
+
+        OwnerConfirmation saved = captor.getValue();
+        assertThat(saved.getStatus()).isEqualTo("PENDING");
+        assertThat(saved.getRelatedDocument()).isEqualTo(document);
+        assertThat(saved.getQuestionContent()).isEqualTo("이 문서에 대해 질문이 있습니다");
+        assertThat(saved.getAssignedOwner()).isEqualTo(uploader);
+        assertThat(saved.getWorkspace()).isEqualTo(workspace);
+        assertThat(saved.getQuestionMessage()).isNull();
+
+        verify(notificationService).createNotification(
+                eq(uploader), eq("OWNER_CONFIRMATION"), eq("oc-doc-1"),
+                eq("문서 관련 질문이 도착했습니다"),
+                eq("이요청님이 [설계 문서] 문서에 대해 질문을 남겼습니다."));
+    }
+
+    @Test
+    void createOwnerConfirmationFromDocument_uploadedBy가null이면_IllegalArgumentException이발생한다() {
+        Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
+        DataSource dataSource = DataSource.builder()
+                .id("ds-1").workspace(workspace).sourceType("DOC").sourceName("테스트 소스").build();
+        KnowledgeDocument document = KnowledgeDocument.builder()
+                .id("doc-1").dataSource(dataSource).uploadedBy(null).title("설계 문서").build();
+
+        when(knowledgeDocumentRepository.findById("doc-1")).thenReturn(Optional.of(document));
+
+        assertThatThrownBy(() -> ownerConfirmationService.createOwnerConfirmationFromDocument(
+                "doc-1", "질문입니다", "EMP030"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("등록자 정보가 없는 문서입니다. 담당자를 지정할 수 없습니다.");
+
+        verify(ownerConfirmationRepository, never()).save(any());
+    }
+
+    @Test
+    void createOwnerConfirmationFromDocument_본인문서요청시_IllegalArgumentException이발생한다() {
+        User uploader = User.builder()
+                .id("same-user").employeeId("EMP020").name("박등록")
+                .systemRole("USER").authProvider("LOCAL").build();
+
+        Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
+        DataSource dataSource = DataSource.builder()
+                .id("ds-1").workspace(workspace).sourceType("DOC").sourceName("테스트 소스").build();
+        KnowledgeDocument document = KnowledgeDocument.builder()
+                .id("doc-1").dataSource(dataSource).uploadedBy(uploader).title("설계 문서").build();
+
+        when(knowledgeDocumentRepository.findById("doc-1")).thenReturn(Optional.of(document));
+        when(userRepository.findByEmployeeId("EMP020")).thenReturn(Optional.of(uploader));
+
+        assertThatThrownBy(() -> ownerConfirmationService.createOwnerConfirmationFromDocument(
+                "doc-1", "질문입니다", "EMP020"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("본인이 등록한 문서입니다.");
+
+        verify(ownerConfirmationRepository, never()).save(any());
     }
 
     @Test

@@ -4,6 +4,8 @@ import com.devbridge.backend.domain.chat.entity.ChatMessage;
 import com.devbridge.backend.domain.chat.entity.OwnerConfirmation;
 import com.devbridge.backend.domain.chat.repository.ChatMessageRepository;
 import com.devbridge.backend.domain.chat.repository.OwnerConfirmationRepository;
+import com.devbridge.backend.domain.datasource.entity.KnowledgeDocument;
+import com.devbridge.backend.domain.datasource.repository.KnowledgeDocumentRepository;
 import com.devbridge.backend.domain.notification.service.NotificationService;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
@@ -22,6 +24,7 @@ public class OwnerConfirmationService {
     private final UserRepository userRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final OwnerConfirmationRepository ownerConfirmationRepository;
+    private final KnowledgeDocumentRepository knowledgeDocumentRepository;
     private final NotificationService notificationService;
 
     @Transactional
@@ -71,5 +74,36 @@ public class OwnerConfirmationService {
         notificationService.createNotification(owner, "OWNER_CONFIRMATION", ownerConfirmation.getId(),
                 "담당자 확인 요청",
                 "채팅 질문에 대한 확인이 요청되었습니다. 답변해 주세요.");
+    }
+
+    @Transactional
+    public void createOwnerConfirmationFromDocument(String documentId, String questionContent,
+                                                    String requesterEmployeeId) {
+        KnowledgeDocument document = knowledgeDocumentRepository.findById(documentId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 문서가 존재하지 않습니다: " + documentId));
+
+        User uploadedBy = document.getUploadedBy();
+        if (uploadedBy == null) {
+            throw new IllegalArgumentException("등록자 정보가 없는 문서입니다. 담당자를 지정할 수 없습니다.");
+        }
+
+        User requester = userRepository.findByEmployeeId(requesterEmployeeId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + requesterEmployeeId));
+
+        if (uploadedBy.getId().equals(requester.getId())) {
+            throw new IllegalArgumentException("본인이 등록한 문서입니다.");
+        }
+
+        OwnerConfirmation ownerConfirmation = OwnerConfirmation.builder()
+                .workspace(document.getDataSource().getWorkspace())
+                .relatedDocument(document)
+                .questionContent(questionContent)
+                .assignedOwner(uploadedBy)
+                .build();
+        ownerConfirmationRepository.save(ownerConfirmation);
+
+        notificationService.createNotification(uploadedBy, "OWNER_CONFIRMATION", ownerConfirmation.getId(),
+                "문서 관련 질문이 도착했습니다",
+                requester.getName() + "님이 [" + document.getTitle() + "] 문서에 대해 질문을 남겼습니다.");
     }
 }
