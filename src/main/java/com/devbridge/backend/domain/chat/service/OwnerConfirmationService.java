@@ -26,7 +26,9 @@ public class OwnerConfirmationService {
             return Optional.empty();
         }
 
-        notificationService.createNotification(owner, "OWNER_CONFIRMATION", messageId);
+        notificationService.createNotification(owner, "OWNER_CONFIRMATION", messageId,
+                "담당자 확인 요청",
+                "문서 근거가 부족한 질문이 배정되었습니다. 확인 후 답변해 주세요.");
 
         return Optional.of(owner.getName());
     }

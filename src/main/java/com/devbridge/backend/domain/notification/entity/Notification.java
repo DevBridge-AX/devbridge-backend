@@ -28,6 +28,12 @@ public class Notification extends BaseEntity {
     @Column(name = "reference_id", length = 36)
     private String referenceId; // 클릭 시 이동할 타겟 ID
 
+    @Column(name = "title", length = 255)
+    private String title; // 알림 제목
+
+    @Column(name = "message", columnDefinition = "TEXT")
+    private String message; // 알림 본문
+
     @Builder.Default
     @Column(name = "is_read")
     private Boolean isRead = false; // 읽음 여부

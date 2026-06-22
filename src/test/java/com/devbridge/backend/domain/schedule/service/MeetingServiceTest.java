@@ -417,7 +417,8 @@ class MeetingServiceTest {
         assertThat(response.agenda()).isEqualTo("아젠다");
         assertThat(response.location()).isEqualTo("회의실 A");
 
-        verify(notificationService).createNotification(any(User.class), eq("MEETING_UPDATED"), eq("meeting-1"));
+        verify(notificationService).createNotification(any(User.class), eq("MEETING_UPDATED"), eq("meeting-1"),
+                eq("회의 일정이 변경되었습니다"), eq("참여 중인 회의의 상세 정보가 변경되었습니다."));
     }
 
     @Test
@@ -446,6 +447,6 @@ class MeetingServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("회의 주최자만 회의 정보를 수정할 수 있습니다.");
 
-        verify(notificationService, never()).createNotification(any(), any(), any());
+        verify(notificationService, never()).createNotification(any(), any(), any(), any(), any());
     }
 }

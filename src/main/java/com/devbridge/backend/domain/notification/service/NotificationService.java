@@ -4,26 +4,55 @@ import com.devbridge.backend.domain.notification.dto.NotificationResponse;
 import com.devbridge.backend.domain.notification.entity.Notification;
 import com.devbridge.backend.domain.notification.repository.NotificationRepository;
 import com.devbridge.backend.domain.user.entity.User;
+import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final WebSocketSessionRegistry webSocketSessionRegistry;
+    private final ObjectMapper objectMapper;
 
     @Transactional
-    public void createNotification(User recipient, String type, String referenceId) {
+    public void createNotification(User recipient, String type, String referenceId,
+                                   String title, String message) {
         Notification notification = Notification.builder()
                 .user(recipient)
                 .type(type)
                 .referenceId(referenceId)
+                .title(title)
+                .message(message)
                 .build();
         notificationRepository.save(notification);
+
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("type", "notification");
+            payload.put("notification_type", type);
+            payload.put("notification_id", notification.getId());
+            payload.put("reference_id", referenceId);
+            payload.put("title", title);
+            payload.put("message", message);
+            payload.put("created_at", notification.getCreatedAt() != null
+                    ? notification.getCreatedAt().toString() : null);
+
+            webSocketSessionRegistry.sendToUser(
+                    recipient.getEmployeeId(), objectMapper.writeValueAsString(payload));
+        } catch (Exception e) {
+            log.warn("알림 WebSocket push 실패: recipientEmployeeId={}, type={}, error={}",
+                    recipient.getEmployeeId(), type, e.getMessage());
+        }
     }
 
     @Transactional(readOnly = true)

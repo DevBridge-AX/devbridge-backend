@@ -188,7 +188,9 @@ public class MeetingService {
                 .filter(p -> !p.getEmployeeId().equals(actorEmployeeId))
                 .forEach(p -> userRepository.findByEmployeeId(p.getEmployeeId())
                         .ifPresent(recipient -> notificationService.createNotification(
-                                recipient, NOTIFICATION_TYPE_MEETING_UPDATED, meetingId)));
+                                recipient, NOTIFICATION_TYPE_MEETING_UPDATED, meetingId,
+                                "회의 일정이 변경되었습니다",
+                                "참여 중인 회의의 상세 정보가 변경되었습니다.")));
     }
 
     private MeetingDetailResponse buildDetailResponse(Meeting meeting) {
