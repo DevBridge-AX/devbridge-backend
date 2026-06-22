@@ -27,7 +27,7 @@ public class NotificationService {
 
     @Transactional
     public void createNotification(User recipient, String type, String referenceId,
-                                   String title, String message) {
+                                   String title, String message, String workspaceId) {
         Notification notification = Notification.builder()
                 .user(recipient)
                 .type(type)
@@ -45,6 +45,7 @@ public class NotificationService {
             payload.put("reference_id", referenceId);
             payload.put("title", title);
             payload.put("message", message);
+            payload.put("workspace_id", workspaceId);
             payload.put("created_at", notification.getCreatedAt() != null
                     ? notification.getCreatedAt().toString() : null);
 

@@ -119,7 +119,8 @@ class OwnerConfirmationServiceTest {
         verify(notificationService).createNotification(
                 eq(owner), eq("OWNER_CONFIRMATION"), eq("oc-generated-id"),
                 eq("담당자 확인 요청"),
-                eq("문서 근거가 부족한 질문이 배정되었습니다. 확인 후 답변해 주세요."));
+                eq("문서 근거가 부족한 질문이 배정되었습니다. 확인 후 답변해 주세요."),
+                eq("ws-1"));
     }
 
     @Test
@@ -130,7 +131,7 @@ class OwnerConfirmationServiceTest {
 
         assertThat(result).isEmpty();
         verify(ownerConfirmationRepository, never()).save(any());
-        verify(notificationService, never()).createNotification(any(), any(), any(), any(), any());
+        verify(notificationService, never()).createNotification(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -171,7 +172,8 @@ class OwnerConfirmationServiceTest {
         verify(notificationService).createNotification(
                 eq(owner), eq("OWNER_CONFIRMATION"), eq("oc-new"),
                 eq("담당자 확인 요청"),
-                eq("채팅 질문에 대한 확인이 요청되었습니다. 답변해 주세요."));
+                eq("채팅 질문에 대한 확인이 요청되었습니다. 답변해 주세요."),
+                eq("ws-1"));
     }
 
     @Test
@@ -184,7 +186,7 @@ class OwnerConfirmationServiceTest {
                 .hasMessage("이미 담당자가 배정된 질문입니다.");
 
         verify(ownerConfirmationRepository, never()).save(any());
-        verify(notificationService, never()).createNotification(any(), any(), any(), any(), any());
+        verify(notificationService, never()).createNotification(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -226,7 +228,8 @@ class OwnerConfirmationServiceTest {
         verify(notificationService).createNotification(
                 eq(uploader), eq("OWNER_CONFIRMATION"), eq("oc-doc-1"),
                 eq("문서 관련 질문이 도착했습니다"),
-                eq("이요청님이 [설계 문서] 문서에 대해 질문을 남겼습니다."));
+                eq("이요청님이 [설계 문서] 문서에 대해 질문을 남겼습니다."),
+                eq("ws-1"));
     }
 
     @Test
@@ -281,6 +284,6 @@ class OwnerConfirmationServiceTest {
                 .hasMessage("해당 사용자가 존재하지 않습니다: unknown-owner");
 
         verify(ownerConfirmationRepository, never()).save(any());
-        verify(notificationService, never()).createNotification(any(), any(), any(), any(), any());
+        verify(notificationService, never()).createNotification(any(), any(), any(), any(), any(), any());
     }
 }

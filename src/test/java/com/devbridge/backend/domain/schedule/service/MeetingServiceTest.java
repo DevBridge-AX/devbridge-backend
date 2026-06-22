@@ -379,8 +379,10 @@ class MeetingServiceTest {
 
     @Test
     void updateMeeting_Host가요청하면_회의정보가수정되고_다른참석자에게알림이전송된다() {
+        Workspace ws = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
         Meeting meeting = Meeting.builder()
                 .id("meeting-1")
+                .workspace(ws)
                 .title("주간 회의")
                 .durationMinutes(60)
                 .status(MeetingStatus.GATHERING)
@@ -422,7 +424,7 @@ class MeetingServiceTest {
         assertThat(response.location()).isEqualTo("회의실 A");
 
         verify(notificationService).createNotification(any(User.class), eq("MEETING_UPDATED"), eq("meeting-1"),
-                eq("회의 일정이 변경되었습니다"), eq("참여 중인 회의의 상세 정보가 변경되었습니다."));
+                eq("회의 일정이 변경되었습니다"), eq("참여 중인 회의의 상세 정보가 변경되었습니다."), any());
     }
 
     @Test
@@ -451,7 +453,7 @@ class MeetingServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("회의 주최자만 회의 정보를 수정할 수 있습니다.");
 
-        verify(notificationService, never()).createNotification(any(), any(), any(), any(), any());
+        verify(notificationService, never()).createNotification(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -488,7 +490,7 @@ class MeetingServiceTest {
 
         verify(notificationService, times(2)).createNotification(
                 any(User.class), eq("MEETING_INVITED"), eq("meeting-new"),
-                eq("회의에 초대되었습니다"), eq("새 회의에 참석자로 초대되었습니다."));
+                eq("회의에 초대되었습니다"), eq("새 회의에 참석자로 초대되었습니다."), eq("ws-1"));
     }
 
     @Test
@@ -515,6 +517,6 @@ class MeetingServiceTest {
 
         meetingService.createMeeting("ws-1", "EMP001", request);
 
-        verify(notificationService, never()).createNotification(any(), any(), any(), any(), any());
+        verify(notificationService, never()).createNotification(any(), any(), any(), any(), any(), any());
     }
 }

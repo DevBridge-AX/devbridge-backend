@@ -18,6 +18,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,7 +53,8 @@ class NotificationServiceTest {
 
         notificationService.createNotification(
                 recipient, "MEETING_UPDATED", "meeting-1",
-                "회의 일정이 변경되었습니다", "참여 중인 회의의 상세 정보가 변경되었습니다.");
+                "회의 일정이 변경되었습니다", "참여 중인 회의의 상세 정보가 변경되었습니다.",
+                "workspace-1");
 
         ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
         verify(notificationRepository).save(captor.capture());
@@ -70,7 +72,8 @@ class NotificationServiceTest {
 
         notificationService.createNotification(
                 recipient, "MEETING_UPDATED", "meeting-1",
-                "회의 일정이 변경되었습니다", "참여 중인 회의의 상세 정보가 변경되었습니다.");
+                "회의 일정이 변경되었습니다", "참여 중인 회의의 상세 정보가 변경되었습니다.",
+                "workspace-1");
 
         ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
         verify(notificationRepository).save(captor.capture());
@@ -88,9 +91,29 @@ class NotificationServiceTest {
 
         notificationService.createNotification(
                 recipient, "MEETING_UPDATED", "meeting-1",
-                "회의 일정이 변경되었습니다", "상세 정보가 변경되었습니다.");
+                "회의 일정이 변경되었습니다", "상세 정보가 변경되었습니다.",
+                "workspace-1");
 
         verify(notificationRepository).save(any(Notification.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void createNotification_WebSocketPayload에workspaceId가포함된다() throws Exception {
+        User recipient = createTestUser();
+
+        notificationService.createNotification(
+                recipient, "MEETING_INVITED", "meeting-1",
+                "회의에 초대되었습니다", "새 회의에 참석자로 초대되었습니다.",
+                "workspace-123");
+
+        ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
+        verify(webSocketSessionRegistry).sendToUser(eq("EMP002"), payloadCaptor.capture());
+
+        Map<String, Object> payload = objectMapper.readValue(payloadCaptor.getValue(), Map.class);
+        assertThat(payload).containsEntry("workspace_id", "workspace-123");
+        assertThat(payload).containsEntry("type", "notification");
+        assertThat(payload).containsEntry("notification_type", "MEETING_INVITED");
     }
 
     @Test

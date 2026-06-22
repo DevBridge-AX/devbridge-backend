@@ -63,7 +63,8 @@ public class OwnerConfirmationService {
 
         notificationService.createNotification(owner, "OWNER_CONFIRMATION", ownerConfirmation.getId(),
                 "담당자 확인 요청",
-                "문서 근거가 부족한 질문이 배정되었습니다. 확인 후 답변해 주세요.");
+                "문서 근거가 부족한 질문이 배정되었습니다. 확인 후 답변해 주세요.",
+                chatMessage.getSession().getWorkspace().getId());
 
         return Optional.of(owner.getName());
     }
@@ -89,7 +90,8 @@ public class OwnerConfirmationService {
 
         notificationService.createNotification(owner, "OWNER_CONFIRMATION", ownerConfirmation.getId(),
                 "담당자 확인 요청",
-                "채팅 질문에 대한 확인이 요청되었습니다. 답변해 주세요.");
+                "채팅 질문에 대한 확인이 요청되었습니다. 답변해 주세요.",
+                chatMessage.getSession().getWorkspace().getId());
     }
 
     @Transactional
@@ -120,6 +122,7 @@ public class OwnerConfirmationService {
 
         notificationService.createNotification(uploadedBy, "OWNER_CONFIRMATION", ownerConfirmation.getId(),
                 "문서 관련 질문이 도착했습니다",
-                requester.getName() + "님이 [" + document.getTitle() + "] 문서에 대해 질문을 남겼습니다.");
+                requester.getName() + "님이 [" + document.getTitle() + "] 문서에 대해 질문을 남겼습니다.",
+                document.getDataSource().getWorkspace().getId());
     }
 }
