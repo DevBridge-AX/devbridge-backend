@@ -150,7 +150,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         try {
             FastApiDoneEvent doneEvent = objectMapper.readValue(data, FastApiDoneEvent.class);
             ChatMessage savedMessage = chatMessageService.saveAiMessage(
-                    sessionId, fullContent.toString(), doneEvent);
+                    sessionId, messageId, fullContent.toString(), doneEvent);
 
             String doneMessage = objectMapper.writeValueAsString(new java.util.LinkedHashMap<>() {{
                 put("type", "done");
