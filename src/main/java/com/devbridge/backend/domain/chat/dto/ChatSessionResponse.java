@@ -1,17 +1,13 @@
 package com.devbridge.backend.domain.chat.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
 
-@Getter
-@NoArgsConstructor
-@AllArgsConstructor
 @Builder
-public class ChatSessionResponse {
-    private String id;
-    private String workspaceId;
-    private String userId;
-    private String sessionTitle;
-}
+public record ChatSessionResponse(
+    String id,
+    String workspaceId,
+    String employeeId,
+    String sessionTitle,
+    LocalDateTime lastMessageAt
+) {}

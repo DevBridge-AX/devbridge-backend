@@ -1,9 +1,11 @@
 package com.devbridge.backend.domain.chat.service;
 
+import com.devbridge.backend.domain.chat.dto.ConversationContext;
 import com.devbridge.backend.domain.chat.dto.fastapi.FastApiChatRequest;
 import com.devbridge.backend.domain.chat.dto.fastapi.FastApiDoneEvent;
 import com.devbridge.backend.domain.chat.entity.ChatMessage;
 import com.devbridge.backend.global.config.fastapi.FastApiClient;
+import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,9 +19,6 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Component
@@ -30,23 +29,41 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private final ChatMessageService chatMessageService;
     private final OwnerConfirmationService ownerConfirmationService;
     private final ObjectMapper objectMapper;
+    private final WebSocketSessionRegistry webSocketSessionRegistry;
 
-    private final ConcurrentHashMap<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
+    private static final CloseStatus CLOSE_AUTH_FAILED = new CloseStatus(4401, "Authentication required");
 
     @Override
-    public void afterConnectionEstablished(WebSocketSession session) {
-        sessions.put(session.getId(), session);
-        log.info("WebSocket 연결 수립: {}", session.getId());
+    public void afterConnectionEstablished(WebSocketSession session) throws IOException {
+        if (session.getAttributes().get("employeeId") == null) {
+            String remoteAddr = session.getRemoteAddress() != null
+                    ? session.getRemoteAddress().toString() : "unknown";
+            log.warn("WebSocket 인증 실패로 연결 종료: sessionId={}, remoteAddr={}", session.getId(), remoteAddr);
+            session.close(CLOSE_AUTH_FAILED);
+            return;
+        }
+        String employeeId = (String) session.getAttributes().get("employeeId");
+        webSocketSessionRegistry.register(employeeId, session);
+        log.info("WebSocket 연결 수립: {} (employeeId={})", session.getId(), employeeId);
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        sessions.remove(session.getId());
+        webSocketSessionRegistry.unregister(session);
         log.info("WebSocket 연결 종료: {} ({})", session.getId(), status);
     }
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+        if (session.getAttributes().get("employeeId") == null) {
+            try {
+                session.close(CLOSE_AUTH_FAILED);
+            } catch (IOException e) {
+                log.error("인증 미완료 세션 종료 실패: {}", e.getMessage());
+            }
+            return;
+        }
+
         try {
             JsonNode payload = objectMapper.readTree(message.getPayload());
             String type = payload.path("type").asText();
@@ -63,27 +80,23 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private void handleChatMessage(WebSocketSession session, JsonNode payload) {
         String sessionId = payload.path("session_id").asText();
         String content = payload.path("content").asText();
-        String role = payload.has("role") ? payload.path("role").asText() : "developer";
+
+        String role = (String) session.getAttributes().get("jobRole");
 
         chatMessageService.saveUserMessage(sessionId, content);
 
         sendMessage(session, createSearchingMessage());
 
-        List<ChatMessage> history = chatMessageService.getConversationHistory(sessionId);
-        List<FastApiChatRequest.ConversationMessage> conversationHistory = buildConversationHistory(history);
-
-        ChatMessage latestUserMsg = history.getLast();
-        String workspaceId = latestUserMsg.getSession().getWorkspace().getId();
-        String userId = latestUserMsg.getSession().getUser().getId();
+        ConversationContext context = chatMessageService.getConversationContext(sessionId);
 
         String messageId = java.util.UUID.randomUUID().toString();
 
         FastApiChatRequest request = FastApiChatRequest.builder()
                 .sessionId(sessionId)
                 .content(content)
-                .conversationHistory(conversationHistory)
-                .workspaceId(workspaceId)
-                .userId(userId)
+                .conversationHistory(context.getConversationHistory())
+                .workspaceId(context.getWorkspaceId())
+                .userId(context.getUserId())
                 .role(role)
                 .build();
 
@@ -136,7 +149,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         try {
             FastApiDoneEvent doneEvent = objectMapper.readValue(data, FastApiDoneEvent.class);
             ChatMessage savedMessage = chatMessageService.saveAiMessage(
-                    sessionId, messageId, fullContent.toString(), doneEvent);
+                    sessionId, fullContent.toString(), doneEvent);
 
             String doneMessage = objectMapper.writeValueAsString(new java.util.LinkedHashMap<>() {{
                 put("type", "done");
@@ -181,18 +194,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    private List<FastApiChatRequest.ConversationMessage> buildConversationHistory(
-            List<ChatMessage> messages) {
-        List<FastApiChatRequest.ConversationMessage> history = new ArrayList<>();
-        for (ChatMessage msg : messages) {
-            String role = "USER".equals(msg.getSenderType()) ? "user" : "assistant";
-            history.add(FastApiChatRequest.ConversationMessage.builder()
-                    .role(role)
-                    .content(msg.getContent())
-                    .build());
-        }
-        return history;
-    }
+
 
     private String createSearchingMessage() {
         try {

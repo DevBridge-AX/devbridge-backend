@@ -3,6 +3,7 @@ package com.devbridge.backend.domain.chat.entity;
 import com.devbridge.backend.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.domain.Persistable;
 
 @Entity
 @Table(name = "CHAT_MESSAGES")
@@ -10,12 +11,27 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-public class ChatMessage extends BaseEntity {
+public class ChatMessage extends BaseEntity implements Persistable<String> {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", columnDefinition = "VARCHAR(36)")
     private String id; // 메시지 ID
+
+    @Builder.Default
+    @Transient
+    private boolean isNew = true;
+
+    @Override
+    public boolean isNew() {
+        return isNew;
+    }
+
+    @PostPersist
+    @PostLoad
+    private void markNotNew() {
+        this.isNew = false;
+    }
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "session_id", nullable = false)
