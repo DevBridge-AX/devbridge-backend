@@ -4,6 +4,7 @@ import com.devbridge.backend.domain.chat.dto.ConversationContext;
 import com.devbridge.backend.domain.chat.dto.fastapi.FastApiChatRequest;
 import com.devbridge.backend.domain.chat.dto.fastapi.FastApiDoneEvent;
 import com.devbridge.backend.domain.chat.entity.ChatMessage;
+import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.global.config.fastapi.FastApiClient;
 import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -27,7 +28,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     private final FastApiClient fastApiClient;
     private final ChatMessageService chatMessageService;
-    private final OwnerConfirmationService ownerConfirmationService;
+    private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
     private final WebSocketSessionRegistry webSocketSessionRegistry;
 
@@ -161,22 +162,21 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
             if (!Boolean.TRUE.equals(doneEvent.getIsGroundable())
                     && doneEvent.getSuggestedOwnerId() != null) {
-                ownerConfirmationService.triggerOwnerConfirmation(
-                        savedMessage.getId(), doneEvent.getSuggestedOwnerId())
-                        .ifPresent(ownerName -> {
-                            try {
-                                String confirmMsg = objectMapper.writeValueAsString(
-                                        new java.util.LinkedHashMap<>() {{
-                                            put("type", "owner_confirmation_suggested");
-                                            put("message_id", savedMessage.getId());
-                                            put("suggested_owner_id", doneEvent.getSuggestedOwnerId());
-                                            put("suggested_owner_name", ownerName);
-                                        }});
-                                sendMessage(session, confirmMsg);
-                            } catch (JsonProcessingException e) {
-                                log.error("owner_confirmation_suggested 메시지 생성 오류: {}", e.getMessage());
-                            }
-                        });
+                String suggestedOwnerId = doneEvent.getSuggestedOwnerId();
+                userRepository.findById(suggestedOwnerId).ifPresent(owner -> {
+                    try {
+                        String confirmMsg = objectMapper.writeValueAsString(
+                                new java.util.LinkedHashMap<>() {{
+                                    put("type", "owner_confirmation_suggested");
+                                    put("message_id", savedMessage.getId());
+                                    put("suggested_owner_id", suggestedOwnerId);
+                                    put("suggested_owner_name", owner.getName());
+                                }});
+                        sendMessage(session, confirmMsg);
+                    } catch (JsonProcessingException e) {
+                        log.error("owner_confirmation_suggested 메시지 생성 오류: {}", e.getMessage());
+                    }
+                });
             }
         } catch (Exception e) {
             log.error("done 이벤트 처리 오류: {}", e.getMessage(), e);

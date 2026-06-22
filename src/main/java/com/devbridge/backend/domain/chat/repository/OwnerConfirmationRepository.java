@@ -6,4 +6,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface OwnerConfirmationRepository extends JpaRepository<OwnerConfirmation, String> {
+
+    boolean existsByQuestionMessage_IdAndStatus(String questionMessageId, String status);
 }

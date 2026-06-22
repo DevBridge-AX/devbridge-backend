@@ -3,9 +3,11 @@ package com.devbridge.backend.api.chat;
 import com.devbridge.backend.domain.chat.dto.ChatMessageResponse;
 import com.devbridge.backend.domain.chat.dto.ChatSessionResponse;
 import com.devbridge.backend.domain.chat.dto.CreateChatSessionRequest;
+import com.devbridge.backend.domain.chat.dto.CreateOwnerConfirmationRequest;
 import com.devbridge.backend.domain.chat.dto.SendMessageRequest;
 import com.devbridge.backend.domain.chat.service.ChatMessageService;
 import com.devbridge.backend.domain.chat.service.ChatSessionService;
+import com.devbridge.backend.domain.chat.service.OwnerConfirmationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,6 +20,7 @@ public class ChatController implements ChatAPI {
 
     private final ChatSessionService chatSessionService;
     private final ChatMessageService chatMessageService;
+    private final OwnerConfirmationService ownerConfirmationService;
 
     @Override
     public ResponseEntity<ChatSessionResponse> createChatSession(String workspaceId, String employeeId, CreateChatSessionRequest request) {
@@ -50,6 +53,13 @@ public class ChatController implements ChatAPI {
     @Override
     public ResponseEntity<Void> deleteChatSession(String sessionId) {
         chatSessionService.deleteSession(sessionId);
+        return ResponseEntity.ok().build();
+    }
+
+    @Override
+    public ResponseEntity<Void> createOwnerConfirmation(String messageId, String employeeId,
+                                                        CreateOwnerConfirmationRequest request) {
+        ownerConfirmationService.createOwnerConfirmationFromChat(messageId, request.assignedOwnerId());
         return ResponseEntity.ok().build();
     }
 }

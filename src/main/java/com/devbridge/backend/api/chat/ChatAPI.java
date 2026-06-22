@@ -3,7 +3,9 @@ package com.devbridge.backend.api.chat;
 import com.devbridge.backend.domain.chat.dto.ChatMessageResponse;
 import com.devbridge.backend.domain.chat.dto.ChatSessionResponse;
 import com.devbridge.backend.domain.chat.dto.CreateChatSessionRequest;
+import com.devbridge.backend.domain.chat.dto.CreateOwnerConfirmationRequest;
 import com.devbridge.backend.domain.chat.dto.SendMessageRequest;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
@@ -44,4 +46,11 @@ public interface ChatAPI {
     @DeleteMapping("/sessions/{sessionId}")
     ResponseEntity<Void> deleteChatSession(
             @PathVariable("sessionId") String sessionId);
+
+    @Operation(summary = "담당자 확인 요청", description = "RAG 근거 부족 시 사용자가 선택한 담당자에게 확인 요청을 생성합니다.")
+    @PostMapping("/messages/{messageId}/owner-confirmation")
+    ResponseEntity<Void> createOwnerConfirmation(
+            @PathVariable("messageId") String messageId,
+            @AuthenticationPrincipal String employeeId,
+            @Valid @RequestBody CreateOwnerConfirmationRequest request);
 }
