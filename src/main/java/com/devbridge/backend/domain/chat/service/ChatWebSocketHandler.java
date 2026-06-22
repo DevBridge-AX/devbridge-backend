@@ -5,6 +5,7 @@ import com.devbridge.backend.domain.chat.dto.fastapi.FastApiChatRequest;
 import com.devbridge.backend.domain.chat.dto.fastapi.FastApiDoneEvent;
 import com.devbridge.backend.domain.chat.entity.ChatMessage;
 import com.devbridge.backend.global.config.fastapi.FastApiClient;
+import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,7 +19,6 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Component
@@ -29,8 +29,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private final ChatMessageService chatMessageService;
     private final OwnerConfirmationService ownerConfirmationService;
     private final ObjectMapper objectMapper;
-
-    private final ConcurrentHashMap<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
+    private final WebSocketSessionRegistry webSocketSessionRegistry;
 
     private static final CloseStatus CLOSE_AUTH_FAILED = new CloseStatus(4401, "Authentication required");
 
@@ -43,13 +42,14 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             session.close(CLOSE_AUTH_FAILED);
             return;
         }
-        sessions.put(session.getId(), session);
-        log.info("WebSocket 연결 수립: {} (employeeId={})", session.getId(), session.getAttributes().get("employeeId"));
+        String employeeId = (String) session.getAttributes().get("employeeId");
+        webSocketSessionRegistry.register(employeeId, session);
+        log.info("WebSocket 연결 수립: {} (employeeId={})", session.getId(), employeeId);
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        sessions.remove(session.getId());
+        webSocketSessionRegistry.unregister(session);
         log.info("WebSocket 연결 종료: {} ({})", session.getId(), status);
     }
 
