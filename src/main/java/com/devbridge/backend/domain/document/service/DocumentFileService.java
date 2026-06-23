@@ -182,6 +182,17 @@ public class DocumentFileService {
                 .orElseThrow(() -> new IllegalArgumentException("Document not found: " + documentId));
     }
 
+    @Transactional(readOnly = true)
+    public void retryFailedIngestion(String documentId) {
+        KnowledgeDocument document = findDocumentById(documentId);
+        String status = document.getAnalysisStatus();
+        if (!"FAILED".equals(status) && !"PENDING".equals(status)) {
+            throw new IllegalStateException(
+                    "Document is not in retryable state: " + status);
+        }
+        triggerRagIngestion(document);
+    }
+
     private void triggerRagIngestion(KnowledgeDocument document) {
         Map<String, Object> request = new LinkedHashMap<>();
         request.put("workspace_id", document.getDataSource().getWorkspace().getId());

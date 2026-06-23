@@ -59,6 +59,10 @@ public interface DocumentAPI {
     @GetMapping("/{id}/preview")
     ResponseEntity<Resource> previewDocument(@PathVariable("id") String id);
 
+    @Operation(summary = "Document RAG 재인덱싱", description = "FAILED 또는 PENDING 상태의 문서를 RAG 벡터 DB에 다시 인덱싱합니다.")
+    @PostMapping("/{id}/reindex")
+    ResponseEntity<Void> reindexDocument(@PathVariable("id") String id);
+
     @Operation(summary = "Document 삭제", description = "Document ID 기준으로 문서를 삭제합니다.")
     @DeleteMapping("/{id}")
     ResponseEntity<Void> deleteDocument(@PathVariable("id") String id);
