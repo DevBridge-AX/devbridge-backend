@@ -14,9 +14,8 @@ import org.springframework.data.domain.Persistable;
 public class ChatMessage extends BaseEntity implements Persistable<String> {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", columnDefinition = "VARCHAR(36)")
-    private String id; // 메시지 ID
+    private String id;
 
     @Builder.Default
     @Transient
@@ -25,6 +24,13 @@ public class ChatMessage extends BaseEntity implements Persistable<String> {
     @Override
     public boolean isNew() {
         return isNew;
+    }
+
+    @PrePersist
+    private void assignIdIfAbsent() {
+        if (this.id == null) {
+            this.id = java.util.UUID.randomUUID().toString();
+        }
     }
 
     @PostPersist

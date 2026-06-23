@@ -1,5 +1,6 @@
 package com.devbridge.backend.domain.chat.entity;
 
+import com.devbridge.backend.domain.datasource.entity.KnowledgeDocument;
 import com.devbridge.backend.domain.task.entity.Task;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
@@ -30,12 +31,23 @@ public class OwnerConfirmation extends BaseEntity {
     private Task task; // 업무 ID
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "question_message_id", nullable = false)
-    private ChatMessage questionMessage; // 파생된 질문
+    @JoinColumn(name = "question_message_id")
+    private ChatMessage questionMessage; // 파생된 질문 (채팅 경로)
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "related_document_id")
+    private KnowledgeDocument relatedDocument; // 관련 문서 (문서 화면 경로)
+
+    @Column(name = "question_content", columnDefinition = "TEXT")
+    private String questionContent; // 자유 텍스트 질문 내용
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_owner_id", nullable = false)
     private User assignedOwner; // 답변자
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "requester_id")
+    private User requester; // 질문 요청자
 
     @Builder.Default
     @Column(name = "status", nullable = false, length = 50)
@@ -53,4 +65,13 @@ public class OwnerConfirmation extends BaseEntity {
 
     @Column(name = "answered_at")
     private LocalDateTime answeredAt; // 답변일
+
+    public void submitAnswer(String answerContent) {
+        if (!"PENDING".equals(this.status)) {
+            throw new IllegalStateException("이미 답변이 완료된 요청입니다.");
+        }
+        this.answerContent = answerContent;
+        this.status = "ANSWERED";
+        this.answeredAt = LocalDateTime.now();
+    }
 }

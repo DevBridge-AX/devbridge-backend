@@ -56,6 +56,7 @@ public class MeetingService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
 
+    private static final String NOTIFICATION_TYPE_MEETING_INVITED = "MEETING_INVITED";
     private static final String NOTIFICATION_TYPE_MEETING_UPDATED = "MEETING_UPDATED";
 
     private User resolveUser(String employeeId) {
@@ -100,6 +101,12 @@ public class MeetingService {
         );
 
         meetingParticipantRepository.saveAll(participants);
+
+        notifyParticipants(meeting.getId(), hostEmployeeId,
+                NOTIFICATION_TYPE_MEETING_INVITED,
+                "회의에 초대되었습니다",
+                "새 회의에 참석자로 초대되었습니다.",
+                workspaceId);
 
         if (request.references() != null) {
             request.references().forEach(referenceRequest ->
@@ -178,17 +185,23 @@ public class MeetingService {
 
         meeting.updateInfo(request.title(), request.purpose(), request.agenda(), request.location());
 
-        notifyOtherParticipants(meetingId, employeeId);
+        notifyParticipants(meetingId, employeeId,
+                NOTIFICATION_TYPE_MEETING_UPDATED,
+                "회의 일정이 변경되었습니다",
+                "참여 중인 회의의 상세 정보가 변경되었습니다.",
+                meeting.getWorkspace().getId());
 
         return buildDetailResponse(meeting);
     }
 
-    private void notifyOtherParticipants(String meetingId, String actorEmployeeId) {
+    private void notifyParticipants(String meetingId, String actorEmployeeId,
+                                    String notificationType, String title, String message,
+                                    String workspaceId) {
         meetingParticipantRepository.findByMeetingId(meetingId).stream()
                 .filter(p -> !p.getEmployeeId().equals(actorEmployeeId))
                 .forEach(p -> userRepository.findByEmployeeId(p.getEmployeeId())
                         .ifPresent(recipient -> notificationService.createNotification(
-                                recipient, NOTIFICATION_TYPE_MEETING_UPDATED, meetingId)));
+                                recipient, notificationType, meetingId, title, message, workspaceId)));
     }
 
     private MeetingDetailResponse buildDetailResponse(Meeting meeting) {

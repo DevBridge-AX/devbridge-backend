@@ -1,11 +1,14 @@
 package com.devbridge.backend.api.document;
 
+import com.devbridge.backend.domain.chat.dto.CreateDocumentOwnerConfirmationRequest;
 import com.devbridge.backend.domain.datasource.dto.DocumentResponse;
 import com.devbridge.backend.domain.document.dto.UpdateDocumentRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -59,4 +62,11 @@ public interface DocumentAPI {
     @Operation(summary = "Document 삭제", description = "Document ID 기준으로 문서를 삭제합니다.")
     @DeleteMapping("/{id}")
     ResponseEntity<Void> deleteDocument(@PathVariable("id") String id);
+
+    @Operation(summary = "문서 담당자 연결", description = "문서 등록자에게 질문/요청을 보내는 담당자 확인 요청을 생성합니다.")
+    @PostMapping("/{documentId}/owner-confirmation")
+    ResponseEntity<Void> createDocumentOwnerConfirmation(
+            @PathVariable("documentId") String documentId,
+            @AuthenticationPrincipal String employeeId,
+            @Valid @RequestBody CreateDocumentOwnerConfirmationRequest request);
 }
