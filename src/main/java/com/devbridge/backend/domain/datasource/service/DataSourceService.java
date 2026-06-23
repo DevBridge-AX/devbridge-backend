@@ -5,7 +5,7 @@ import com.devbridge.backend.domain.datasource.dto.DataSourceResponse;
 import com.devbridge.backend.domain.datasource.entity.DataSource;
 import com.devbridge.backend.domain.datasource.repository.DataSourceRepository;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
-import com.devbridge.backend.domain.workspace.repository.WorkspaceRepository;
+import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
 import com.devbridge.backend.global.config.fastapi.FastApiClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,17 +20,13 @@ import java.util.Map;
 public class DataSourceService {
 
     private final DataSourceRepository dataSourceRepository;
-    private final WorkspaceRepository workspaceRepository;
+    private final WorkspaceContextValidator workspaceContextValidator;
     private final FastApiClient fastApiClient;
 
     @Transactional
     public DataSourceResponse connectDataSource(ConnectDataSourceRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("DataSource request is required.");
-        }
-
-        if (request.getWorkspaceId() == null || request.getWorkspaceId().isBlank()) {
-            throw new IllegalArgumentException("Workspace ID is required.");
         }
 
         if (request.getSourceType() == null || request.getSourceType().isBlank()) {
@@ -41,8 +37,7 @@ public class DataSourceService {
             throw new IllegalArgumentException("Source name is required.");
         }
 
-        Workspace workspace = workspaceRepository.findById(request.getWorkspaceId())
-                .orElseThrow(() -> new IllegalArgumentException("Workspace not found: " + request.getWorkspaceId()));
+        Workspace workspace = workspaceContextValidator.getValidWorkspace(request.getWorkspaceId());
 
         DataSource dataSource = DataSource.builder()
                 .workspace(workspace)
@@ -83,6 +78,7 @@ public class DataSourceService {
                     "doc_type", "general",
                     "file_path", ""
             );
+
             fastApiClient.ingestDocument(request)
                     .subscribe(
                             unused -> {},
@@ -94,6 +90,7 @@ public class DataSourceService {
                     "data_source_id", dataSourceId,
                     "commits", java.util.List.of()
             );
+
             fastApiClient.ingestGit(request)
                     .subscribe(
                             unused -> {},

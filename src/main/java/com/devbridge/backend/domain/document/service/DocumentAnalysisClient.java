@@ -28,7 +28,7 @@ public class DocumentAnalysisClient {
     @Value("${devbridge.ai-engine.internal-api-key:changeme}")
     private String internalApiKey;
 
-    @Value("${devbridge.ai-engine.document-analysis-path:/api/analysis/document}")
+    @Value("${devbridge.ai-engine.document-analysis-path:/api/ingestion/document}")
     private String documentAnalysisPath;
 
     @Value("${devbridge.ai-engine.timeout-seconds:30}")

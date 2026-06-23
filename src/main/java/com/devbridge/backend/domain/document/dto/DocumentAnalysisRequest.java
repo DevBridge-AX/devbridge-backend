@@ -18,6 +18,12 @@ public class DocumentAnalysisRequest {
     @JsonProperty("workspace_id")
     private String workspaceId;
 
+    @JsonProperty("source_id")
+    private String sourceId;
+
+    @JsonProperty("data_source_id")
+    private String dataSourceId;
+
     @JsonProperty("task_id")
     private String taskId;
 

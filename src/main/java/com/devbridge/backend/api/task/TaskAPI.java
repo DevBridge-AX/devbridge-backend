@@ -1,6 +1,7 @@
 package com.devbridge.backend.api.task;
 
 import com.devbridge.backend.domain.task.dto.CreateTaskRequest;
+import com.devbridge.backend.domain.task.dto.LinkTaskCommitRequest;
 import com.devbridge.backend.domain.task.dto.TaskDetailResponse;
 import com.devbridge.backend.domain.task.dto.TaskResponse;
 import com.devbridge.backend.domain.task.dto.UpdateTaskRequest;
@@ -40,6 +41,13 @@ public interface TaskAPI {
     ResponseEntity<Void> updateTaskStatus(
             @PathVariable("id") String id,
             @RequestBody UpdateTaskStatusRequest request
+    );
+
+    @Operation(summary = "Task와 Git Commit 연결", description = "Task에 Git commit을 직접 연결합니다.")
+    @PostMapping("/{id}/commits")
+    ResponseEntity<TaskDetailResponse> linkGitCommitToTask(
+            @PathVariable("id") String id,
+            @RequestBody LinkTaskCommitRequest request
     );
 
     @Operation(summary = "Task 삭제", description = "Task를 삭제합니다. 실제 DB에서는 soft delete 처리됩니다.")

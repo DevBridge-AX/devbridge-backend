@@ -14,7 +14,6 @@ import com.devbridge.backend.domain.workspace.dto.WorkspaceDashboardDetailRespon
 import com.devbridge.backend.domain.workspace.dto.WorkspaceDashboardSummaryResponse;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.repository.WorkspaceMemberRepository;
-import com.devbridge.backend.domain.workspace.repository.WorkspaceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,17 +25,17 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class WorkspaceDashboardService {
 
-    private final WorkspaceRepository workspaceRepository;
+    private final WorkspaceContextValidator workspaceContextValidator;
     private final TaskRepository taskRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final GitCommitRepository gitCommitRepository;
     private final KnowledgeDocumentRepository knowledgeDocumentRepository;
 
     public WorkspaceDashboardSummaryResponse getSummary(String workspaceId) {
-        Workspace workspace = workspaceRepository.findById(workspaceId)
-                .orElseThrow(() -> new IllegalArgumentException("Workspace not found: " + workspaceId));
+        Workspace workspace = workspaceContextValidator.getValidWorkspace(workspaceId);
+        String validWorkspaceId = workspace.getId();
 
-        List<Task> tasks = taskRepository.findByWorkspace_Id(workspaceId);
+        List<Task> tasks = taskRepository.findByWorkspace_Id(validWorkspaceId);
 
         long totalTaskCount = tasks.size();
         long assignedTaskCount = countByStatus(tasks, "ASSIGNED");
@@ -45,10 +44,10 @@ public class WorkspaceDashboardService {
         long delayedTaskCount = countByStatus(tasks, "DELAYED");
 
         int progressRate = calculateProgressRate(totalTaskCount, doneTaskCount);
-        long memberCount = workspaceMemberRepository.countByWorkspace_Id(workspaceId);
+        long memberCount = workspaceMemberRepository.countByWorkspace_Id(validWorkspaceId);
 
         return WorkspaceDashboardSummaryResponse.builder()
-                .workspaceId(workspace.getId())
+                .workspaceId(validWorkspaceId)
                 .workspaceName(workspace.getName())
                 .totalTaskCount(totalTaskCount)
                 .assignedTaskCount(assignedTaskCount)
@@ -61,29 +60,29 @@ public class WorkspaceDashboardService {
     }
 
     public WorkspaceDashboardDetailResponse getDetail(String workspaceId) {
-        workspaceRepository.findById(workspaceId)
-                .orElseThrow(() -> new IllegalArgumentException("Workspace not found: " + workspaceId));
+        Workspace workspace = workspaceContextValidator.getValidWorkspace(workspaceId);
+        String validWorkspaceId = workspace.getId();
 
         List<DashboardTaskItemResponse> recentTasks = taskRepository
-                .findTop5ByWorkspace_IdOrderByCreatedAtDesc(workspaceId)
+                .findTop5ByWorkspace_IdOrderByCreatedAtDesc(validWorkspaceId)
                 .stream()
                 .map(this::toTaskItemResponse)
                 .toList();
 
         List<DashboardTaskItemResponse> delayedTasks = taskRepository
-                .findTop5ByWorkspace_IdAndStatusOrderByDueDateAsc(workspaceId, "DELAYED")
+                .findTop5ByWorkspace_IdAndStatusOrderByDueDateAsc(validWorkspaceId, "DELAYED")
                 .stream()
                 .map(this::toTaskItemResponse)
                 .toList();
 
         List<DashboardGitCommitItemResponse> recentGitCommits = gitCommitRepository
-                .findTop5ByDataSource_Workspace_IdOrderByPushedAtDesc(workspaceId)
+                .findTop5ByDataSource_Workspace_IdOrderByPushedAtDesc(validWorkspaceId)
                 .stream()
                 .map(this::toGitCommitItemResponse)
                 .toList();
 
         List<DashboardDocumentItemResponse> recentDocuments = knowledgeDocumentRepository
-                .findTop5ByDataSource_Workspace_IdOrderByCreatedAtDesc(workspaceId)
+                .findTop5ByDataSource_Workspace_IdOrderByCreatedAtDesc(validWorkspaceId)
                 .stream()
                 .map(this::toDocumentItemResponse)
                 .toList();

@@ -10,9 +10,12 @@ import com.devbridge.backend.domain.task.entity.Task;
 import com.devbridge.backend.domain.task.repository.TaskRepository;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.domain.workspace.entity.Workspace;
+import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.PathResource;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,14 +27,17 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DocumentFileService {
 
     private final KnowledgeDocumentRepository knowledgeDocumentRepository;
+    private final DocumentAnalysisService documentAnalysisService;
     private final DataSourceRepository dataSourceRepository;
     private final UserRepository userRepository;
     private final TaskRepository taskRepository;
+    private final WorkspaceContextValidator workspaceContextValidator;
 
     @Value("${devbridge.file.upload-dir:uploads/documents}")
     private String uploadDir;
@@ -46,9 +52,7 @@ public class DocumentFileService {
             String description,
             MultipartFile file
     ) {
-        if (workspaceId == null || workspaceId.isBlank()) {
-            throw new IllegalArgumentException("Workspace ID is required.");
-        }
+        Workspace workspace = workspaceContextValidator.getValidWorkspace(workspaceId);
 
         if (dataSourceId == null || dataSourceId.isBlank()) {
             throw new IllegalArgumentException("DataSource ID is required.");
@@ -61,9 +65,11 @@ public class DocumentFileService {
         DataSource dataSource = dataSourceRepository.findById(dataSourceId)
                 .orElseThrow(() -> new IllegalArgumentException("DataSource not found: " + dataSourceId));
 
-        if (!workspaceId.equals(dataSource.getWorkspace().getId())) {
-            throw new IllegalArgumentException("DataSource does not belong to workspace: " + workspaceId);
-        }
+        workspaceContextValidator.validateSameWorkspace(
+                workspace.getId(),
+                dataSource.getWorkspace().getId(),
+                "DataSource does not belong to workspace."
+        );
 
         User uploadedBy = null;
         if (uploadedById != null && !uploadedById.isBlank()) {
@@ -76,9 +82,11 @@ public class DocumentFileService {
             task = taskRepository.findById(taskId)
                     .orElseThrow(() -> new IllegalArgumentException("Task not found: " + taskId));
 
-            if (!workspaceId.equals(task.getWorkspace().getId())) {
-                throw new IllegalArgumentException("Task does not belong to workspace: " + workspaceId);
-            }
+            workspaceContextValidator.validateSameWorkspace(
+                    workspace.getId(),
+                    task.getWorkspace().getId(),
+                    "Task does not belong to workspace."
+            );
         }
 
         String originalFileName = file.getOriginalFilename();
@@ -94,6 +102,7 @@ public class DocumentFileService {
             file.transferTo(targetPath.toFile());
 
             KnowledgeDocument document = KnowledgeDocument.builder()
+                    .workspace(workspace)
                     .dataSource(dataSource)
                     .uploadedBy(uploadedBy)
                     .task(task)
@@ -110,6 +119,12 @@ public class DocumentFileService {
 
             KnowledgeDocument savedDocument = knowledgeDocumentRepository.save(document);
 
+            try {
+                documentAnalysisService.analyzeDocument(savedDocument.getId());
+            } catch (Exception e) {
+                log.warn("Document auto analysis request failed. documentId={}", savedDocument.getId(), e);
+            }
+
             return toDocumentResponse(savedDocument);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to store upload file.", e);
@@ -125,7 +140,7 @@ public class DocumentFileService {
         }
 
         Path filePath = Paths.get(document.getFilePath()).toAbsolutePath().normalize();
-        Resource resource = new PathResource(filePath);
+        Resource resource = new FileSystemResource(filePath);
 
         if (!resource.exists() || !resource.isReadable()) {
             throw new IllegalArgumentException("Document file is not readable: " + documentId);

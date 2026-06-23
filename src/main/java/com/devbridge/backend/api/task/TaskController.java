@@ -1,6 +1,7 @@
 package com.devbridge.backend.api.task;
 
 import com.devbridge.backend.domain.task.dto.CreateTaskRequest;
+import com.devbridge.backend.domain.task.dto.LinkTaskCommitRequest;
 import com.devbridge.backend.domain.task.dto.TaskDetailResponse;
 import com.devbridge.backend.domain.task.dto.TaskResponse;
 import com.devbridge.backend.domain.task.dto.UpdateTaskRequest;
@@ -42,6 +43,11 @@ public class TaskController implements TaskAPI {
     public ResponseEntity<Void> updateTaskStatus(String id, UpdateTaskStatusRequest request) {
         taskService.updateTaskStatus(id, request);
         return ResponseEntity.ok().build();
+    }
+
+    @Override
+    public ResponseEntity<TaskDetailResponse> linkGitCommitToTask(String id, LinkTaskCommitRequest request) {
+        return ResponseEntity.ok(taskService.linkGitCommitToTask(id, request));
     }
 
     @Override

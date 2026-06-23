@@ -76,10 +76,18 @@ public class TaskDetailResponse {
     public static class RelatedCommitPreview {
         private String id;
         private String commitHash;
+        private String shortHash;
         private String message;
         private String authorName;
+        private String authorEmail;
+        private String branchName;
         private String summary;
+        private String impactArea;
+        private String riskLevel;
+        private String nextAction;
+        private String indexStatus;
         private LocalDateTime committedAt;
+        private LocalDateTime analyzedAt;
     }
 
     @Getter
