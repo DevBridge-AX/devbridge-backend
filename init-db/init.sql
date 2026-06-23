@@ -15,6 +15,7 @@ GRANT INSERT, UPDATE, DELETE ON devbridge.KNOWLEDGE_DOCUMENTS TO 'ssafy_ai'@'%';
 GRANT INSERT, UPDATE, DELETE ON devbridge.DATA_SOURCES TO 'ssafy_ai'@'%';
 GRANT INSERT, UPDATE, DELETE ON devbridge.DATABASE_SCHEMAS TO 'ssafy_ai'@'%';
 GRANT INSERT, UPDATE, DELETE ON devbridge.GIT_COMMITS TO 'ssafy_ai'@'%';
+GRANT INSERT, UPDATE, DELETE ON devbridge.GIT_COMMIT_FILES TO 'ssafy_ai'@'%';
 GRANT INSERT, UPDATE, DELETE ON devbridge.GIT_COMMIT_ANALYSIS TO 'ssafy_ai'@'%';
 
 -- 3. AI 전용 테이블: DML + DDL (Alembic 마이그레이션 포함)
