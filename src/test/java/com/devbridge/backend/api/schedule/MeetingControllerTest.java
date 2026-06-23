@@ -156,8 +156,8 @@ class MeetingControllerTest {
     @DisplayName("5. 회의 상세 조회 API 성공 테스트 (GET /api/meetings/{meetingId})")
     void getMeetingDetail_Success() throws Exception {
         // given
-        MeetingParticipantResponse participant1 = new MeetingParticipantResponse("EMP001", ParticipantRole.HOST, ParticipantStatus.RESPONDED);
-        MeetingParticipantResponse participant2 = new MeetingParticipantResponse("EMP002", ParticipantRole.ATTENDEE, ParticipantStatus.RESPONDED);
+        MeetingParticipantResponse participant1 = new MeetingParticipantResponse("EMP001", "김현수", "개발팀", "Backend Developer", ParticipantRole.HOST, ParticipantStatus.RESPONDED);
+        MeetingParticipantResponse participant2 = new MeetingParticipantResponse("EMP002", "홍길동", "디자인팀", "디자이너", ParticipantRole.ATTENDEE, ParticipantStatus.RESPONDED);
         CandidateTimeSlot candidate = new CandidateTimeSlot(
                 LocalDateTime.of(2026, 6, 15, 10, 0),
                 LocalDateTime.of(2026, 6, 15, 12, 0));

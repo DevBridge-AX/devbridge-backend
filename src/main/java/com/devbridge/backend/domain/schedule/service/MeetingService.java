@@ -206,10 +206,16 @@ public class MeetingService {
 
     private MeetingDetailResponse buildDetailResponse(Meeting meeting) {
         List<MeetingParticipantResponse> participants = meetingParticipantRepository.findByMeetingId(meeting.getId()).stream()
-                .map(participant -> new MeetingParticipantResponse(
-                        participant.getEmployeeId(),
-                        participant.getRole(),
-                        participant.getStatus()))
+                .map(participant -> {
+                    var user = userRepository.findByEmployeeId(participant.getEmployeeId()).orElse(null);
+                    return new MeetingParticipantResponse(
+                            participant.getEmployeeId(),
+                            user != null ? user.getName() : null,
+                            user != null ? user.getDepartment() : null,
+                            user != null ? user.getPosition() : null,
+                            participant.getRole(),
+                            participant.getStatus());
+                })
                 .toList();
 
         return new MeetingDetailResponse(
