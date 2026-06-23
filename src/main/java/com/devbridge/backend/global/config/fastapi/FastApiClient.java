@@ -50,6 +50,16 @@ public class FastApiClient {
                 .then();
     }
 
+    public Mono<Void> ingestOwnerAnswer(Map<String, Object> request) {
+        return fastApiWebClient.post()
+                .uri("/api/ingestion/owner-answer")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .retrieve()
+                .toBodilessEntity()
+                .then();
+    }
+
     public Mono<UsageSummaryResponse> getUsageSummary(String workspaceId) {
         return fastApiWebClient.get()
                 .uri(uriBuilder -> uriBuilder

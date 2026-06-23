@@ -11,6 +11,7 @@ import com.devbridge.backend.domain.notification.service.NotificationService;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.global.common.exception.ForbiddenException;
+import com.devbridge.backend.global.config.fastapi.FastApiClient;
 import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class OwnerConfirmationService {
     private final OwnerConfirmationRepository ownerConfirmationRepository;
     private final KnowledgeDocumentRepository knowledgeDocumentRepository;
     private final NotificationService notificationService;
+    private final FastApiClient fastApiClient;
     private final WebSocketSessionRegistry webSocketSessionRegistry;
     private final ObjectMapper objectMapper;
 
@@ -169,6 +171,8 @@ public class OwnerConfirmationService {
             log.warn("requester가 없는 확인 요청에 답변 완료 (레거시 행): confirmationId={}", confirmationId);
         }
 
+        requestOwnerAnswerIngestion(confirmation, answerContent);
+
         return OwnerConfirmationResponse.from(confirmation);
     }
 
@@ -221,5 +225,27 @@ public class OwnerConfirmationService {
             log.warn("답변 WebSocket push 실패: requesterEmployeeId={}, confirmationId={}, error={}",
                     requester.getEmployeeId(), confirmation.getId(), e.getMessage());
         }
+    }
+
+    private void requestOwnerAnswerIngestion(OwnerConfirmation confirmation, String answerContent) {
+        String questionContent = confirmation.getQuestionContent();
+        if (questionContent == null && confirmation.getQuestionMessage() != null) {
+            questionContent = confirmation.getQuestionMessage().getContent();
+        }
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("workspace_id", confirmation.getWorkspace().getId());
+        payload.put("confirmation_id", confirmation.getId());
+        payload.put("question", questionContent);
+        payload.put("answer", answerContent);
+        payload.put("owner_employee_id", confirmation.getAssignedOwner().getEmployeeId());
+        payload.put("owner_name", confirmation.getAssignedOwner().getName());
+
+        fastApiClient.ingestOwnerAnswer(payload)
+                .subscribe(
+                        unused -> {},
+                        e -> log.error("담당자 답변 벡터화 요청 실패: confirmationId={}, error={}",
+                                confirmation.getId(), e.getMessage())
+                );
     }
 }

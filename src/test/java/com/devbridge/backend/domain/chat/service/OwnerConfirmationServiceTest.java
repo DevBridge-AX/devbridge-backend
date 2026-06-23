@@ -14,6 +14,7 @@ import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.global.common.exception.ForbiddenException;
+import com.devbridge.backend.global.config.fastapi.FastApiClient;
 import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +24,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import reactor.core.publisher.Mono;
 
 import java.util.Map;
 import java.util.Optional;
@@ -53,6 +56,9 @@ class OwnerConfirmationServiceTest {
     private NotificationService notificationService;
 
     @Mock
+    private FastApiClient fastApiClient;
+
+    @Mock
     private WebSocketSessionRegistry webSocketSessionRegistry;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -63,7 +69,7 @@ class OwnerConfirmationServiceTest {
     void setUp() {
         ownerConfirmationService = new OwnerConfirmationService(
                 userRepository, chatMessageRepository, ownerConfirmationRepository,
-                knowledgeDocumentRepository, notificationService,
+                knowledgeDocumentRepository, notificationService, fastApiClient,
                 webSocketSessionRegistry, objectMapper);
     }
 
@@ -247,6 +253,7 @@ class OwnerConfirmationServiceTest {
 
         when(ownerConfirmationRepository.findByIdAndDeletedAtIsNull("oc-1"))
                 .thenReturn(Optional.of(confirmation));
+        when(fastApiClient.ingestOwnerAnswer(any())).thenReturn(Mono.empty());
 
         OwnerConfirmationResponse response = ownerConfirmationService.submitAnswer("oc-1", "EMP010", "답변 내용입니다.");
 
@@ -270,6 +277,18 @@ class OwnerConfirmationServiceTest {
         assertThat(payload).containsEntry("original_message_id", "msg-1");
         assertThat(payload).containsEntry("content", "답변 내용입니다.");
         assertThat(payload).containsEntry("owner_name", "김담당");
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> ingestionCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(fastApiClient).ingestOwnerAnswer(ingestionCaptor.capture());
+
+        Map<String, Object> ingestionPayload = ingestionCaptor.getValue();
+        assertThat(ingestionPayload).containsEntry("workspace_id", "ws-1");
+        assertThat(ingestionPayload).containsEntry("confirmation_id", "oc-1");
+        assertThat(ingestionPayload).containsEntry("question", "테스트 질문");
+        assertThat(ingestionPayload).containsEntry("answer", "답변 내용입니다.");
+        assertThat(ingestionPayload).containsEntry("owner_employee_id", "EMP010");
+        assertThat(ingestionPayload).containsEntry("owner_name", "김담당");
     }
 
     @Test
@@ -327,12 +346,14 @@ class OwnerConfirmationServiceTest {
 
         when(ownerConfirmationRepository.findByIdAndDeletedAtIsNull("oc-1"))
                 .thenReturn(Optional.of(confirmation));
+        when(fastApiClient.ingestOwnerAnswer(any())).thenReturn(Mono.empty());
 
         ownerConfirmationService.submitAnswer("oc-1", "EMP010", "답변");
 
         assertThat(confirmation.getStatus()).isEqualTo("ANSWERED");
         verify(notificationService, never()).createNotification(any(), any(), any(), any(), any(), any());
         verify(webSocketSessionRegistry, never()).sendToUser(anyString(), anyString());
+        verify(fastApiClient).ingestOwnerAnswer(any());
     }
 
     // --- getDetail ---
