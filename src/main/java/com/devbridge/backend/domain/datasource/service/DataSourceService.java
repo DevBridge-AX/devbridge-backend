@@ -75,20 +75,7 @@ public class DataSourceService {
         String workspaceId = dataSource.getWorkspace().getId();
         String dataSourceId = dataSource.getId();
 
-        if ("DOC".equals(sourceType)) {
-            Map<String, Object> request = Map.of(
-                    "workspace_id", workspaceId,
-                    "data_source_id", dataSourceId,
-                    "title", dataSource.getSourceName(),
-                    "doc_type", "general",
-                    "file_path", ""
-            );
-            fastApiClient.ingestDocument(request)
-                    .subscribe(
-                            unused -> {},
-                            e -> log.error("문서 인덱싱 요청 실패: {}", e.getMessage())
-                    );
-        } else if ("GIT".equals(sourceType)) {
+        if ("GIT".equals(sourceType)) {
             Map<String, Object> request = Map.of(
                     "workspace_id", workspaceId,
                     "data_source_id", dataSourceId,

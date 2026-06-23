@@ -10,7 +10,9 @@ import com.devbridge.backend.domain.task.entity.Task;
 import com.devbridge.backend.domain.task.repository.TaskRepository;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.global.config.fastapi.FastApiClient;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.PathResource;
 import org.springframework.core.io.Resource;
@@ -22,8 +24,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DocumentFileService {
@@ -32,6 +37,7 @@ public class DocumentFileService {
     private final DataSourceRepository dataSourceRepository;
     private final UserRepository userRepository;
     private final TaskRepository taskRepository;
+    private final FastApiClient fastApiClient;
 
     @Value("${devbridge.file.upload-dir:uploads/documents}")
     private String uploadDir;
@@ -110,6 +116,8 @@ public class DocumentFileService {
 
             KnowledgeDocument savedDocument = knowledgeDocumentRepository.save(document);
 
+            triggerRagIngestion(savedDocument);
+
             return toDocumentResponse(savedDocument);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to store upload file.", e);
@@ -172,6 +180,23 @@ public class DocumentFileService {
 
         return knowledgeDocumentRepository.findById(documentId)
                 .orElseThrow(() -> new IllegalArgumentException("Document not found: " + documentId));
+    }
+
+    private void triggerRagIngestion(KnowledgeDocument document) {
+        Map<String, Object> request = new LinkedHashMap<>();
+        request.put("workspace_id", document.getDataSource().getWorkspace().getId());
+        request.put("source_id", document.getDataSource().getId());
+        request.put("backend_document_id", document.getId());
+        request.put("title", document.getTitle());
+        request.put("doc_type", document.getDocumentType() != null ? document.getDocumentType() : "general");
+        request.put("file_path", document.getFilePath());
+
+        fastApiClient.ingestDocument(request)
+                .subscribe(
+                        unused -> {},
+                        e -> log.error("문서 RAG 인덱싱 요청 실패: documentId={}, error={}",
+                                document.getId(), e.getMessage())
+                );
     }
 
     private String normalizeDocumentType(String documentType) {
