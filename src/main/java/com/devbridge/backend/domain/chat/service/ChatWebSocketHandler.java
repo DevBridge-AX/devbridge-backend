@@ -28,7 +28,6 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     private final FastApiClient fastApiClient;
     private final ChatMessageService chatMessageService;
-    private final OwnerConfirmationService ownerConfirmationService;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
     private final WebSocketSessionRegistry webSocketSessionRegistry;
@@ -70,32 +69,11 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             JsonNode payload = objectMapper.readTree(message.getPayload());
             String type = payload.path("type").asText();
 
-            switch (type) {
-                case "chat_message" -> handleChatMessage(session, payload);
-                case "owner_confirmation_request" -> handleOwnerConfirmationRequest(session, payload);
+            if ("chat_message".equals(type)) {
+                handleChatMessage(session, payload);
             }
         } catch (Exception e) {
             log.error("WebSocket 메시지 처리 오류: {}", e.getMessage(), e);
-            sendMessage(session, createErrorMessage(e.getMessage()));
-        }
-    }
-
-    private void handleOwnerConfirmationRequest(WebSocketSession session, JsonNode payload) {
-        String messageId = payload.path("message_id").asText();
-        String ownerId = payload.path("owner_id").asText();
-        String employeeId = (String) session.getAttributes().get("employeeId");
-
-        try {
-            ownerConfirmationService.createOwnerConfirmationFromChat(messageId, ownerId, employeeId);
-
-            String ack = objectMapper.writeValueAsString(new java.util.LinkedHashMap<>() {{
-                put("type", "owner_confirmation_created");
-                put("message_id", messageId);
-                put("owner_id", ownerId);
-            }});
-            sendMessage(session, ack);
-        } catch (Exception e) {
-            log.error("담당자 확인 요청 처리 오류: {}", e.getMessage(), e);
             sendMessage(session, createErrorMessage(e.getMessage()));
         }
     }
