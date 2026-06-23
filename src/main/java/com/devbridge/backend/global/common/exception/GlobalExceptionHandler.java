@@ -33,6 +33,12 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<Map<String, Object>> handleForbidden(ForbiddenException e) {
+        log.warn("[403 Forbidden] {}", e.getMessage());
+        return buildResponse(HttpStatus.FORBIDDEN, e.getMessage());
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException e) {
         log.warn("[409 Conflict] {}", e.getMessage());

@@ -13,6 +13,7 @@ import com.devbridge.backend.domain.notification.service.NotificationService;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
+import com.devbridge.backend.global.common.exception.ForbiddenException;
 import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -286,7 +287,7 @@ class OwnerConfirmationServiceTest {
                 .thenReturn(Optional.of(confirmation));
 
         assertThatThrownBy(() -> ownerConfirmationService.submitAnswer("oc-1", "EMP999", "답변"))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(ForbiddenException.class)
                 .hasMessage("권한이 없습니다. 배정된 담당자만 답변할 수 있습니다.");
 
         verify(notificationService, never()).createNotification(any(), any(), any(), any(), any(), any());
@@ -398,7 +399,7 @@ class OwnerConfirmationServiceTest {
                 .thenReturn(Optional.of(confirmation));
 
         assertThatThrownBy(() -> ownerConfirmationService.getDetail("oc-1", "EMP999"))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(ForbiddenException.class)
                 .hasMessage("해당 확인 요청에 대한 접근 권한이 없습니다.");
     }
 

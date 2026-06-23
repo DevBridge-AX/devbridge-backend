@@ -10,6 +10,7 @@ import com.devbridge.backend.domain.datasource.repository.KnowledgeDocumentRepos
 import com.devbridge.backend.domain.notification.service.NotificationService;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.global.common.exception.ForbiddenException;
 import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -149,7 +150,7 @@ public class OwnerConfirmationService {
                 .orElseThrow(() -> new IllegalArgumentException("해당 확인 요청이 존재하지 않습니다: " + confirmationId));
 
         if (!confirmation.getAssignedOwner().getEmployeeId().equals(ownerEmployeeId)) {
-            throw new IllegalStateException("권한이 없습니다. 배정된 담당자만 답변할 수 있습니다.");
+            throw new ForbiddenException("권한이 없습니다. 배정된 담당자만 답변할 수 있습니다.");
         }
 
         confirmation.submitAnswer(answerContent);
@@ -181,7 +182,7 @@ public class OwnerConfirmationService {
                 && confirmation.getRequester().getEmployeeId().equals(employeeId);
 
         if (!isOwner && !isRequester) {
-            throw new IllegalStateException("해당 확인 요청에 대한 접근 권한이 없습니다.");
+            throw new ForbiddenException("해당 확인 요청에 대한 접근 권한이 없습니다.");
         }
 
         return OwnerConfirmationResponse.from(confirmation);
