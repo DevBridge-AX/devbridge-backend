@@ -45,6 +45,10 @@ public class OwnerConfirmation extends BaseEntity {
     @JoinColumn(name = "assigned_owner_id", nullable = false)
     private User assignedOwner; // 답변자
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "requester_id")
+    private User requester; // 질문 요청자
+
     @Builder.Default
     @Column(name = "status", nullable = false, length = 50)
     private String status = "PENDING"; // PENDING, ANSWERED
@@ -61,4 +65,13 @@ public class OwnerConfirmation extends BaseEntity {
 
     @Column(name = "answered_at")
     private LocalDateTime answeredAt; // 답변일
+
+    public void submitAnswer(String answerContent) {
+        if (!"PENDING".equals(this.status)) {
+            throw new IllegalStateException("이미 답변이 완료된 요청입니다.");
+        }
+        this.answerContent = answerContent;
+        this.status = "ANSWERED";
+        this.answeredAt = LocalDateTime.now();
+    }
 }

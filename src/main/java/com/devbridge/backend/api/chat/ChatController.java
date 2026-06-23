@@ -59,7 +59,7 @@ public class ChatController implements ChatAPI {
     @Override
     public ResponseEntity<Void> createOwnerConfirmation(String messageId, String employeeId,
                                                         CreateOwnerConfirmationRequest request) {
-        ownerConfirmationService.createOwnerConfirmationFromChat(messageId, request.assignedOwnerId());
+        ownerConfirmationService.createOwnerConfirmationFromChat(messageId, request.assignedOwnerId(), employeeId);
         return ResponseEntity.ok().build();
     }
 }

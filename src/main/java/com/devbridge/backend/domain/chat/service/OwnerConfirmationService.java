@@ -1,5 +1,6 @@
 package com.devbridge.backend.domain.chat.service;
 
+import com.devbridge.backend.domain.chat.dto.OwnerConfirmationResponse;
 import com.devbridge.backend.domain.chat.entity.ChatMessage;
 import com.devbridge.backend.domain.chat.entity.OwnerConfirmation;
 import com.devbridge.backend.domain.chat.repository.ChatMessageRepository;
@@ -9,11 +10,17 @@ import com.devbridge.backend.domain.datasource.repository.KnowledgeDocumentRepos
 import com.devbridge.backend.domain.notification.service.NotificationService;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -26,6 +33,8 @@ public class OwnerConfirmationService {
     private final OwnerConfirmationRepository ownerConfirmationRepository;
     private final KnowledgeDocumentRepository knowledgeDocumentRepository;
     private final NotificationService notificationService;
+    private final WebSocketSessionRegistry webSocketSessionRegistry;
+    private final ObjectMapper objectMapper;
 
     /**
      * [보존 메서드 - 자동 트리거 재사용 용도]
@@ -58,6 +67,7 @@ public class OwnerConfirmationService {
                 .workspace(chatMessage.getSession().getWorkspace())
                 .questionMessage(chatMessage)
                 .assignedOwner(owner)
+                .requester(chatMessage.getSession().getUser())
                 .build();
         ownerConfirmationRepository.save(ownerConfirmation);
 
@@ -70,7 +80,8 @@ public class OwnerConfirmationService {
     }
 
     @Transactional
-    public void createOwnerConfirmationFromChat(String messageId, String assignedOwnerId) {
+    public void createOwnerConfirmationFromChat(String messageId, String assignedOwnerId,
+                                                String requesterEmployeeId) {
         if (ownerConfirmationRepository.existsByQuestionMessage_IdAndStatus(messageId, "PENDING")) {
             throw new IllegalStateException("이미 담당자가 배정된 질문입니다.");
         }
@@ -81,10 +92,14 @@ public class OwnerConfirmationService {
         ChatMessage chatMessage = chatMessageRepository.findById(messageId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 채팅 메시지가 존재하지 않습니다: " + messageId));
 
+        User requester = userRepository.findByEmployeeId(requesterEmployeeId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + requesterEmployeeId));
+
         OwnerConfirmation ownerConfirmation = OwnerConfirmation.builder()
                 .workspace(chatMessage.getSession().getWorkspace())
                 .questionMessage(chatMessage)
                 .assignedOwner(owner)
+                .requester(requester)
                 .build();
         ownerConfirmationRepository.save(ownerConfirmation);
 
@@ -117,6 +132,7 @@ public class OwnerConfirmationService {
                 .relatedDocument(document)
                 .questionContent(questionContent)
                 .assignedOwner(uploadedBy)
+                .requester(requester)
                 .build();
         ownerConfirmationRepository.save(ownerConfirmation);
 
@@ -124,5 +140,85 @@ public class OwnerConfirmationService {
                 "문서 관련 질문이 도착했습니다",
                 requester.getName() + "님이 [" + document.getTitle() + "] 문서에 대해 질문을 남겼습니다.",
                 document.getDataSource().getWorkspace().getId());
+    }
+
+    @Transactional
+    public OwnerConfirmationResponse submitAnswer(String confirmationId, String ownerEmployeeId,
+                                                  String answerContent) {
+        OwnerConfirmation confirmation = ownerConfirmationRepository.findByIdAndDeletedAtIsNull(confirmationId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 확인 요청이 존재하지 않습니다: " + confirmationId));
+
+        if (!confirmation.getAssignedOwner().getEmployeeId().equals(ownerEmployeeId)) {
+            throw new IllegalStateException("권한이 없습니다. 배정된 담당자만 답변할 수 있습니다.");
+        }
+
+        confirmation.submitAnswer(answerContent);
+
+        User requester = confirmation.getRequester();
+        if (requester != null) {
+            String workspaceId = confirmation.getWorkspace().getId();
+
+            notificationService.createNotification(requester, "OWNER_ANSWER_RECEIVED", confirmationId,
+                    "담당자 답변이 도착했습니다",
+                    confirmation.getAssignedOwner().getName() + "님이 질문에 답변했습니다.",
+                    workspaceId);
+
+            sendOwnerAnswerEvent(confirmation, requester);
+        } else {
+            log.warn("requester가 없는 확인 요청에 답변 완료 (레거시 행): confirmationId={}", confirmationId);
+        }
+
+        return OwnerConfirmationResponse.from(confirmation);
+    }
+
+    @Transactional(readOnly = true)
+    public OwnerConfirmationResponse getDetail(String confirmationId, String employeeId) {
+        OwnerConfirmation confirmation = ownerConfirmationRepository.findByIdAndDeletedAtIsNull(confirmationId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 확인 요청이 존재하지 않습니다: " + confirmationId));
+
+        boolean isOwner = confirmation.getAssignedOwner().getEmployeeId().equals(employeeId);
+        boolean isRequester = confirmation.getRequester() != null
+                && confirmation.getRequester().getEmployeeId().equals(employeeId);
+
+        if (!isOwner && !isRequester) {
+            throw new IllegalStateException("해당 확인 요청에 대한 접근 권한이 없습니다.");
+        }
+
+        return OwnerConfirmationResponse.from(confirmation);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<OwnerConfirmationResponse> getAssignedConfirmations(String employeeId, String workspaceId,
+                                                                    Pageable pageable) {
+        return ownerConfirmationRepository
+                .findByAssignedOwner_EmployeeIdAndWorkspace_IdAndDeletedAtIsNull(employeeId, workspaceId, pageable)
+                .map(OwnerConfirmationResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<OwnerConfirmationResponse> getRequestedConfirmations(String employeeId, String workspaceId,
+                                                                     Pageable pageable) {
+        return ownerConfirmationRepository
+                .findByRequester_EmployeeIdAndWorkspace_IdAndDeletedAtIsNull(employeeId, workspaceId, pageable)
+                .map(OwnerConfirmationResponse::from);
+    }
+
+    private void sendOwnerAnswerEvent(OwnerConfirmation confirmation, User requester) {
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("type", "owner_answer_received");
+            payload.put("original_message_id",
+                    confirmation.getQuestionMessage() != null ? confirmation.getQuestionMessage().getId() : null);
+            payload.put("confirmation_id", confirmation.getId());
+            payload.put("content", confirmation.getAnswerContent());
+            payload.put("owner_name", confirmation.getAssignedOwner().getName());
+            payload.put("workspace_id", confirmation.getWorkspace().getId());
+
+            webSocketSessionRegistry.sendToUser(
+                    requester.getEmployeeId(), objectMapper.writeValueAsString(payload));
+        } catch (Exception e) {
+            log.warn("답변 WebSocket push 실패: requesterEmployeeId={}, confirmationId={}, error={}",
+                    requester.getEmployeeId(), confirmation.getId(), e.getMessage());
+        }
     }
 }

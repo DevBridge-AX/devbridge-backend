@@ -1,0 +1,6 @@
+ALTER TABLE OWNER_CONFIRMATIONS
+    ADD COLUMN requester_id VARCHAR(36) NULL;
+
+ALTER TABLE OWNER_CONFIRMATIONS
+    ADD CONSTRAINT fk_owner_confirmations_requester
+        FOREIGN KEY (requester_id) REFERENCES USERS(id);
