@@ -32,6 +32,7 @@ public class NotificationService {
                 .user(recipient)
                 .type(type)
                 .referenceId(referenceId)
+                .workspaceId(workspaceId)
                 .title(title)
                 .message(message)
                 .build();

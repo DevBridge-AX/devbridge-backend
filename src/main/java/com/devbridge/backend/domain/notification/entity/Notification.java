@@ -28,6 +28,9 @@ public class Notification extends BaseEntity {
     @Column(name = "reference_id", length = 36)
     private String referenceId; // 클릭 시 이동할 타겟 ID
 
+    @Column(name = "workspace_id", length = 36)
+    private String workspaceId;
+
     @Column(name = "title", length = 255)
     private String title; // 알림 제목
 
