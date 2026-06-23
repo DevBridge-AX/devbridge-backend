@@ -29,12 +29,6 @@ public class WorkspaceInvitation extends BaseEntity {
     @JoinColumn(name = "invited_by", nullable = false)
     private User invitedBy;
 
-    // Temporary compatibility field.
-    // Current DB has both assigned_role and assigned_permission.
-    @Column(name = "assigned_role", nullable = false, length = 50)
-    private String assignedRole;
-
-    // Final target field. Later cleanup should keep this column only.
     @Column(name = "assigned_permission", nullable = false, length = 50)
     private String assignedPermission;
 

@@ -111,7 +111,6 @@ public class WorkspaceService {
                 .workspace(workspace)
                 .invitedEmail(invitedEmail)
                 .invitedBy(inviter)
-                .assignedRole(assignedPermission.name())
                 .assignedPermission(assignedPermission.name())
                 .status(INVITATION_STATUS_PENDING)
                 .build();
@@ -159,7 +158,7 @@ public class WorkspaceService {
             return;
         }
 
-        WorkspacePermission permission = parseAssignablePermission(resolveInvitationPermission(invitation));
+        WorkspacePermission permission = parseAssignablePermission(invitation.getAssignedPermission());
 
         WorkspaceMember member = WorkspaceMember.builder()
                 .workspace(invitation.getWorkspace())
@@ -232,7 +231,7 @@ public class WorkspaceService {
                 .workspaceId(invitation.getWorkspace().getId())
                 .workspaceName(invitation.getWorkspace().getName())
                 .invitedEmail(invitation.getInvitedEmail())
-                .assignedPermission(resolveInvitationPermission(invitation))
+                .assignedPermission(invitation.getAssignedPermission())
                 .status(invitation.getStatus())
                 .build();
     }
@@ -289,14 +288,6 @@ public class WorkspaceService {
         }
 
         return permission;
-    }
-
-    private String resolveInvitationPermission(WorkspaceInvitation invitation) {
-        if (invitation.getAssignedPermission() != null && !invitation.getAssignedPermission().isBlank()) {
-            return invitation.getAssignedPermission();
-        }
-
-        return invitation.getAssignedRole();
     }
 
     private String normalizeNullableText(String value) {
