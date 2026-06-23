@@ -12,7 +12,7 @@ import com.devbridge.backend.domain.git.dto.GitChangedFileDetail;
 import com.devbridge.backend.domain.git.dto.GitCommitDetail;
 import com.devbridge.backend.domain.git.dto.GitIngestionRequest;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
-import com.devbridge.backend.domain.workspace.repository.WorkspaceRepository;
+import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
 import com.devbridge.backend.global.config.fastapi.FastApiClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 public class GitIngestionService {
 
     private final GitService gitService;
-    private final WorkspaceRepository workspaceRepository;
+    private final WorkspaceContextValidator workspaceContextValidator;
     private final DataSourceRepository dataSourceRepository;
     private final GitCommitRepository gitCommitRepository;
     private final GitCommitFileRepository gitCommitFileRepository;
@@ -42,8 +42,7 @@ public class GitIngestionService {
     public List<GitCommitDetail> ingestGitCommits(GitIngestionRequest request) {
         validateRequest(request);
 
-        Workspace workspace = workspaceRepository.findById(request.getWorkspaceId())
-                .orElseThrow(() -> new IllegalArgumentException("Workspace not found: " + request.getWorkspaceId()));
+        Workspace workspace = workspaceContextValidator.getValidWorkspace(request.getWorkspaceId());
 
         DataSource dataSource = dataSourceRepository.findById(request.getDataSourceId())
                 .orElseThrow(() -> new IllegalArgumentException("DataSource not found: " + request.getDataSourceId()));
@@ -79,12 +78,11 @@ public class GitIngestionService {
     }
 
     private void validateGitDataSource(Workspace workspace, DataSource dataSource) {
-        String workspaceId = workspace.getId();
-        String dataSourceWorkspaceId = dataSource.getWorkspace().getId();
-
-        if (!workspaceId.equals(dataSourceWorkspaceId)) {
-            throw new IllegalArgumentException("DataSource does not belong to workspace.");
-        }
+        workspaceContextValidator.validateSameWorkspace(
+                workspace.getId(),
+                dataSource.getWorkspace().getId(),
+                "DataSource does not belong to workspace."
+        );
 
         if (!"GIT".equalsIgnoreCase(dataSource.getSourceType())) {
             throw new IllegalArgumentException("DataSource is not a GIT source.");

@@ -34,6 +34,7 @@ public class WorkspaceService {
     private final WorkspaceInvitationRepository workspaceInvitationRepository;
     private final UserRepository userRepository;
     private final WorkspaceAccessService workspaceAccessService;
+    private final WorkspaceContextValidator workspaceContextValidator;
 
     @Transactional(readOnly = true)
     public List<WorkspaceResponse> getMyWorkspaces(String employeeId) {
@@ -73,12 +74,11 @@ public class WorkspaceService {
 
     @Transactional
     public void inviteMember(String workspaceId, String inviterEmployeeId, InviteMemberRequest request) {
-        validateWorkspaceId(workspaceId);
-        validatePermission(workspaceId, inviterEmployeeId, WorkspacePermission.OWNER);
-        validateInviteRequest(request);
+        Workspace workspace = workspaceContextValidator.getValidWorkspace(workspaceId);
+        String validWorkspaceId = workspace.getId();
 
-        Workspace workspace = workspaceRepository.findById(workspaceId)
-                .orElseThrow(() -> new IllegalArgumentException("Workspace not found."));
+        validatePermission(validWorkspaceId, inviterEmployeeId, WorkspacePermission.OWNER);
+        validateInviteRequest(request);
 
         User inviter = userRepository.findByEmployeeId(inviterEmployeeId)
                 .orElseThrow(() -> new IllegalArgumentException("Inviter not found."));
@@ -88,7 +88,7 @@ public class WorkspaceService {
 
         userRepository.findByEmail(invitedEmail).ifPresent(invitedUser -> {
             boolean alreadyMember = workspaceMemberRepository.existsByWorkspace_IdAndUser_Id(
-                    workspaceId,
+                    validWorkspaceId,
                     invitedUser.getId()
             );
 
@@ -98,7 +98,7 @@ public class WorkspaceService {
         });
 
         boolean alreadyPending = workspaceInvitationRepository.existsByWorkspace_IdAndInvitedEmailAndStatus(
-                workspaceId,
+                validWorkspaceId,
                 invitedEmail,
                 INVITATION_STATUS_PENDING
         );
@@ -175,7 +175,8 @@ public class WorkspaceService {
 
     @Transactional
     public void updateLastAccessedAt(String employeeId, String workspaceId) {
-        workspaceAccessService.updateLastAccessedAt(employeeId, workspaceId);
+        Workspace workspace = workspaceContextValidator.getValidWorkspace(workspaceId);
+        workspaceAccessService.updateLastAccessedAt(employeeId, workspace.getId());
     }
 
     @Transactional(readOnly = true)
@@ -184,9 +185,12 @@ public class WorkspaceService {
             return List.of();
         }
 
-        validateMembership(workspaceId, employeeId);
+        Workspace workspace = workspaceContextValidator.getValidWorkspace(workspaceId);
+        String validWorkspaceId = workspace.getId();
 
-        return workspaceMemberRepository.searchByWorkspaceIdAndUserNameContaining(workspaceId, employeeId, keyword)
+        validateMembership(validWorkspaceId, employeeId);
+
+        return workspaceMemberRepository.searchByWorkspaceIdAndUserNameContaining(validWorkspaceId, employeeId, keyword)
                 .stream()
                 .map(member -> WorkspaceMemberResponse.builder()
                         .userId(member.getUser().getId())
@@ -201,15 +205,21 @@ public class WorkspaceService {
 
     @Transactional(readOnly = true)
     public void validateMembership(String workspaceId, String employeeId) {
-        if (!workspaceMemberRepository.existsByWorkspace_IdAndUser_EmployeeId(workspaceId, employeeId)) {
+        Workspace workspace = workspaceContextValidator.getValidWorkspace(workspaceId);
+        String validWorkspaceId = workspace.getId();
+
+        if (!workspaceMemberRepository.existsByWorkspace_IdAndUser_EmployeeId(validWorkspaceId, employeeId)) {
             throw new IllegalArgumentException("The user is not a member of this workspace.");
         }
     }
 
     @Transactional(readOnly = true)
     public void validatePermission(String workspaceId, String employeeId, WorkspacePermission requiredPermission) {
+        Workspace workspace = workspaceContextValidator.getValidWorkspace(workspaceId);
+        String validWorkspaceId = workspace.getId();
+
         WorkspaceMember member = workspaceMemberRepository
-                .findByUser_EmployeeIdAndWorkspace_Id(employeeId, workspaceId)
+                .findByUser_EmployeeIdAndWorkspace_Id(employeeId, validWorkspaceId)
                 .orElseThrow(() -> new IllegalArgumentException("The user is not a member of this workspace."));
 
         if (!member.getPermission().hasAtLeast(requiredPermission)) {
@@ -266,12 +276,6 @@ public class WorkspaceService {
 
         if (request.getRole() == null || request.getRole().isBlank()) {
             throw new IllegalArgumentException("Assigned permission is required.");
-        }
-    }
-
-    private void validateWorkspaceId(String workspaceId) {
-        if (workspaceId == null || workspaceId.isBlank()) {
-            throw new IllegalArgumentException("Workspace id is required.");
         }
     }
 
