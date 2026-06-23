@@ -1,5 +1,6 @@
 package com.devbridge.backend.domain.chat.service;
 
+import com.devbridge.backend.domain.chat.dto.OwnerConfirmationResponse;
 import com.devbridge.backend.domain.chat.entity.ChatMessage;
 import com.devbridge.backend.domain.chat.entity.ChatSession;
 import com.devbridge.backend.domain.chat.entity.OwnerConfirmation;
@@ -12,18 +13,23 @@ import com.devbridge.backend.domain.notification.service.NotificationService;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
+import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -45,25 +51,32 @@ class OwnerConfirmationServiceTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private WebSocketSessionRegistry webSocketSessionRegistry;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     private OwnerConfirmationService ownerConfirmationService;
 
     @BeforeEach
     void setUp() {
         ownerConfirmationService = new OwnerConfirmationService(
                 userRepository, chatMessageRepository, ownerConfirmationRepository,
-                knowledgeDocumentRepository, notificationService);
+                knowledgeDocumentRepository, notificationService,
+                webSocketSessionRegistry, objectMapper);
     }
 
+    // --- triggerOwnerConfirmation ---
+
     @Test
-    void triggerOwnerConfirmation_OwnerConfirmationRow가저장되고알림이전송된다() {
-        User owner = User.builder()
-                .id("owner-1").employeeId("EMP010").name("김담당")
-                .systemRole("USER").authProvider("LOCAL").build();
+    void triggerOwnerConfirmation_OwnerConfirmationRow가저장되고requester가세팅된다() {
+        User owner = createUser("owner-1", "EMP010", "김담당");
+        User sessionUser = createUser("user-1", "EMP001", "홍질문");
 
         Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
         ChatSession session = ChatSession.builder()
                 .id("session-1").workspace(workspace)
-                .user(owner).sessionTitle("테스트 세션").build();
+                .user(sessionUser).sessionTitle("테스트 세션").build();
         ChatMessage chatMessage = ChatMessage.builder()
                 .id("msg-1").session(session)
                 .senderType("USER").content("테스트 질문").build();
@@ -72,7 +85,7 @@ class OwnerConfirmationServiceTest {
         when(chatMessageRepository.findById("msg-1")).thenReturn(Optional.of(chatMessage));
         when(ownerConfirmationRepository.save(any(OwnerConfirmation.class))).thenAnswer(invocation -> {
             OwnerConfirmation oc = invocation.getArgument(0);
-            org.springframework.test.util.ReflectionTestUtils.setField(oc, "id", "oc-1");
+            ReflectionTestUtils.setField(oc, "id", "oc-1");
             return oc;
         });
 
@@ -84,43 +97,9 @@ class OwnerConfirmationServiceTest {
         verify(ownerConfirmationRepository).save(captor.capture());
 
         OwnerConfirmation saved = captor.getValue();
-        assertThat(saved.getStatus()).isEqualTo("PENDING");
-        assertThat(saved.getQuestionMessage()).isEqualTo(chatMessage);
         assertThat(saved.getAssignedOwner()).isEqualTo(owner);
+        assertThat(saved.getRequester()).isEqualTo(sessionUser);
         assertThat(saved.getWorkspace()).isEqualTo(workspace);
-        assertThat(saved.getRelatedDocument()).isNull();
-        assertThat(saved.getQuestionContent()).isNull();
-    }
-
-    @Test
-    void triggerOwnerConfirmation_notification의referenceId가ownerConfirmationId와일치한다() {
-        User owner = User.builder()
-                .id("owner-1").employeeId("EMP010").name("김담당")
-                .systemRole("USER").authProvider("LOCAL").build();
-
-        Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
-        ChatSession session = ChatSession.builder()
-                .id("session-1").workspace(workspace)
-                .user(owner).sessionTitle("테스트 세션").build();
-        ChatMessage chatMessage = ChatMessage.builder()
-                .id("msg-1").session(session)
-                .senderType("USER").content("테스트 질문").build();
-
-        when(userRepository.findById("owner-1")).thenReturn(Optional.of(owner));
-        when(chatMessageRepository.findById("msg-1")).thenReturn(Optional.of(chatMessage));
-        when(ownerConfirmationRepository.save(any(OwnerConfirmation.class))).thenAnswer(invocation -> {
-            OwnerConfirmation oc = invocation.getArgument(0);
-            org.springframework.test.util.ReflectionTestUtils.setField(oc, "id", "oc-generated-id");
-            return oc;
-        });
-
-        ownerConfirmationService.triggerOwnerConfirmation("msg-1", "owner-1");
-
-        verify(notificationService).createNotification(
-                eq(owner), eq("OWNER_CONFIRMATION"), eq("oc-generated-id"),
-                eq("담당자 확인 요청"),
-                eq("문서 근거가 부족한 질문이 배정되었습니다. 확인 후 답변해 주세요."),
-                eq("ws-1"));
     }
 
     @Test
@@ -134,16 +113,17 @@ class OwnerConfirmationServiceTest {
         verify(notificationService, never()).createNotification(any(), any(), any(), any(), any(), any());
     }
 
+    // --- createOwnerConfirmationFromChat ---
+
     @Test
-    void createOwnerConfirmationFromChat_정상케이스_저장과알림이모두수행된다() {
-        User owner = User.builder()
-                .id("owner-1").employeeId("EMP010").name("김담당")
-                .systemRole("USER").authProvider("LOCAL").build();
+    void createOwnerConfirmationFromChat_정상케이스_requester가저장된다() {
+        User owner = createUser("owner-1", "EMP010", "김담당");
+        User requester = createUser("requester-1", "EMP001", "홍질문");
 
         Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
         ChatSession session = ChatSession.builder()
                 .id("session-1").workspace(workspace)
-                .user(owner).sessionTitle("테스트 세션").build();
+                .user(requester).sessionTitle("테스트 세션").build();
         ChatMessage chatMessage = ChatMessage.builder()
                 .id("msg-1").session(session)
                 .senderType("USER").content("테스트 질문").build();
@@ -152,22 +132,21 @@ class OwnerConfirmationServiceTest {
                 .thenReturn(false);
         when(userRepository.findById("owner-1")).thenReturn(Optional.of(owner));
         when(chatMessageRepository.findById("msg-1")).thenReturn(Optional.of(chatMessage));
+        when(userRepository.findByEmployeeId("EMP001")).thenReturn(Optional.of(requester));
         when(ownerConfirmationRepository.save(any(OwnerConfirmation.class))).thenAnswer(invocation -> {
             OwnerConfirmation oc = invocation.getArgument(0);
-            org.springframework.test.util.ReflectionTestUtils.setField(oc, "id", "oc-new");
+            ReflectionTestUtils.setField(oc, "id", "oc-new");
             return oc;
         });
 
-        ownerConfirmationService.createOwnerConfirmationFromChat("msg-1", "owner-1");
+        ownerConfirmationService.createOwnerConfirmationFromChat("msg-1", "owner-1", "EMP001");
 
         ArgumentCaptor<OwnerConfirmation> captor = ArgumentCaptor.forClass(OwnerConfirmation.class);
         verify(ownerConfirmationRepository).save(captor.capture());
 
         OwnerConfirmation saved = captor.getValue();
-        assertThat(saved.getStatus()).isEqualTo("PENDING");
-        assertThat(saved.getQuestionMessage()).isEqualTo(chatMessage);
+        assertThat(saved.getRequester()).isEqualTo(requester);
         assertThat(saved.getAssignedOwner()).isEqualTo(owner);
-        assertThat(saved.getWorkspace()).isEqualTo(workspace);
 
         verify(notificationService).createNotification(
                 eq(owner), eq("OWNER_CONFIRMATION"), eq("oc-new"),
@@ -181,22 +160,19 @@ class OwnerConfirmationServiceTest {
         when(ownerConfirmationRepository.existsByQuestionMessage_IdAndStatus("msg-1", "PENDING"))
                 .thenReturn(true);
 
-        assertThatThrownBy(() -> ownerConfirmationService.createOwnerConfirmationFromChat("msg-1", "owner-1"))
+        assertThatThrownBy(() -> ownerConfirmationService.createOwnerConfirmationFromChat("msg-1", "owner-1", "EMP001"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("이미 담당자가 배정된 질문입니다.");
 
         verify(ownerConfirmationRepository, never()).save(any());
-        verify(notificationService, never()).createNotification(any(), any(), any(), any(), any(), any());
     }
 
+    // --- createOwnerConfirmationFromDocument ---
+
     @Test
-    void createOwnerConfirmationFromDocument_정상케이스_저장과알림이수행되고relatedDocument가연결된다() {
-        User uploader = User.builder()
-                .id("uploader-1").employeeId("EMP020").name("박등록")
-                .systemRole("USER").authProvider("LOCAL").build();
-        User requester = User.builder()
-                .id("requester-1").employeeId("EMP030").name("이요청")
-                .systemRole("USER").authProvider("LOCAL").build();
+    void createOwnerConfirmationFromDocument_정상케이스_requester가저장된다() {
+        User uploader = createUser("uploader-1", "EMP020", "박등록");
+        User requester = createUser("requester-1", "EMP030", "이요청");
 
         Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
         DataSource dataSource = DataSource.builder()
@@ -208,22 +184,19 @@ class OwnerConfirmationServiceTest {
         when(userRepository.findByEmployeeId("EMP030")).thenReturn(Optional.of(requester));
         when(ownerConfirmationRepository.save(any(OwnerConfirmation.class))).thenAnswer(invocation -> {
             OwnerConfirmation oc = invocation.getArgument(0);
-            org.springframework.test.util.ReflectionTestUtils.setField(oc, "id", "oc-doc-1");
+            ReflectionTestUtils.setField(oc, "id", "oc-doc-1");
             return oc;
         });
 
-        ownerConfirmationService.createOwnerConfirmationFromDocument("doc-1", "이 문서에 대해 질문이 있습니다", "EMP030");
+        ownerConfirmationService.createOwnerConfirmationFromDocument("doc-1", "질문입니다", "EMP030");
 
         ArgumentCaptor<OwnerConfirmation> captor = ArgumentCaptor.forClass(OwnerConfirmation.class);
         verify(ownerConfirmationRepository).save(captor.capture());
 
         OwnerConfirmation saved = captor.getValue();
-        assertThat(saved.getStatus()).isEqualTo("PENDING");
-        assertThat(saved.getRelatedDocument()).isEqualTo(document);
-        assertThat(saved.getQuestionContent()).isEqualTo("이 문서에 대해 질문이 있습니다");
+        assertThat(saved.getRequester()).isEqualTo(requester);
         assertThat(saved.getAssignedOwner()).isEqualTo(uploader);
-        assertThat(saved.getWorkspace()).isEqualTo(workspace);
-        assertThat(saved.getQuestionMessage()).isNull();
+        assertThat(saved.getRelatedDocument()).isEqualTo(document);
 
         verify(notificationService).createNotification(
                 eq(uploader), eq("OWNER_CONFIRMATION"), eq("oc-doc-1"),
@@ -233,28 +206,8 @@ class OwnerConfirmationServiceTest {
     }
 
     @Test
-    void createOwnerConfirmationFromDocument_uploadedBy가null이면_IllegalArgumentException이발생한다() {
-        Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
-        DataSource dataSource = DataSource.builder()
-                .id("ds-1").workspace(workspace).sourceType("DOC").sourceName("테스트 소스").build();
-        KnowledgeDocument document = KnowledgeDocument.builder()
-                .id("doc-1").dataSource(dataSource).uploadedBy(null).title("설계 문서").build();
-
-        when(knowledgeDocumentRepository.findById("doc-1")).thenReturn(Optional.of(document));
-
-        assertThatThrownBy(() -> ownerConfirmationService.createOwnerConfirmationFromDocument(
-                "doc-1", "질문입니다", "EMP030"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("등록자 정보가 없는 문서입니다. 담당자를 지정할 수 없습니다.");
-
-        verify(ownerConfirmationRepository, never()).save(any());
-    }
-
-    @Test
-    void createOwnerConfirmationFromDocument_본인문서요청시_IllegalArgumentException이발생한다() {
-        User uploader = User.builder()
-                .id("same-user").employeeId("EMP020").name("박등록")
-                .systemRole("USER").authProvider("LOCAL").build();
+    void createOwnerConfirmationFromDocument_본인문서요청시_예외가발생한다() {
+        User uploader = createUser("same-user", "EMP020", "박등록");
 
         Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
         DataSource dataSource = DataSource.builder()
@@ -269,21 +222,189 @@ class OwnerConfirmationServiceTest {
                 "doc-1", "질문입니다", "EMP020"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("본인이 등록한 문서입니다.");
+    }
 
-        verify(ownerConfirmationRepository, never()).save(any());
+    // --- submitAnswer ---
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void submitAnswer_정상케이스_상태변경과알림및WebSocket이전송된다() throws Exception {
+        User owner = createUser("owner-1", "EMP010", "김담당");
+        User requester = createUser("requester-1", "EMP001", "홍질문");
+        Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
+
+        ChatMessage questionMsg = ChatMessage.builder()
+                .id("msg-1").senderType("USER").content("테스트 질문").build();
+
+        OwnerConfirmation confirmation = OwnerConfirmation.builder()
+                .workspace(workspace)
+                .questionMessage(questionMsg)
+                .assignedOwner(owner)
+                .requester(requester)
+                .build();
+        ReflectionTestUtils.setField(confirmation, "id", "oc-1");
+
+        when(ownerConfirmationRepository.findByIdAndDeletedAtIsNull("oc-1"))
+                .thenReturn(Optional.of(confirmation));
+
+        OwnerConfirmationResponse response = ownerConfirmationService.submitAnswer("oc-1", "EMP010", "답변 내용입니다.");
+
+        assertThat(confirmation.getStatus()).isEqualTo("ANSWERED");
+        assertThat(confirmation.getAnswerContent()).isEqualTo("답변 내용입니다.");
+        assertThat(confirmation.getAnsweredAt()).isNotNull();
+        assertThat(response.status()).isEqualTo("ANSWERED");
+
+        verify(notificationService).createNotification(
+                eq(requester), eq("OWNER_ANSWER_RECEIVED"), eq("oc-1"),
+                eq("담당자 답변이 도착했습니다"),
+                eq("김담당님이 질문에 답변했습니다."),
+                eq("ws-1"));
+
+        ArgumentCaptor<String> wsCaptor = ArgumentCaptor.forClass(String.class);
+        verify(webSocketSessionRegistry).sendToUser(eq("EMP001"), wsCaptor.capture());
+
+        Map<String, Object> payload = objectMapper.readValue(wsCaptor.getValue(), Map.class);
+        assertThat(payload).containsEntry("type", "owner_answer_received");
+        assertThat(payload).containsEntry("confirmation_id", "oc-1");
+        assertThat(payload).containsEntry("original_message_id", "msg-1");
+        assertThat(payload).containsEntry("content", "답변 내용입니다.");
+        assertThat(payload).containsEntry("owner_name", "김담당");
     }
 
     @Test
-    void createOwnerConfirmationFromChat_User가없으면_IllegalArgumentException이발생한다() {
-        when(ownerConfirmationRepository.existsByQuestionMessage_IdAndStatus("msg-1", "PENDING"))
-                .thenReturn(false);
-        when(userRepository.findById("unknown-owner")).thenReturn(Optional.empty());
+    void submitAnswer_배정되지않은담당자가시도시_IllegalStateException이발생한다() {
+        User owner = createUser("owner-1", "EMP010", "김담당");
+        Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
 
-        assertThatThrownBy(() -> ownerConfirmationService.createOwnerConfirmationFromChat("msg-1", "unknown-owner"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("해당 사용자가 존재하지 않습니다: unknown-owner");
+        OwnerConfirmation confirmation = OwnerConfirmation.builder()
+                .workspace(workspace)
+                .assignedOwner(owner)
+                .build();
+        ReflectionTestUtils.setField(confirmation, "id", "oc-1");
 
-        verify(ownerConfirmationRepository, never()).save(any());
+        when(ownerConfirmationRepository.findByIdAndDeletedAtIsNull("oc-1"))
+                .thenReturn(Optional.of(confirmation));
+
+        assertThatThrownBy(() -> ownerConfirmationService.submitAnswer("oc-1", "EMP999", "답변"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("권한이 없습니다. 배정된 담당자만 답변할 수 있습니다.");
+
         verify(notificationService, never()).createNotification(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void submitAnswer_이미답변된요청시_IllegalStateException이발생한다() {
+        User owner = createUser("owner-1", "EMP010", "김담당");
+        Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
+
+        OwnerConfirmation confirmation = OwnerConfirmation.builder()
+                .workspace(workspace)
+                .assignedOwner(owner)
+                .build();
+        ReflectionTestUtils.setField(confirmation, "id", "oc-1");
+        confirmation.submitAnswer("이미 답변함");
+
+        when(ownerConfirmationRepository.findByIdAndDeletedAtIsNull("oc-1"))
+                .thenReturn(Optional.of(confirmation));
+
+        assertThatThrownBy(() -> ownerConfirmationService.submitAnswer("oc-1", "EMP010", "새 답변"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("이미 답변이 완료된 요청입니다.");
+    }
+
+    @Test
+    void submitAnswer_requester가null인경우_알림없이답변만저장된다() {
+        User owner = createUser("owner-1", "EMP010", "김담당");
+        Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
+
+        OwnerConfirmation confirmation = OwnerConfirmation.builder()
+                .workspace(workspace)
+                .assignedOwner(owner)
+                .requester(null)
+                .build();
+        ReflectionTestUtils.setField(confirmation, "id", "oc-1");
+
+        when(ownerConfirmationRepository.findByIdAndDeletedAtIsNull("oc-1"))
+                .thenReturn(Optional.of(confirmation));
+
+        ownerConfirmationService.submitAnswer("oc-1", "EMP010", "답변");
+
+        assertThat(confirmation.getStatus()).isEqualTo("ANSWERED");
+        verify(notificationService, never()).createNotification(any(), any(), any(), any(), any(), any());
+        verify(webSocketSessionRegistry, never()).sendToUser(anyString(), anyString());
+    }
+
+    // --- getDetail ---
+
+    @Test
+    void getDetail_assignedOwner가조회하면_정상반환된다() {
+        User owner = createUser("owner-1", "EMP010", "김담당");
+        User requester = createUser("requester-1", "EMP001", "홍질문");
+        Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
+
+        OwnerConfirmation confirmation = OwnerConfirmation.builder()
+                .workspace(workspace)
+                .assignedOwner(owner)
+                .requester(requester)
+                .questionContent("테스트 질문")
+                .build();
+        ReflectionTestUtils.setField(confirmation, "id", "oc-1");
+
+        when(ownerConfirmationRepository.findByIdAndDeletedAtIsNull("oc-1"))
+                .thenReturn(Optional.of(confirmation));
+
+        OwnerConfirmationResponse response = ownerConfirmationService.getDetail("oc-1", "EMP010");
+
+        assertThat(response.id()).isEqualTo("oc-1");
+        assertThat(response.questionContent()).isEqualTo("테스트 질문");
+    }
+
+    @Test
+    void getDetail_requester가조회하면_정상반환된다() {
+        User owner = createUser("owner-1", "EMP010", "김담당");
+        User requester = createUser("requester-1", "EMP001", "홍질문");
+        Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
+
+        OwnerConfirmation confirmation = OwnerConfirmation.builder()
+                .workspace(workspace)
+                .assignedOwner(owner)
+                .requester(requester)
+                .questionContent("테스트 질문")
+                .build();
+        ReflectionTestUtils.setField(confirmation, "id", "oc-1");
+
+        when(ownerConfirmationRepository.findByIdAndDeletedAtIsNull("oc-1"))
+                .thenReturn(Optional.of(confirmation));
+
+        OwnerConfirmationResponse response = ownerConfirmationService.getDetail("oc-1", "EMP001");
+
+        assertThat(response.id()).isEqualTo("oc-1");
+    }
+
+    @Test
+    void getDetail_권한없는사용자시_IllegalStateException이발생한다() {
+        User owner = createUser("owner-1", "EMP010", "김담당");
+        User requester = createUser("requester-1", "EMP001", "홍질문");
+        Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
+
+        OwnerConfirmation confirmation = OwnerConfirmation.builder()
+                .workspace(workspace)
+                .assignedOwner(owner)
+                .requester(requester)
+                .build();
+        ReflectionTestUtils.setField(confirmation, "id", "oc-1");
+
+        when(ownerConfirmationRepository.findByIdAndDeletedAtIsNull("oc-1"))
+                .thenReturn(Optional.of(confirmation));
+
+        assertThatThrownBy(() -> ownerConfirmationService.getDetail("oc-1", "EMP999"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("해당 확인 요청에 대한 접근 권한이 없습니다.");
+    }
+
+    private User createUser(String id, String employeeId, String name) {
+        return User.builder()
+                .id(id).employeeId(employeeId).name(name)
+                .systemRole("USER").authProvider("LOCAL").build();
     }
 }
