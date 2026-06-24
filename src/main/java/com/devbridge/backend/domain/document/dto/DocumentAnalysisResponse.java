@@ -10,13 +10,26 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class DocumentAnalysisResponse {
 
-    @JsonProperty("knowledge_document_id")
-    private String knowledgeDocumentId;
-
     @JsonProperty("document_id")
     private String documentId;
 
-    private String status;
+    @JsonProperty("workspace_id")
+    private String workspaceId;
 
-    private String message;
+    @JsonProperty("task_id")
+    private String taskId;
+
+    private String summary;
+
+    private String keywords;
+
+    @JsonProperty("risk_level")
+    private String riskLevel;
+
+    @JsonProperty("next_action")
+    private String nextAction;
+
+    private String model;
+
+    private String mode;
 }
