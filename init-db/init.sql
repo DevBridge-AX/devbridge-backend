@@ -1,26 +1,50 @@
 CREATE DATABASE IF NOT EXISTS devbridge;
 
+-- ============================================================
+-- 1. 계정 생성
+-- ============================================================
+
 -- Spring 계정: DDL + DML 전체 권한 (테이블 생성/수정의 유일한 주체)
 CREATE USER IF NOT EXISTS 'ssafy_be'@'%' IDENTIFIED BY '1234';
-GRANT ALL PRIVILEGES ON devbridge.* TO 'ssafy_be'@'%';
+GRANT ALL PRIVILEGES ON devbridge.* TO 'ssafy_be'@'%' WITH GRANT OPTION;
 
--- FastAPI 계정: Spring 테이블은 SELECT만, AI 도메인 테이블은 DML만
+-- FastAPI 계정: SELECT + DML (스키마 레벨)
+-- 개발 단계에서는 스키마 레벨로 부여하고, 프로덕션 배포 시 테이블별 세분화
 CREATE USER IF NOT EXISTS 'ssafy_ai'@'%' IDENTIFIED BY '1234';
+GRANT SELECT, INSERT, UPDATE, DELETE ON devbridge.* TO 'ssafy_ai'@'%';
 
--- 1. 전체 READ ONLY (Spring 비즈니스 테이블 포함)
-GRANT SELECT ON devbridge.* TO 'ssafy_ai'@'%';
+-- ============================================================
+-- 2. AI 전용 테이블 (Spring 엔티티 미존재, Alembic 비활성화)
+-- ============================================================
 
--- 2. 공유 테이블: DML만 (DDL 제외 — ALTER, DROP 불가)
-GRANT INSERT, UPDATE, DELETE ON devbridge.KNOWLEDGE_DOCUMENTS TO 'ssafy_ai'@'%';
-GRANT INSERT, UPDATE, DELETE ON devbridge.DATA_SOURCES TO 'ssafy_ai'@'%';
-GRANT INSERT, UPDATE, DELETE ON devbridge.DATABASE_SCHEMAS TO 'ssafy_ai'@'%';
-GRANT INSERT, UPDATE, DELETE ON devbridge.GIT_COMMITS TO 'ssafy_ai'@'%';
-GRANT INSERT, UPDATE, DELETE ON devbridge.GIT_COMMIT_FILES TO 'ssafy_ai'@'%';
-GRANT INSERT, UPDATE, DELETE ON devbridge.GIT_COMMIT_ANALYSIS TO 'ssafy_ai'@'%';
+USE devbridge;
 
--- 3. AI 전용 테이블: DML + DDL (Alembic 마이그레이션 포함)
-GRANT ALL PRIVILEGES ON devbridge.document_chunks TO 'ssafy_ai'@'%';
-GRANT ALL PRIVILEGES ON devbridge.usage_logs TO 'ssafy_ai'@'%';
-GRANT ALL PRIVILEGES ON devbridge.alembic_version TO 'ssafy_ai'@'%';
+CREATE TABLE IF NOT EXISTS document_chunks (
+    id                      BIGINT AUTO_INCREMENT PRIMARY KEY,
+    workspace_id            VARCHAR(36)   NOT NULL,
+    source_type             VARCHAR(30)   NOT NULL,
+    source_id               VARCHAR(36)   NOT NULL,
+    content                 TEXT          NOT NULL,
+    chunk_metadata          JSON          NULL,
+    embedding_model         VARCHAR(100)  NOT NULL,
+    embedding_model_version VARCHAR(50)   NOT NULL,
+    vector_id               VARCHAR(255)  NOT NULL,
+    created_at              DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at              DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    INDEX ix_document_chunks_workspace_id (workspace_id),
+    INDEX ix_document_chunks_vector_id (vector_id),
+    INDEX ix_document_chunks_source (source_type, source_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS usage_logs (
+    id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+    workspace_id     VARCHAR(36)   NOT NULL,
+    date             DATE          NOT NULL,
+    embedding_model  VARCHAR(100)  NOT NULL,
+    embedding_tokens DECIMAL(12,1) NOT NULL DEFAULT 0.0,
+    created_at       DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    INDEX ix_usage_logs_workspace_id (workspace_id),
+    UNIQUE KEY uq_usage_logs_workspace_date_model (workspace_id, date, embedding_model)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 FLUSH PRIVILEGES;
