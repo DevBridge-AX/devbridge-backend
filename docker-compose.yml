@@ -53,11 +53,16 @@ services:
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       INTERNAL_API_KEY: "${INTERNAL_API_KEY}"
+      AI_ENGINE_BASE_URL: http://ai-engine:8000
+      AI_ENGINE_INTERNAL_API_KEY: a3f8c2e1d4b7e9f0a1c3d5e7f9b2d4e6f8a0c2e4d6b8f0a2c4e6d8f0b2a4c6e8
       FASTAPI_BASE_URL: http://ai-engine:8000
+      DEVBRIDGE_GIT_REPOSITORY_PATH: /app/git-repos/devbridge-backend
       SPRING_MAIL_USERNAME: "${SPRING_MAIL_USERNAME}"
       SPRING_MAIL_PASSWORD: "${SPRING_MAIL_PASSWORD}"
     volumes:
       - ./.docker-data/uploads:/app/uploads
+      - ..:/app/git-repos
+      - gradle-cache:/root/.gradle
     depends_on:
       mysql:
         condition: service_healthy
@@ -81,6 +86,8 @@ services:
     environment:
       DATABASE_URL: mysql+pymysql://${MYSQL_USER_AI}:${MYSQL_PASSWORD_AI}@devbridge-mysql:3306/devbridge
       SPRING_BACKEND_BASE_URL: http://app:8080
+      AI_ANALYSIS_MODE: LLM
+      DOCUMENT_ANALYSIS_MODEL: claude-sonnet-4-6
     depends_on:
       mysql:
         condition: service_healthy
@@ -89,8 +96,11 @@ services:
     # TODO: FastAPI models.py를 Spring 스키마에 맞춰 동기화한 뒤 alembic upgrade head 복원 필요
     # sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
     command: >
-      sh -c "uvicorn app.main:app --host 0.0.0.0 --port 8000"
+      sh -c "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
 networks:
   devbridge-network:
     driver: bridge
+
+volumes:
+  gradle-cache:
