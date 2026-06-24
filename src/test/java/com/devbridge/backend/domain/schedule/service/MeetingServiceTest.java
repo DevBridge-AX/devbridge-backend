@@ -22,7 +22,7 @@ import com.devbridge.backend.domain.notification.service.NotificationService;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
-import com.devbridge.backend.domain.workspace.repository.WorkspaceRepository;
+import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
 import com.devbridge.backend.domain.workspace.service.WorkspaceService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -61,7 +61,7 @@ class MeetingServiceTest {
     private ParticipantAvailableTimeRepository participantAvailableTimeRepository;
 
     @Mock
-    private WorkspaceRepository workspaceRepository;
+    private WorkspaceContextValidator workspaceContextValidator;
 
     @Mock
     private WorkspaceService workspaceService;
@@ -82,7 +82,7 @@ class MeetingServiceTest {
     void setUp() {
         objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
         meetingService = new MeetingService(
-                meetingRepository, meetingParticipantRepository, participantAvailableTimeRepository, workspaceRepository, workspaceService, meetingReferenceService, objectMapper, userRepository, notificationService);
+                meetingRepository, meetingParticipantRepository, participantAvailableTimeRepository, workspaceContextValidator, workspaceService, meetingReferenceService, objectMapper, userRepository, notificationService);
 
         lenient().when(userRepository.findById(anyString())).thenAnswer(invocation -> {
             String id = invocation.getArgument(0);
@@ -91,6 +91,10 @@ class MeetingServiceTest {
         lenient().when(userRepository.findByEmployeeId(anyString())).thenAnswer(invocation -> {
             String empId = invocation.getArgument(0);
             return Optional.of(User.builder().id(empId).employeeId(empId).name("Mock User").systemRole("USER").authProvider("LOCAL").build());
+        });
+        lenient().when(workspaceContextValidator.getValidWorkspace(anyString())).thenAnswer(invocation -> {
+            String wsId = invocation.getArgument(0);
+            return Workspace.builder().id(wsId).name("Mock Workspace").build();
         });
     }
 
@@ -459,7 +463,7 @@ class MeetingServiceTest {
     @Test
     void createMeeting_참석자에게MEETING_INVITED알림이전송된다_생성자본인제외() {
         Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
-        when(workspaceRepository.findById("ws-1")).thenReturn(Optional.of(workspace));
+        when(workspaceContextValidator.getValidWorkspace("ws-1")).thenReturn(workspace);
 
         when(meetingRepository.save(any(Meeting.class))).thenAnswer(invocation -> {
             Meeting m = invocation.getArgument(0);
@@ -496,7 +500,7 @@ class MeetingServiceTest {
     @Test
     void createMeeting_참석자가없으면_알림이전송되지않는다() {
         Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
-        when(workspaceRepository.findById("ws-1")).thenReturn(Optional.of(workspace));
+        when(workspaceContextValidator.getValidWorkspace("ws-1")).thenReturn(workspace);
 
         when(meetingRepository.save(any(Meeting.class))).thenAnswer(invocation -> {
             Meeting m = invocation.getArgument(0);
