@@ -5,6 +5,8 @@ import com.devbridge.backend.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "TASK_STATUS_LOGS")
 @Getter
@@ -16,16 +18,36 @@ public class TaskStatusLog extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", columnDefinition = "VARCHAR(36)")
-    private String id; // 로그 ID
+    private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "task_id", nullable = false)
-    private Task task; // 업무 ID
+    private Task task;
 
     @Column(name = "status", nullable = false, length = 50)
-    private String status; // 변경된 상태
+    private String status;
+
+    @Column(name = "previous_status", length = 50)
+    private String previousStatus;
+
+    @Column(name = "next_status", nullable = false, length = 50)
+    private String nextStatus;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "changed_by", nullable = false)
-    private User changedBy; // 변경자
+    private User changedBy;
+
+    @Column(name = "changed_at", nullable = false)
+    private LocalDateTime changedAt;
+
+    @PrePersist
+    protected void onCreateStatusLog() {
+        if (changedAt == null) {
+            changedAt = LocalDateTime.now();
+        }
+
+        if (status == null && nextStatus != null) {
+            status = nextStatus;
+        }
+    }
 }

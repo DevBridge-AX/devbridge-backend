@@ -4,6 +4,8 @@ import com.devbridge.backend.domain.datasource.dto.DocumentResponse;
 import com.devbridge.backend.domain.datasource.entity.KnowledgeDocument;
 import com.devbridge.backend.domain.datasource.repository.KnowledgeDocumentRepository;
 import com.devbridge.backend.domain.user.entity.User;
+import com.devbridge.backend.domain.workspace.entity.Workspace;
+import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,14 +17,13 @@ import java.util.List;
 public class DocumentService {
 
     private final KnowledgeDocumentRepository knowledgeDocumentRepository;
+    private final WorkspaceContextValidator workspaceContextValidator;
 
     @Transactional(readOnly = true)
     public List<DocumentResponse> getDocumentsByWorkspace(String workspaceId) {
-        if (workspaceId == null || workspaceId.isBlank()) {
-            throw new IllegalArgumentException("Workspace ID is required.");
-        }
+        Workspace workspace = workspaceContextValidator.getValidWorkspace(workspaceId);
 
-        return knowledgeDocumentRepository.findByDataSource_Workspace_IdOrderByCreatedAtDesc(workspaceId)
+        return knowledgeDocumentRepository.findByDataSource_Workspace_IdOrderByCreatedAtDesc(workspace.getId())
                 .stream()
                 .map(this::toDocumentResponse)
                 .toList();

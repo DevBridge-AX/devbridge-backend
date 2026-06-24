@@ -244,3 +244,25 @@ INSERT INTO meeting_participants (
 ('meetp009', NOW(), NOW(), NULL, 'meet003', 'EMP004', 'PENDING',   'ATTENDEE'),
 ('meetp010', NOW(), NOW(), NULL, 'meet004', 'EMP003', 'RESPONDED', 'HOST'),
 ('meetp011', NOW(), NOW(), NULL, 'meet004', 'EMP004', 'RESPONDED', 'ATTENDEE');
+
+-- dashboard_seed.sql
+-- Disabled.
+--
+-- Reason:
+-- This file previously inserted fixed workspace IDs such as:
+-- - ws001
+-- - dummy-workspace-id
+--
+-- That caused seed tasks, data sources, chat sessions, and meetings
+-- to be created under mock workspaces instead of the actual workspace
+-- selected or created by the user.
+--
+-- Workspace-scoped data must now be created through the application flow:
+-- 1. create/select a real workspace
+-- 2. create tasks under that workspace
+-- 3. connect data sources under that workspace
+-- 4. upload documents / ingest Git under that workspace
+-- 5. create chat sessions under that workspace
+--
+-- If sample data is needed later, create a separate dev-only seed script
+-- that accepts a real workspace ID as a parameter.

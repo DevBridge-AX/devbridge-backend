@@ -1,5 +1,6 @@
 package com.devbridge.backend.domain.schedule.service;
 
+import com.devbridge.backend.domain.notification.service.NotificationService;
 import com.devbridge.backend.domain.schedule.dto.CandidateTimeSlot;
 import com.devbridge.backend.domain.schedule.dto.ConfirmedScheduleResponse;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingRequest;
@@ -19,11 +20,10 @@ import com.devbridge.backend.domain.schedule.entity.ParticipantStatus;
 import com.devbridge.backend.domain.schedule.repository.MeetingParticipantRepository;
 import com.devbridge.backend.domain.schedule.repository.MeetingRepository;
 import com.devbridge.backend.domain.schedule.repository.ParticipantAvailableTimeRepository;
-import com.devbridge.backend.domain.notification.service.NotificationService;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
-import com.devbridge.backend.domain.workspace.repository.WorkspaceRepository;
+import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
 import com.devbridge.backend.domain.workspace.service.WorkspaceService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -49,7 +49,7 @@ public class MeetingService {
     private final MeetingRepository meetingRepository;
     private final MeetingParticipantRepository meetingParticipantRepository;
     private final ParticipantAvailableTimeRepository participantAvailableTimeRepository;
-    private final WorkspaceRepository workspaceRepository;
+    private final WorkspaceContextValidator workspaceContextValidator;
     private final WorkspaceService workspaceService;
     private final MeetingReferenceService meetingReferenceService;
     private final ObjectMapper objectMapper;
@@ -65,12 +65,17 @@ public class MeetingService {
     }
 
     @Transactional
-    public CreateMeetingResponse createMeeting(String workspaceId, String hostEmployeeId, CreateMeetingRequest request) {
+    public CreateMeetingResponse createMeeting(
+            String workspaceId,
+            String hostEmployeeId,
+            CreateMeetingRequest request
+    ) {
         User host = resolveUser(hostEmployeeId);
-        workspaceService.validateMembership(workspaceId, hostEmployeeId);
 
-        Workspace workspace = workspaceRepository.findById(workspaceId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 워크스페이스가 존재하지 않습니다."));
+        Workspace workspace = workspaceContextValidator.getValidWorkspace(workspaceId);
+        String validWorkspaceId = workspace.getId();
+
+        workspaceService.validateMembership(validWorkspaceId, hostEmployeeId);
 
         Meeting meeting = Meeting.builder()
                 .workspace(workspace)
@@ -81,6 +86,7 @@ public class MeetingService {
                 .durationMinutes(request.durationMinutes())
                 .status(MeetingStatus.GATHERING)
                 .build();
+
         meetingRepository.save(meeting);
 
         List<MeetingParticipant> participants = new ArrayList<>();
@@ -117,14 +123,30 @@ public class MeetingService {
     }
 
     @Transactional(readOnly = true)
-    public List<ConfirmedScheduleResponse> getMyConfirmedSchedules(String workspaceId, String employeeId, LocalDate startDate, LocalDate endDate) {
-        User user = resolveUser(employeeId);
-        var rangeStart = startDate.atStartOfDay();
-        var rangeEnd = endDate.plusDays(1).atStartOfDay();
+    public List<ConfirmedScheduleResponse> getMyConfirmedSchedules(
+            String workspaceId,
+            String employeeId,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        resolveUser(employeeId);
+
+        Workspace workspace = workspaceContextValidator.getValidWorkspace(workspaceId);
+        String validWorkspaceId = workspace.getId();
+
+        workspaceService.validateMembership(validWorkspaceId, employeeId);
+
+        LocalDateTime rangeStart = startDate.atStartOfDay();
+        LocalDateTime rangeEnd = endDate.plusDays(1).atStartOfDay();
 
         return meetingParticipantRepository
                 .findByEmployeeIdAndMeeting_StatusAndMeeting_Workspace_IdAndMeeting_ConfirmedStartTimeLessThanAndMeeting_ConfirmedEndTimeGreaterThan(
-                        employeeId, MeetingStatus.CONFIRMED, workspaceId, rangeEnd, rangeStart)
+                        employeeId,
+                        MeetingStatus.CONFIRMED,
+                        validWorkspaceId,
+                        rangeEnd,
+                        rangeStart
+                )
                 .stream()
                 .map(participant -> {
                     Meeting meeting = participant.getMeeting();
@@ -138,11 +160,25 @@ public class MeetingService {
     }
 
     @Transactional(readOnly = true)
-    public List<MeetingSummaryResponse> getMyMeetings(String workspaceId, String employeeId, MeetingStatus status) {
-        User user = resolveUser(employeeId);
+    public List<MeetingSummaryResponse> getMyMeetings(
+            String workspaceId,
+            String employeeId,
+            MeetingStatus status
+    ) {
+        resolveUser(employeeId);
+
+        Workspace workspace = workspaceContextValidator.getValidWorkspace(workspaceId);
+        String validWorkspaceId = workspace.getId();
+
+        workspaceService.validateMembership(validWorkspaceId, employeeId);
+
         List<MeetingParticipant> participants = status == null
-                ? meetingParticipantRepository.findByEmployeeIdAndMeeting_Workspace_Id(employeeId, workspaceId)
-                : meetingParticipantRepository.findByEmployeeIdAndMeeting_StatusAndMeeting_Workspace_Id(employeeId, status, workspaceId);
+                ? meetingParticipantRepository.findByEmployeeIdAndMeeting_Workspace_Id(employeeId, validWorkspaceId)
+                : meetingParticipantRepository.findByEmployeeIdAndMeeting_StatusAndMeeting_Workspace_Id(
+                        employeeId,
+                        status,
+                        validWorkspaceId
+                );
 
         return participants.stream()
                 .map(MeetingParticipant::getMeeting)
@@ -159,7 +195,8 @@ public class MeetingService {
 
     @Transactional(readOnly = true)
     public MeetingDetailResponse getMeetingDetail(String meetingId, String employeeId) {
-        User user = resolveUser(employeeId);
+        resolveUser(employeeId);
+
         meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회의의 참석자가 아닙니다."));
 
@@ -171,7 +208,7 @@ public class MeetingService {
 
     @Transactional
     public MeetingDetailResponse updateMeeting(String meetingId, String employeeId, UpdateMeetingRequest request) {
-        User user = resolveUser(employeeId);
+        resolveUser(employeeId);
 
         MeetingParticipant participant = meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회의의 참석자가 아닙니다."));
@@ -235,9 +272,12 @@ public class MeetingService {
 
     @Transactional
     public SubmitAvailableTimesResponse submitAvailableTimes(
-            String meetingId, String employeeId, SubmitAvailableTimesRequest request) {
+            String meetingId,
+            String employeeId,
+            SubmitAvailableTimesRequest request
+    ) {
+        resolveUser(employeeId);
 
-        User user = resolveUser(employeeId);
         MeetingParticipant participant = meetingParticipantRepository
                 .findByMeetingIdAndEmployeeId(meetingId, employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회의의 참석자가 아닙니다."));
@@ -249,6 +289,7 @@ public class MeetingService {
                         .endTime(slot.endTime())
                         .build())
                 .toList();
+
         participantAvailableTimeRepository.saveAll(availableTimes);
 
         participant.respond();
@@ -319,20 +360,24 @@ public class MeetingService {
                 merged.add(range);
             }
         }
+
         return merged;
     }
 
     private List<TimeRange> intersectRanges(List<TimeRange> ranges1, List<TimeRange> ranges2) {
         List<TimeRange> result = new ArrayList<>();
+
         for (TimeRange range1 : ranges1) {
             for (TimeRange range2 : ranges2) {
                 LocalDateTime start = range1.start().isAfter(range2.start()) ? range1.start() : range2.start();
                 LocalDateTime end = range1.end().isBefore(range2.end()) ? range1.end() : range2.end();
+
                 if (start.isBefore(end)) {
                     result.add(new TimeRange(start, end));
                 }
             }
         }
+
         return result;
     }
 
@@ -348,6 +393,7 @@ public class MeetingService {
         if (topCandidateTimesJson == null || topCandidateTimesJson.isBlank()) {
             return List.of();
         }
+
         try {
             return objectMapper.readValue(topCandidateTimesJson, new TypeReference<List<CandidateTimeSlot>>() {});
         } catch (JsonProcessingException e) {

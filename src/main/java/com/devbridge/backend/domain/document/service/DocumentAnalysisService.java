@@ -4,13 +4,14 @@ import com.devbridge.backend.domain.datasource.dto.DocumentResponse;
 import com.devbridge.backend.domain.datasource.entity.KnowledgeDocument;
 import com.devbridge.backend.domain.datasource.repository.KnowledgeDocumentRepository;
 import com.devbridge.backend.domain.document.dto.DocumentAnalysisRequest;
-import com.devbridge.backend.domain.document.dto.DocumentAnalysisResponse;
 import com.devbridge.backend.domain.task.entity.Task;
 import com.devbridge.backend.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DocumentAnalysisService {
@@ -25,20 +26,10 @@ public class DocumentAnalysisService {
         document.markAnalysisProcessing();
 
         try {
-            DocumentAnalysisResponse analysisResponse = documentAnalysisClient.analyze(
-                    buildAnalysisRequest(document)
-            );
-
-            document.updateAnalysisResult(
-                    analysisResponse.getSummary(),
-                    analysisResponse.getKeywords(),
-                    analysisResponse.getRiskLevel(),
-                    analysisResponse.getNextAction(),
-                    analysisResponse.getModel(),
-                    analysisResponse.getMode()
-            );
+            documentAnalysisClient.analyze(buildAnalysisRequest(document));
         } catch (RuntimeException e) {
             document.markAnalysisFailed();
+            log.warn("Document analysis request failed. documentId={}", documentId, e);
         }
 
         return toDocumentResponse(document);
@@ -46,10 +37,13 @@ public class DocumentAnalysisService {
 
     private DocumentAnalysisRequest buildAnalysisRequest(KnowledgeDocument document) {
         Task task = document.getTask();
+        String dataSourceId = document.getDataSource().getId();
 
         return DocumentAnalysisRequest.builder()
                 .documentId(document.getId())
                 .workspaceId(document.getDataSource().getWorkspace().getId())
+                .sourceId(dataSourceId)
+                .dataSourceId(dataSourceId)
                 .taskId(task != null ? task.getId() : null)
                 .title(document.getTitle())
                 .filePath(document.getFilePath())
