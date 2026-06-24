@@ -14,6 +14,10 @@ RUN ./gradlew bootJar --no-daemon
 # Run stage
 FROM eclipse-temurin:25-jre
 WORKDIR /app
+
+# git log 수집을 위해 git 설치
+RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+
 COPY --from=build /app/build/libs/*.jar app.jar
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
