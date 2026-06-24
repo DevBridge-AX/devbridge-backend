@@ -6,8 +6,7 @@ import lombok.*;
 
 @Entity
 @Table(name = "GIT_COMMIT_FILES", indexes = {
-        @Index(name = "idx_git_commit_files_commit_id", columnList = "commit_id"),
-        @Index(name = "idx_git_commit_files_file_path", columnList = "file_path")
+        @Index(name = "idx_git_commit_files_commit_id", columnList = "commit_id")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
