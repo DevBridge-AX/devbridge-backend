@@ -7,7 +7,7 @@ import com.devbridge.backend.domain.chat.repository.ChatSessionRepository;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
-import com.devbridge.backend.domain.workspace.repository.WorkspaceRepository;
+import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,13 +32,13 @@ class ChatSessionServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private WorkspaceRepository workspaceRepository;
+    private WorkspaceContextValidator workspaceContextValidator;
 
     private ChatSessionService chatSessionService;
 
     @BeforeEach
     void setUp() {
-        chatSessionService = new ChatSessionService(chatSessionRepository, userRepository, workspaceRepository);
+        chatSessionService = new ChatSessionService(chatSessionRepository, userRepository, workspaceContextValidator);
     }
 
     @Test
@@ -55,7 +55,7 @@ class ChatSessionServiceTest {
                 .build();
 
         when(userRepository.findByEmployeeId("EMP001")).thenReturn(Optional.of(user));
-        when(workspaceRepository.findById("workspace-1")).thenReturn(Optional.of(workspace));
+        when(workspaceContextValidator.getValidWorkspace("workspace-1")).thenReturn(workspace);
         when(chatSessionRepository.save(any(ChatSession.class))).thenReturn(session);
 
         ChatSessionResponse response = chatSessionService.createSession("workspace-1", "EMP001", request);
