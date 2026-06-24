@@ -1,0 +1,32 @@
+* text=auto eol=lf
+
+# Shell scripts must be LF
+*.sh text eol=lf
+
+# Batch files can stay CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Gradle wrapper
+gradlew text eol=lf
+gradlew.bat text eol=crlf
+
+# Markdown and text
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.xml text eol=lf
+*.properties text eol=lf
+
+# Java sources
+*.java text eol=lf
+
+# Binary files
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.class binary

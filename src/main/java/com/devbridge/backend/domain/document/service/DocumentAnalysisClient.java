@@ -2,20 +2,17 @@ package com.devbridge.backend.domain.document.service;
 
 import com.devbridge.backend.domain.document.dto.DocumentAnalysisRequest;
 import com.devbridge.backend.domain.document.dto.DocumentAnalysisResponse;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClient;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class DocumentAnalysisClient {
@@ -34,44 +31,51 @@ public class DocumentAnalysisClient {
     @Value("${devbridge.ai-engine.timeout-seconds:30}")
     private long timeoutSeconds;
 
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(5))
-            .build();
-
     public DocumentAnalysisResponse analyze(DocumentAnalysisRequest request) {
+        String url = buildAnalysisUrl();
+        String requestBody = serializeRequest(request);
+
+        log.info("Document analysis request to {}: body={}", url, requestBody);
+
+        WebClient webClient = WebClient.builder()
+                .baseUrl(aiEngineBaseUrl)
+                .defaultHeader("X-Internal-Api-Key", internalApiKey)
+                .build();
+
+        String responseBody = webClient.post()
+                .uri(documentAnalysisPath)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .retrieve()
+                .onStatus(
+                        status -> !status.is2xxSuccessful(),
+                        clientResponse -> clientResponse.bodyToMono(String.class)
+                                .flatMap(body -> {
+                                    log.warn("AI Engine document analysis failed. status={}, body={}, url={}",
+                                            clientResponse.statusCode(), body, url);
+                                    return reactor.core.publisher.Mono.error(
+                                            new IllegalStateException(
+                                                    "AI Engine document analysis failed. status="
+                                                            + clientResponse.statusCode()
+                                                            + ", body=" + body));
+                                })
+                )
+                .bodyToMono(String.class)
+                .timeout(Duration.ofSeconds(timeoutSeconds))
+                .block();
+
         try {
-            String requestBody = objectMapper.writeValueAsString(request);
+            return objectMapper.readValue(responseBody, DocumentAnalysisResponse.class);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to deserialize AI Engine response: " + responseBody, e);
+        }
+    }
 
-            HttpRequest httpRequest = HttpRequest.newBuilder()
-                    .uri(URI.create(buildAnalysisUrl()))
-                    .timeout(Duration.ofSeconds(timeoutSeconds))
-                    .header("Content-Type", "application/json")
-                    .header("X-Internal-Api-Key", internalApiKey)
-                    .POST(HttpRequest.BodyPublishers.ofString(requestBody, StandardCharsets.UTF_8))
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(
-                    httpRequest,
-                    HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
-            );
-
-            if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new IllegalStateException(
-                        "AI Engine document analysis failed. status="
-                                + response.statusCode()
-                                + ", body="
-                                + response.body()
-                );
-            }
-
-            return objectMapper.readValue(response.body(), DocumentAnalysisResponse.class);
-        } catch (JsonProcessingException e) {
+    private String serializeRequest(DocumentAnalysisRequest request) {
+        try {
+            return objectMapper.writeValueAsString(request);
+        } catch (Exception e) {
             throw new IllegalStateException("Failed to serialize AI Engine request.", e);
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to call AI Engine document analysis API.", e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("AI Engine document analysis request was interrupted.", e);
         }
     }
 
