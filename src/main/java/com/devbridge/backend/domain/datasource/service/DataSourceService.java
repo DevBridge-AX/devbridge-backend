@@ -73,6 +73,7 @@ public class DataSourceService {
         if ("DOC".equals(sourceType)) {
             Map<String, Object> request = Map.of(
                     "workspace_id", workspaceId,
+                    "source_id", dataSourceId,
                     "data_source_id", dataSourceId,
                     "title", dataSource.getSourceName(),
                     "doc_type", "general",
