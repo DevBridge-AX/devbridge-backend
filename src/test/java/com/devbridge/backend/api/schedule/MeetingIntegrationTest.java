@@ -217,7 +217,7 @@ class MeetingIntegrationTest {
         mockMvc.perform(get("/api/notifications/users/EMP004")
                         .with(authentication(getMockAuthentication("EMP004"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].type").value("MEETING_UPDATED"))
+                .andExpect(jsonPath("$.content[0].notificationType").value("MEETING_UPDATED"))
                 .andExpect(jsonPath("$.content[0].referenceId").value(meetingId));
     }
 }

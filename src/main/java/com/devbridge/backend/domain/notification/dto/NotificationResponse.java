@@ -13,10 +13,11 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class NotificationResponse {
-    private String id;
+    private String notificationId;
     private String userId;
-    private String type;
+    private String notificationType;
     private String referenceId;
+    private String workspaceId;
     private String title;
     private String message;
     private Boolean isRead;
@@ -24,10 +25,11 @@ public class NotificationResponse {
 
     public static NotificationResponse from(Notification notification) {
         return NotificationResponse.builder()
-                .id(notification.getId())
+                .notificationId(notification.getId())
                 .userId(notification.getUser().getId())
-                .type(notification.getType())
+                .notificationType(notification.getType())
                 .referenceId(notification.getReferenceId())
+                .workspaceId(notification.getWorkspaceId())
                 .title(notification.getTitle())
                 .message(notification.getMessage())
                 .isRead(notification.getIsRead())

@@ -123,6 +123,12 @@ public class DocumentController implements DocumentAPI {
     }
 
     @Override
+    public ResponseEntity<Void> reindexDocument(String id) {
+        documentFileService.retryFailedIngestion(id);
+        return ResponseEntity.accepted().build();
+    }
+
+    @Override
     public ResponseEntity<Void> deleteDocument(String id) {
         documentFileService.deleteDocument(id);
         return ResponseEntity.noContent().build();

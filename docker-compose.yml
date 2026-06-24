@@ -2,6 +2,10 @@ services:
   mysql:
     image: mysql:8.0
     container_name: devbridge-mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
     ports:
       - "3306:3306"
     environment:
@@ -52,6 +56,8 @@ services:
       FASTAPI_BASE_URL: http://ai-engine:8000
       SPRING_MAIL_USERNAME: "${SPRING_MAIL_USERNAME}"
       SPRING_MAIL_PASSWORD: "${SPRING_MAIL_PASSWORD}"
+    volumes:
+      - ./.docker-data/uploads:/app/uploads
     depends_on:
       mysql:
         condition: service_healthy
@@ -68,6 +74,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      - ./.docker-data/uploads:/app/uploads
       - ./.docker-data/vector_store:/app/data/vector_store
     env_file:
       - ../devbridge-ai-engine/.env

@@ -9,9 +9,12 @@ import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
+import java.time.Duration;
 import java.util.Map;
 
 @Slf4j
@@ -37,6 +40,7 @@ public class FastApiClient {
                 .bodyValue(request)
                 .retrieve()
                 .toBodilessEntity()
+                .retryWhen(ingestionRetrySpec())
                 .then();
     }
 
@@ -47,7 +51,27 @@ public class FastApiClient {
                 .bodyValue(request)
                 .retrieve()
                 .toBodilessEntity()
+                .retryWhen(ingestionRetrySpec())
                 .then();
+    }
+
+    public Mono<Void> ingestOwnerAnswer(Map<String, Object> request) {
+        return fastApiWebClient.post()
+                .uri("/api/ingestion/owner-answer")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .retrieve()
+                .toBodilessEntity()
+                .retryWhen(ingestionRetrySpec())
+                .then();
+    }
+
+    private Retry ingestionRetrySpec() {
+        return Retry.backoff(3, Duration.ofSeconds(2))
+                .maxBackoff(Duration.ofSeconds(10))
+                .filter(ex -> !(ex instanceof WebClientResponseException.BadRequest))
+                .doBeforeRetry(signal ->
+                        log.warn("인덱싱 요청 재시도 ({}/3): {}", signal.totalRetries() + 1, signal.failure().getMessage()));
     }
 
     public Mono<UsageSummaryResponse> getUsageSummary(String workspaceId) {
