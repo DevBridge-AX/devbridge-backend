@@ -15,5 +15,6 @@ public class DashboardGitCommitItemResponse {
     private String commitHash;
     private String commitMessage;
     private String authorName;
+    private String branchName;
     private LocalDateTime pushedAt;
 }

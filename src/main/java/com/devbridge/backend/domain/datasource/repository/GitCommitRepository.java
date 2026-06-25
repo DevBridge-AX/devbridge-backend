@@ -15,4 +15,6 @@ public interface GitCommitRepository extends JpaRepository<GitCommit, String> {
     Optional<GitCommit> findByWorkspace_IdAndCommitHash(String workspaceId, String commitHash);
 
     boolean existsByWorkspace_IdAndCommitHash(String workspaceId, String commitHash);
+
+    long countByWorkspace_Id(String workspaceId);
 }
