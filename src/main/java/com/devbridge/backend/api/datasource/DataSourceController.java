@@ -7,11 +7,18 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 public class DataSourceController implements DataSourceAPI {
 
     private final DataSourceService dataSourceService;
+
+    @Override
+    public ResponseEntity<List<DataSourceResponse>> getDataSources(String workspaceId) {
+        return ResponseEntity.ok(dataSourceService.getDataSources(workspaceId));
+    }
 
     @Override
     public ResponseEntity<DataSourceResponse> connectDataSource(ConnectDataSourceRequest request) {

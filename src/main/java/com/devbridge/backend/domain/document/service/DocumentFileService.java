@@ -77,7 +77,7 @@ public class DocumentFileService {
 
         User uploadedBy = null;
         if (uploadedById != null && !uploadedById.isBlank()) {
-            uploadedBy = userRepository.findById(uploadedById)
+            uploadedBy = userRepository.findByEmployeeId(uploadedById)
                     .orElseThrow(() -> new IllegalArgumentException("Uploader not found: " + uploadedById));
         }
 
