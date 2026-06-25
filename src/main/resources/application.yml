@@ -23,6 +23,10 @@ spring:
     init:
       mode: always
 
+  sql:
+    init:
+      mode: always
+
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:localhost}

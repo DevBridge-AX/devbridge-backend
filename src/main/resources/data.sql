@@ -18,6 +18,21 @@ INSERT IGNORE INTO users (
 ('u006', NOW(), NOW(), NULL, 'EMP007', 'newcomer@company.com',  '$2a$10$uAK.crtZC9lnuTPV/i5q7.wIj7jhFZTXbvq7WmKp/63bCEw4i27LO', 'LOCAL', '김정윤', '인사팀',   '사원',              'NEWCOMER',  'USER');
 
 -- ============================================================
+-- 1.5. EXTERNAL_HR_EMPLOYEES (8명 — 회원가입 시 사번 매칭용)
+-- ============================================================
+INSERT IGNORE INTO external_hr_employees (
+    employee_id, email, name, department, position, is_active
+) VALUES
+('EMP001', 'admin@company.com',     '김현수', '개발팀',   'Backend Developer', 1),
+('EMP002', 'user@company.com',      '이원빈', '개발팀',   '사원',               1),
+('EMP003', 'choie000208@gmail.com', '최형수', '기획팀',   '팀장',               1),
+('EMP004', 'sam000208@naver.com',   '최펭수', '개발팀',   '대리',               1),
+('EMP005', 'designer@company.com',  '전우석', '디자인팀', '디자이너',           1),
+('EMP006', 'operator@company.com',  '김서연', '운영팀',   '대리',               1),
+('EMP007', 'newcomer@company.com',  '김정윤', '인사팀',   '사원',               1),
+('EMP008', 'julie019@naver.com',    '김양평', '마케팅팀', '대리',               1);
+
+-- ============================================================
 -- 2. WORKSPACES (2개)
 -- ============================================================
 INSERT IGNORE INTO workspaces (
