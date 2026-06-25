@@ -10,6 +10,8 @@ import com.devbridge.backend.domain.datasource.repository.KnowledgeDocumentRepos
 import com.devbridge.backend.domain.notification.service.NotificationService;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.domain.workspace.entity.Workspace;
+import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
 import com.devbridge.backend.global.common.exception.ForbiddenException;
 import com.devbridge.backend.global.config.fastapi.FastApiClient;
 import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
@@ -38,6 +40,7 @@ public class OwnerConfirmationService {
     private final FastApiClient fastApiClient;
     private final WebSocketSessionRegistry webSocketSessionRegistry;
     private final ObjectMapper objectMapper;
+    private final WorkspaceContextValidator workspaceContextValidator;
 
     /**
      * [보존 메서드 - 자동 트리거 재사용 용도]
@@ -110,6 +113,41 @@ public class OwnerConfirmationService {
                 "담당자 확인 요청",
                 "채팅 질문에 대한 확인이 요청되었습니다. 답변해 주세요.",
                 chatMessage.getSession().getWorkspace().getId());
+    }
+
+    @Transactional
+    public void createDirectQuestion(String workspaceId, String assignedOwnerId,
+                                     String questionContent, String requesterEmployeeId) {
+        Workspace workspace = workspaceContextValidator.getValidWorkspace(workspaceId);
+
+        User owner = userRepository.findById(assignedOwnerId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + assignedOwnerId));
+
+        User requester = userRepository.findByEmployeeId(requesterEmployeeId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + requesterEmployeeId));
+
+        if (owner.getId().equals(requester.getId())) {
+            throw new IllegalArgumentException("본인에게는 질문을 보낼 수 없습니다.");
+        }
+
+        OwnerConfirmation ownerConfirmation = OwnerConfirmation.builder()
+                .workspace(workspace)
+                .questionContent(questionContent)
+                .assignedOwner(owner)
+                .requester(requester)
+                .build();
+        ownerConfirmationRepository.save(ownerConfirmation);
+
+        notificationService.createNotification(owner, "OWNER_CONFIRMATION_REQUESTED",
+                ownerConfirmation.getId(),
+                "담당자 질문이 도착했습니다",
+                requester.getName() + "님이 질문을 남겼습니다: " + truncate(questionContent, 50),
+                workspaceId);
+    }
+
+    private String truncate(String text, int maxLen) {
+        if (text == null) return "";
+        return text.length() > maxLen ? text.substring(0, maxLen) + "..." : text;
     }
 
     @Transactional

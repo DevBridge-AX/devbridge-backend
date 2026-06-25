@@ -1,5 +1,6 @@
 package com.devbridge.backend.api.chat;
 
+import com.devbridge.backend.domain.chat.dto.DirectQuestionRequest;
 import com.devbridge.backend.domain.chat.dto.OwnerConfirmationResponse;
 import com.devbridge.backend.domain.chat.dto.SubmitOwnerAnswerRequest;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +14,13 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "OwnerConfirmation", description = "담당자 확인 요청 답변 API 명세")
 @RequestMapping("/api/owner-confirmations")
 public interface OwnerConfirmationAPI {
+
+    @Operation(summary = "담당자에게 직접 질문", description = "챗봇에서 담당자를 선택하여 직접 질문을 전송합니다.")
+    @PostMapping("/direct-question")
+    ResponseEntity<Void> createDirectQuestion(
+            @RequestHeader("X-Workspace-Id") String workspaceId,
+            @AuthenticationPrincipal String employeeId,
+            @Valid @RequestBody DirectQuestionRequest request);
 
     @Operation(summary = "답변 제출", description = "배정된 담당자가 확인 요청에 답변을 제출합니다.")
     @PostMapping("/{confirmationId}/answer")
