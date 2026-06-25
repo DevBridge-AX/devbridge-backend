@@ -83,4 +83,13 @@ public class FastApiClient {
                 .retrieve()
                 .bodyToMono(UsageSummaryResponse.class);
     }
+
+    public Mono<Map> getWorkspaceAiSummary(Map<String, Object> request) {
+        return fastApiWebClient.post()
+                .uri("/api/analysis/workspace-summary")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .retrieve()
+                .bodyToMono(Map.class);
+    }
 }

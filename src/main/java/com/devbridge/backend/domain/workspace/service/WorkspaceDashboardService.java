@@ -76,8 +76,9 @@ public class WorkspaceDashboardService {
                 .toList();
 
         List<DashboardGitCommitItemResponse> recentGitCommits = gitCommitRepository
-                .findTop5ByDataSource_Workspace_IdOrderByPushedAtDesc(validWorkspaceId)
+                .findByWorkspace_IdOrderByPushedAtDesc(validWorkspaceId)
                 .stream()
+                .limit(5)
                 .map(this::toGitCommitItemResponse)
                 .toList();
 
@@ -106,11 +107,19 @@ public class WorkspaceDashboardService {
     }
 
     private DashboardGitCommitItemResponse toGitCommitItemResponse(GitCommit gitCommit) {
+        String authorName = gitCommit.getAuthor() != null
+                ? gitCommit.getAuthor().getName()
+                : gitCommit.getAuthorName();
+        if (authorName == null || authorName.isBlank()) {
+            authorName = "미지정";
+        }
+
         return DashboardGitCommitItemResponse.builder()
                 .commitId(gitCommit.getId())
                 .commitHash(gitCommit.getCommitHash())
                 .commitMessage(gitCommit.getCommitMessage())
-                .authorName(getUserNameOrUnassigned(gitCommit.getAuthor()))
+                .authorName(authorName)
+                .branchName(gitCommit.getBranchName())
                 .pushedAt(gitCommit.getPushedAt())
                 .build();
     }
