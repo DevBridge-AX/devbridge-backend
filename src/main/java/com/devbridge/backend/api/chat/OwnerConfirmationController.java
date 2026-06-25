@@ -1,5 +1,6 @@
 package com.devbridge.backend.api.chat;
 
+import com.devbridge.backend.domain.chat.dto.DirectQuestionRequest;
 import com.devbridge.backend.domain.chat.dto.OwnerConfirmationResponse;
 import com.devbridge.backend.domain.chat.dto.SubmitOwnerAnswerRequest;
 import com.devbridge.backend.domain.chat.service.OwnerConfirmationService;
@@ -15,6 +16,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class OwnerConfirmationController implements OwnerConfirmationAPI {
 
     private final OwnerConfirmationService ownerConfirmationService;
+
+    @Override
+    public ResponseEntity<Void> createDirectQuestion(String workspaceId, String employeeId,
+                                                     DirectQuestionRequest request) {
+        ownerConfirmationService.createDirectQuestion(
+                workspaceId, request.assignedOwnerId(), request.questionContent(), employeeId);
+        return ResponseEntity.ok().build();
+    }
 
     @Override
     public ResponseEntity<OwnerConfirmationResponse> submitAnswer(String confirmationId, String employeeId,

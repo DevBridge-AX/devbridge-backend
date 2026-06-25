@@ -77,7 +77,7 @@ public class DocumentFileService {
 
         User uploadedBy = null;
         if (uploadedById != null && !uploadedById.isBlank()) {
-            uploadedBy = userRepository.findById(uploadedById)
+            uploadedBy = userRepository.findByEmployeeId(uploadedById)
                     .orElseThrow(() -> new IllegalArgumentException("Uploader not found: " + uploadedById));
         }
 
@@ -124,7 +124,7 @@ public class DocumentFileService {
             KnowledgeDocument savedDocument = knowledgeDocumentRepository.save(document);
             try {
                 documentAnalysisService.analyzeDocument(savedDocument.getId());
-                // triggerRagIngestion(savedDocument);
+                triggerRagIngestion(savedDocument);
             } catch (Exception e) {
                 log.warn("Document auto analysis request failed. documentId={}", savedDocument.getId(), e);
             }
