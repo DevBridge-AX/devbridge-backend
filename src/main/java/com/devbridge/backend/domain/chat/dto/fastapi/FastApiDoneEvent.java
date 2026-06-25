@@ -1,5 +1,6 @@
 package com.devbridge.backend.domain.chat.dto.fastapi;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -50,6 +51,7 @@ public class FastApiDoneEvent {
     @Getter
     @NoArgsConstructor
     @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class TokenUsage {
         private TokenUsageDetail main;
         private TokenUsageDetail rewrite;
