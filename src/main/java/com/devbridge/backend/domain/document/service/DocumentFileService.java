@@ -124,7 +124,7 @@ public class DocumentFileService {
             KnowledgeDocument savedDocument = knowledgeDocumentRepository.save(document);
             try {
                 documentAnalysisService.analyzeDocument(savedDocument.getId());
-                // triggerRagIngestion(savedDocument);
+                triggerRagIngestion(savedDocument);
             } catch (Exception e) {
                 log.warn("Document auto analysis request failed. documentId={}", savedDocument.getId(), e);
             }
