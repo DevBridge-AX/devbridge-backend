@@ -1,0 +1,108 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: devbridge-mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE}"
+      MYSQL_USER: "${MYSQL_USER}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD}"
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+      - ./init-db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - devbridge-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  redis:
+    image: redis:alpine
+    container_name: devbridge-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis-data:/data
+    networks:
+      - devbridge-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  app:
+    image: ${APP_IMAGE}
+    container_name: devbridge-app
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_HOST: mysql
+      SPRING_DATASOURCE_PORT: 3306
+      SPRING_DATASOURCE_DATABASE: "${MYSQL_DATABASE}"
+      SPRING_DATASOURCE_USERNAME: "${MYSQL_USER}"
+      SPRING_DATASOURCE_PASSWORD: "${MYSQL_PASSWORD}"
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      INTERNAL_API_KEY: "${INTERNAL_API_KEY}"
+      # AI 엔진 프로덕션 URL (같은 EC2라면 localhost:8000 이나 내부망 IP 사용, 아래는 동일 네트워크 기준)
+      AI_ENGINE_BASE_URL: http://ai-engine:8000
+      AI_ENGINE_INTERNAL_API_KEY: "${INTERNAL_API_KEY}"
+      FASTAPI_BASE_URL: http://ai-engine:8000
+      # 프로덕션에서는 Git 레포 경로가 다를 수 있으므로 EC2 볼륨 마운트에 맞게 설정
+      DEVBRIDGE_GIT_REPOSITORY_PATH: /app/git-repos/devbridge-backend
+      SPRING_MAIL_USERNAME: "${SPRING_MAIL_USERNAME}"
+      SPRING_MAIL_PASSWORD: "${SPRING_MAIL_PASSWORD}"
+      SPRING_PROFILES_ACTIVE: prod
+    volumes:
+      - ./uploads:/app/uploads
+      # EC2 호스트에서 관리할 실제 git-repos 경로 마운트 필요
+      # 예: - /home/ubuntu/git-repos:/app/git-repos
+      - ./git-repos:/app/git-repos
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - devbridge-network
+    restart: always
+
+# ---------------------------------------------------------
+# AI-Engine은 프로덕션 환경에서 별도의 레포지토리로 관리되며, 
+# 자체 CI/CD를 통해 빌드된 이미지를 사용하거나 별도의 EC2에서 실행하는 것을 권장합니다.
+# 동일 EC2에서 구동한다면, AI Engine의 이미지를 GHCR 등에 등록 후 아래 주석을 해제하세요.
+# ---------------------------------------------------------
+#  ai-engine:
+#    image: ghcr.io/username/devbridge-ai-engine:latest
+#    container_name: devbridge-ai-engine
+#    ports:
+#      - "8000:8000"
+#    volumes:
+#      - ./uploads:/app/uploads
+#      - ./vector_store:/app/data/vector_store
+#    environment:
+#      DATABASE_URL: mysql+pymysql://${MYSQL_USER_AI}:${MYSQL_PASSWORD_AI}@devbridge-mysql:3306/devbridge
+#      SPRING_BACKEND_BASE_URL: http://app:8080
+#      AI_ANALYSIS_MODE: LLM
+#      DOCUMENT_ANALYSIS_MODEL: claude-sonnet-4-6
+#    depends_on:
+#      mysql:
+#        condition: service_healthy
+#    networks:
+#      - devbridge-network
+#    restart: always
+
+networks:
+  devbridge-network:
+    driver: bridge
