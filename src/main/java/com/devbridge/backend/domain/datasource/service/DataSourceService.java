@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -48,9 +49,19 @@ public class DataSourceService {
 
         DataSource savedDataSource = dataSourceRepository.save(dataSource);
 
-        triggerIngestion(savedDataSource);
+        if (!"DOC".equals(savedDataSource.getSourceType())) {
+            triggerIngestion(savedDataSource);
+        }
 
         return toDataSourceResponse(savedDataSource);
+    }
+
+    @Transactional(readOnly = true)
+    public List<DataSourceResponse> getDataSources(String workspaceId) {
+        workspaceContextValidator.getValidWorkspace(workspaceId);
+        return dataSourceRepository.findByWorkspace_Id(workspaceId).stream()
+                .map(this::toDataSourceResponse)
+                .toList();
     }
 
     @Transactional(readOnly = true)
