@@ -6,11 +6,14 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Java_17-007396?style=for-the-badge&logo=java&logoColor=white" />
-  <img src="https://img.shields.io/badge/Spring_Boot_3.x-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white" />
-  <img src="https://img.shields.io/badge/MySQL_8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white" />
+  <img src="https://img.shields.io/badge/Java_25-007396?style=for-the-badge&logo=java&logoColor=white" />
+  <img src="https://img.shields.io/badge/Spring_Boot_4.0.6-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white" />
+  <img src="https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white" />
+  <img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" />
   <img src="https://img.shields.io/badge/Spring_Data_JPA-gray?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/MyBatis-red?style=for-the-badge" />
   <img src="https://img.shields.io/badge/JWT_Auth-black?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Gradle_9.4.1-02303A?style=for-the-badge&logo=gradle&logoColor=white" />
 </p>
 
 ---
@@ -39,23 +42,37 @@
 
 | 분류 | 기술 스택 | 적용 목적 / 비고 |
 | :--- | :--- | :--- |
-| **Language / Framework** | `Java 17` & `Spring Boot 3.x` | 안정적인 엔터프라이즈급 RESTful API 구축 |
-| **Database** | `MySQL 8.0` | 캘린더, 공지사항, 사용자 메타데이터 등 RDB 관리 |
-| **ORM** | `Spring Data JPA` | 객체 중심의 도메인 설계 및 쿼리 생산성 극대화 |
-| **Security** | `Spring Security` & `JWT` | Stateless 기반 사용자 인증 및 인가 처리 |
-| **Build Tool** | `Gradle` | 의존성 관리 및 빌드 자동화 |
+| **Language / Framework** | `Java 25` & `Spring Boot 4.0.6` | 안정적인 엔터프라이즈급 RESTful API 구축 |
+| **Database** | `MySQL` & `Redis` | RDB(캘린더, 공지사항, 사용자 메타데이터)와 캐시/토큰 저장소 이원화 |
+| **ORM** | `Spring Data JPA` & `MyBatis` | 객체 중심 도메인 설계(JPA) + 복잡한 쿼리 생산성(MyBatis) 병행 |
+| **Security** | `Spring Security`, `JWT`, `OAuth2 Client` | Stateless 기반 사용자 인증/인가 및 구글 소셜 로그인 연동 |
+| **Realtime / Streaming** | `WebSocket` & `WebFlux(WebClient)` | 순수 WebSocket 실시간 통신, SSE 스트리밍 수신(MVC와 공존) |
+| **API Docs** | `springdoc-openapi` | Swagger UI 기반 API 명세 자동화 |
+| **Build Tool** | `Gradle 9.4.1` | 의존성 관리 및 빌드 자동화 |
 
 ---
 
 ## 📂 3. Scalable Project Structure
-도메인 주도 설계(DDD) 개념을 차용하여, 기능별로 응집도를 높인 디렉토리 구조입니다.
+계층(`api`/`domain`/`global`) 우선 분리 후, 각 계층 내부를 기능 단위(auth, chat, workspace 등)로 재분리하여 응집도를 높인 구조입니다.
 
 ```text
-src/main/java/com/devbridge/
-├── global/            # 전역 설정(Security, Swagger), 에러 핸들러, 유틸리티
-├── domain/            # 도메인별 패키지 분리 (응집도 향상)
-│   ├── auth/          # 회원 가입, 로그인, JWT 발급 처리
-│   ├── notice/        # 공지사항 및 실시간 댓글 CRUD 로직
-│   ├── calendar/      # 부서 간 회의 조율 및 캘린더 데이터 적재
-│   └── dictionary/    # 데이터 딕셔너리 및 도메인 용어 서빙 API
-└── infrastructure/    # 외부 API 통신 (AI Engine, Webhook 연동)
+src/main/java/com/devbridge/backend/
+├── api/               # Controller 계층 (기능별 패키지)
+│   ├── auth/          # 회원 가입, 로그인 API
+│   ├── chat/          # AI 챗봇 대화 / 담당자 직접 질문 API
+│   ├── datasource/    # 외부 데이터소스 연동 API
+│   ├── document/      # 문서 조회 및 인덱싱 API
+│   ├── git/           # Git 커밋/이슈 연동 API
+│   ├── internal/      # 서버 간 내부 통신용 API
+│   ├── notification/  # 알림 API
+│   ├── schedule/      # 캘린더 및 일정 조율 API
+│   ├── setting/       # 사용자/워크스페이스 설정 API
+│   ├── task/          # 작업(Task) 관리 API
+│   ├── user/          # 사용자 정보 API
+│   └── workspace/     # 워크스페이스 관리 API
+├── domain/            # 서비스 로직 및 DTO/Entity (api와 동일한 기능별 패키지 구조)
+│   └── (auth, chat, datasource, document, git, notification, schedule, setting, task, user, workspace)
+└── global/            # 전역 설정 및 공통 모듈
+    ├── auth/           # JWT 발급/검증, 인증 필터
+    ├── common/         # BaseEntity, 공통 예외 처리
+    └── config/         # Security, Swagger, Redis, CORS, WebSocket, FastAPI 연동 등 설정
