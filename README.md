@@ -44,6 +44,7 @@ Backend는 이 연결 흐름의 중심에서 다음 역할을 수행합니다.
 - 🤖 [AI Engine Repository](https://github.com/DevBridge-AX/devbridge-ai-engine)
 - 📝 DevBridge AX Notion / API 명세서: 링크 연결 예정
 - 📊 ERD: 링크 연결 예정
+- 📘 [Backend 상세 기술 문서](https://app.notion.com/p/Backend-3a0ae979d3a78072a2f6e0adc6660c53)
 
 ---
 
