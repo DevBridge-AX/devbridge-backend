@@ -210,6 +210,7 @@ src/main/java/com/devbridge/backend/
 
 ```text
 http://localhost:8080/swagger-ui/index.html
+https://devbridge-ax.cloud/swagger-ui/index.html
 ```
 
 주요 API 그룹:
