@@ -10,39 +10,23 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.time.Duration;
-
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class DocumentAnalysisClient {
 
     private final ObjectMapper objectMapper;
+    private final WebClient fastApiWebClient;
 
-    @Value("${devbridge.ai-engine.base-url:http://127.0.0.1:8010}")
-    private String aiEngineBaseUrl;
-
-    @Value("${devbridge.ai-engine.internal-api-key:changeme}")
-    private String internalApiKey;
-
-    @Value("${devbridge.ai-engine.document-analysis-path:/api/ingestion/document}")
+    @Value("${devbridge.ai-engine.document-analysis-path:/api/analysis/document}")
     private String documentAnalysisPath;
 
-    @Value("${devbridge.ai-engine.timeout-seconds:30}")
-    private long timeoutSeconds;
-
     public DocumentAnalysisResponse analyze(DocumentAnalysisRequest request) {
-        String url = buildAnalysisUrl();
         String requestBody = serializeRequest(request);
 
-        log.info("Document analysis request to {}: body={}", url, requestBody);
+        log.info("Document analysis request to {}: body={}", documentAnalysisPath, requestBody);
 
-        WebClient webClient = WebClient.builder()
-                .baseUrl(aiEngineBaseUrl)
-                .defaultHeader("X-Internal-Api-Key", internalApiKey)
-                .build();
-
-        String responseBody = webClient.post()
+        String responseBody = fastApiWebClient.post()
                 .uri(documentAnalysisPath)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
@@ -51,8 +35,8 @@ public class DocumentAnalysisClient {
                         status -> !status.is2xxSuccessful(),
                         clientResponse -> clientResponse.bodyToMono(String.class)
                                 .flatMap(body -> {
-                                    log.warn("AI Engine document analysis failed. status={}, body={}, url={}",
-                                            clientResponse.statusCode(), body, url);
+                                    log.warn("AI Engine document analysis failed. status={}, body={}, path={}",
+                                            clientResponse.statusCode(), body, documentAnalysisPath);
                                     return reactor.core.publisher.Mono.error(
                                             new IllegalStateException(
                                                     "AI Engine document analysis failed. status="
@@ -61,7 +45,6 @@ public class DocumentAnalysisClient {
                                 })
                 )
                 .bodyToMono(String.class)
-                .timeout(Duration.ofSeconds(timeoutSeconds))
                 .block();
 
         try {
@@ -77,17 +60,5 @@ public class DocumentAnalysisClient {
         } catch (Exception e) {
             throw new IllegalStateException("Failed to serialize AI Engine request.", e);
         }
-    }
-
-    private String buildAnalysisUrl() {
-        String normalizedBaseUrl = aiEngineBaseUrl.endsWith("/")
-                ? aiEngineBaseUrl.substring(0, aiEngineBaseUrl.length() - 1)
-                : aiEngineBaseUrl;
-
-        String normalizedPath = documentAnalysisPath.startsWith("/")
-                ? documentAnalysisPath
-                : "/" + documentAnalysisPath;
-
-        return normalizedBaseUrl + normalizedPath;
     }
 }

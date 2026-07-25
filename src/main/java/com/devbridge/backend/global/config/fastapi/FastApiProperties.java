@@ -11,11 +11,13 @@ import java.util.Map;
 @Getter
 @Setter
 @Component
-@ConfigurationProperties(prefix = "fastapi")
+@ConfigurationProperties(prefix = "devbridge.ai-engine")
 public class FastApiProperties {
 
     private String baseUrl;
     private String internalApiKey;
+    private String documentAnalysisPath;
+    private long timeoutSeconds;
     private Map<String, CreditRate> creditRates;
 
     @Getter
