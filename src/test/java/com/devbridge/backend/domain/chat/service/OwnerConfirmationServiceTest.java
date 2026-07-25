@@ -13,6 +13,7 @@ import com.devbridge.backend.domain.notification.service.NotificationService;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
+import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
 import com.devbridge.backend.global.common.exception.ForbiddenException;
 import com.devbridge.backend.global.config.fastapi.FastApiClient;
 import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
@@ -61,6 +62,9 @@ class OwnerConfirmationServiceTest {
     @Mock
     private WebSocketSessionRegistry webSocketSessionRegistry;
 
+    @Mock
+    private WorkspaceContextValidator workspaceContextValidator;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private OwnerConfirmationService ownerConfirmationService;
@@ -70,7 +74,7 @@ class OwnerConfirmationServiceTest {
         ownerConfirmationService = new OwnerConfirmationService(
                 userRepository, chatMessageRepository, ownerConfirmationRepository,
                 knowledgeDocumentRepository, notificationService, fastApiClient,
-                webSocketSessionRegistry, objectMapper);
+                webSocketSessionRegistry, objectMapper, workspaceContextValidator);
     }
 
     // --- triggerOwnerConfirmation ---
