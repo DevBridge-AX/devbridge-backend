@@ -358,6 +358,46 @@ class ChatWebSocketHandlerTest {
             assertThat(error.path("type").asText()).isEqualTo("error");
             assertThat(error.path("message").asText()).isEqualTo("응답 처리 중 오류가 발생했습니다.");
         }
+
+        @Test
+        @DisplayName("handleSseEvent_withMalformedTokenData_isSkippedWithoutErrorMessage")
+        void handleSseEvent_withMalformedTokenData_isSkippedWithoutErrorMessage() throws Exception {
+            receive(sse("token", "not-json"), sse("token", "{\"text\":\"정상\"}"));
+
+            // token 파싱 실패는 로그만 남기고 넘어간다. done과 달리 error 메시지를 보내지 않으므로
+            // 프론트는 일부 토큰이 유실된 사실을 알 수 없다.
+            List<String> messages = sentMessages();
+            assertThat(messages).hasSize(2);
+            assertThat(parse(messages.getFirst()).path("type").asText()).isEqualTo("searching");
+            assertThat(parse(messages.get(1)).path("text").asText()).isEqualTo("정상");
+        }
+
+        @Test
+        @DisplayName("handleSseEvent_withNullEventName_isIgnored")
+        void handleSseEvent_withNullEventName_isIgnored() throws Exception {
+            receive(ServerSentEvent.<String>builder().data("{\"text\":\"본문\"}").build());
+
+            // event나 data가 null이면 즉시 반환한다(주석 이벤트·keep-alive 대응).
+            assertThat(sentMessages()).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("streamChat_whenFastApiStreamFails_sendsConnectionErrorMessage")
+        void streamChat_whenFastApiStreamFails_sendsConnectionErrorMessage() throws Exception {
+            when(fastApiClient.streamChat(any(FastApiChatRequest.class)))
+                    .thenReturn(Flux.error(new RuntimeException("connection refused")));
+
+            handler.handleMessage(session, new TextMessage(
+                    "{\"type\":\"chat_message\",\"session_id\":\"" + SESSION_ID + "\",\"content\":\"질문\"}"));
+
+            // AI 엔진이 죽어 있을 때 프론트가 받는 유일한 신호다. 문구가 바뀌면 화면 처리도 함께 확인해야 한다.
+            JsonNode error = parse(sentMessages().getLast());
+            assertThat(error.path("type").asText()).isEqualTo("error");
+            assertThat(error.path("message").asText()).isEqualTo("AI 서비스 연결 오류가 발생했습니다.");
+            // 사용자 메시지는 이미 저장된 뒤이므로 질문은 남고 답변만 없는 상태가 된다.
+            verify(chatMessageService).saveUserMessage(SESSION_ID, "질문");
+            verify(chatMessageService, never()).saveAiMessage(anyString(), anyString(), anyString(), any());
+        }
     }
 
     @Nested
