@@ -1,6 +1,8 @@
 package com.devbridge.backend.domain.task.service;
 
 import com.devbridge.backend.domain.datasource.entity.GitCommit;
+import com.devbridge.backend.domain.datasource.entity.GitCommitAnalysis;
+import com.devbridge.backend.domain.datasource.entity.KnowledgeDocument;
 import com.devbridge.backend.domain.datasource.repository.GitCommitAnalysisRepository;
 import com.devbridge.backend.domain.datasource.repository.GitCommitRepository;
 import com.devbridge.backend.domain.datasource.repository.KnowledgeDocumentRepository;
@@ -29,6 +31,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -493,6 +496,175 @@ class TaskServiceTest {
                     .hasMessage("Task not found: " + TASK_ID);
 
             verify(taskRepository, never()).delete(any());
+        }
+    }
+
+    /**
+     * 상세 응답의 목록 매핑 로직.
+     *
+     * <p>{@code toRelatedDocumentPreview}, {@code toRelatedCommitPreview}, {@code toActivityPreview}는
+     * 목록이 비어 있지 않을 때만 실행되므로, 빈 목록만 사용하는 다른 테스트로는 검증되지 않는다.
+     * God Class 분해 시 이 매핑들이 별도 컴포넌트로 떨어져 나갈 후보이므로 여기서 고정한다.
+     */
+    @Nested
+    @DisplayName("상세 응답 매핑")
+    class DetailMapping {
+
+        private final LocalDateTime analyzedAt = LocalDateTime.of(2026, 7, 20, 10, 30);
+
+        private GitCommit commit() {
+            return GitCommit.builder()
+                    .id("COMMIT-001")
+                    .workspace(workspace)
+                    .commitHash("abcdef1234567890")
+                    .shortHash("abcdef1")
+                    .commitMessage("feat: 기능 추가")
+                    .authorName("작성자")
+                    .authorEmail("author@devbridge.com")
+                    .branchName("develop")
+                    .build();
+        }
+
+        private void stubEmptyExcept(
+                List<KnowledgeDocument> documents,
+                List<TaskStatusLog> logs,
+                List<TaskGitCommit> commits
+        ) {
+            when(knowledgeDocumentRepository.findTop5ByTask_IdOrderByCreatedAtDesc(TASK_ID)).thenReturn(documents);
+            when(knowledgeDocumentRepository.countByTask_Id(TASK_ID)).thenReturn((long) documents.size());
+            when(taskStatusLogRepository.findTop5ByTask_IdOrderByChangedAtDesc(TASK_ID)).thenReturn(logs);
+            when(taskStatusLogRepository.countByTask_Id(TASK_ID)).thenReturn((long) logs.size());
+            when(taskGitCommitRepository.findTop5ByTask_IdOrderByCreatedAtDesc(TASK_ID)).thenReturn(commits);
+            when(taskGitCommitRepository.countByTask_Id(TASK_ID)).thenReturn((long) commits.size());
+        }
+
+        @Test
+        @DisplayName("getTaskDetail_withLinkedDocument_mapsDocumentPreviewFields")
+        void getTaskDetail_withLinkedDocument_mapsDocumentPreviewFields() {
+            KnowledgeDocument document = KnowledgeDocument.builder()
+                    .id("DOC-001")
+                    .title("요구사항 정의서")
+                    .summary("문서 요약")
+                    .keywords("인증,권한")
+                    .riskLevel("HIGH")
+                    .nextAction("검토 필요")
+                    .analysisStatus("COMPLETED")
+                    .analysisModel("model-x")
+                    .analysisMode("FULL")
+                    .analyzedAt(analyzedAt)
+                    .build();
+
+            when(taskRepository.findById(TASK_ID)).thenReturn(Optional.of(task("ASSIGNED")));
+            stubEmptyExcept(List.of(document), List.of(), List.of());
+
+            TaskDetailResponse response = taskService.getTaskDetail(TASK_ID);
+
+            assertThat(response.getRecentDocuments()).hasSize(1);
+            TaskDetailResponse.RelatedDocumentPreview preview = response.getRecentDocuments().getFirst();
+            assertThat(preview.getId()).isEqualTo("DOC-001");
+            assertThat(preview.getTitle()).isEqualTo("요구사항 정의서");
+            assertThat(preview.getAnalysisStatus()).isEqualTo("COMPLETED");
+            assertThat(preview.getRiskLevel()).isEqualTo("HIGH");
+            assertThat(preview.getAnalyzedAt()).isEqualTo(analyzedAt);
+        }
+
+        @Test
+        @DisplayName("getTaskDetail_withCommitHavingAnalysis_mapsAnalysisFields")
+        void getTaskDetail_withCommitHavingAnalysis_mapsAnalysisFields() {
+            GitCommit commit = commit();
+            TaskGitCommit link = TaskGitCommit.builder().gitCommit(commit).linkType("MANUAL").build();
+
+            when(taskRepository.findById(TASK_ID)).thenReturn(Optional.of(task("ASSIGNED")));
+            stubEmptyExcept(List.of(), List.of(), List.of(link));
+            when(gitCommitAnalysisRepository.findByGitCommit_Id("COMMIT-001")).thenReturn(
+                    Optional.of(GitCommitAnalysis.builder()
+                            .summary("커밋 요약")
+                            .impactArea("auth")
+                            .riskLevel("MEDIUM")
+                            .nextAction("리뷰 요청")
+                            .indexStatus("INDEXED")
+                            .analyzedAt(analyzedAt)
+                            .build())
+            );
+
+            TaskDetailResponse response = taskService.getTaskDetail(TASK_ID);
+
+            TaskDetailResponse.RelatedCommitPreview preview = response.getRecentCommits().getFirst();
+            assertThat(preview.getShortHash()).isEqualTo("abcdef1");
+            assertThat(preview.getMessage()).isEqualTo("feat: 기능 추가");
+            assertThat(preview.getAuthorEmail()).isEqualTo("author@devbridge.com");
+            assertThat(preview.getSummary()).isEqualTo("커밋 요약");
+            assertThat(preview.getImpactArea()).isEqualTo("auth");
+            assertThat(preview.getIndexStatus()).isEqualTo("INDEXED");
+        }
+
+        @Test
+        @DisplayName("getTaskDetail_withCommitWithoutAnalysis_mapsAnalysisFieldsAsNull")
+        void getTaskDetail_withCommitWithoutAnalysis_mapsAnalysisFieldsAsNull() {
+            TaskGitCommit link = TaskGitCommit.builder().gitCommit(commit()).linkType("MANUAL").build();
+
+            when(taskRepository.findById(TASK_ID)).thenReturn(Optional.of(task("ASSIGNED")));
+            stubEmptyExcept(List.of(), List.of(), List.of(link));
+            when(gitCommitAnalysisRepository.findByGitCommit_Id("COMMIT-001")).thenReturn(Optional.empty());
+
+            TaskDetailResponse response = taskService.getTaskDetail(TASK_ID);
+
+            TaskDetailResponse.RelatedCommitPreview preview = response.getRecentCommits().getFirst();
+            // 커밋 자체 정보는 유지되고 분석 파생 필드만 null이 된다.
+            assertThat(preview.getCommitHash()).isEqualTo("abcdef1234567890");
+            assertThat(preview.getSummary()).isNull();
+            assertThat(preview.getImpactArea()).isNull();
+            assertThat(preview.getRiskLevel()).isNull();
+            assertThat(preview.getNextAction()).isNull();
+            assertThat(preview.getIndexStatus()).isNull();
+            assertThat(preview.getAnalyzedAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("getTaskDetail_withStatusLogHavingPreviousStatus_buildsTransitionMessage")
+        void getTaskDetail_withStatusLogHavingPreviousStatus_buildsTransitionMessage() {
+            TaskStatusLog log = TaskStatusLog.builder()
+                    .id("LOG-001")
+                    .previousStatus("ASSIGNED")
+                    .nextStatus("IN_PROGRESS")
+                    .status("IN_PROGRESS")
+                    .changedBy(assignee)
+                    .changedAt(analyzedAt)
+                    .build();
+
+            when(taskRepository.findById(TASK_ID)).thenReturn(Optional.of(task("IN_PROGRESS")));
+            stubEmptyExcept(List.of(), List.of(log), List.of());
+
+            TaskDetailResponse response = taskService.getTaskDetail(TASK_ID);
+
+            TaskDetailResponse.ActivityPreview preview = response.getRecentActivities().getFirst();
+            assertThat(preview.getType()).isEqualTo("STATUS_CHANGE");
+            assertThat(preview.getMessage()).isEqualTo("상태가 ASSIGNED에서 IN_PROGRESS(으)로 변경되었습니다.");
+            assertThat(preview.getActorName()).isEqualTo("담당자");
+            assertThat(preview.getCreatedAt()).isEqualTo(analyzedAt);
+        }
+
+        @Test
+        @DisplayName("getTaskDetail_withStatusLogWithoutPreviousStatus_buildsInitialMessage")
+        void getTaskDetail_withStatusLogWithoutPreviousStatus_buildsInitialMessage() {
+            TaskStatusLog log = TaskStatusLog.builder()
+                    .id("LOG-002")
+                    .previousStatus(null)
+                    .nextStatus(null)
+                    .status("ASSIGNED")
+                    .changedBy(null)
+                    .changedAt(analyzedAt)
+                    .build();
+
+            when(taskRepository.findById(TASK_ID)).thenReturn(Optional.of(task("ASSIGNED")));
+            stubEmptyExcept(List.of(), List.of(log), List.of());
+
+            TaskDetailResponse response = taskService.getTaskDetail(TASK_ID);
+
+            TaskDetailResponse.ActivityPreview preview = response.getRecentActivities().getFirst();
+            // nextStatus가 없으면 status로 대체하고, 이전 상태가 없으면 전이 표현을 생략한다.
+            assertThat(preview.getMessage()).isEqualTo("상태가 ASSIGNED(으)로 변경되었습니다.");
+            assertThat(preview.getActorName()).isNull();
         }
     }
 }
