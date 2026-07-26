@@ -32,7 +32,7 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
         String token = UriComponentsBuilder.fromUri(request.getURI())
                 .build()
                 .getQueryParams()
-                .getFirst("token");
+                .getFirst(WebSocketContract.TOKEN_QUERY_PARAM);
 
         if (token == null || !jwtTokenProvider.validateToken(token) || isBlacklisted(token)) {
             return true;

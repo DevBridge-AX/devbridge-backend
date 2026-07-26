@@ -6,6 +6,7 @@ import com.devbridge.backend.domain.chat.dto.fastapi.FastApiDoneEvent;
 import com.devbridge.backend.domain.chat.entity.ChatMessage;
 import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.global.config.fastapi.FastApiClient;
+import com.devbridge.backend.global.config.websocket.WebSocketContract;
 import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -32,7 +33,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private final ObjectMapper objectMapper;
     private final WebSocketSessionRegistry webSocketSessionRegistry;
 
-    private static final CloseStatus CLOSE_AUTH_FAILED = new CloseStatus(4401, "Authentication required");
+    private static final CloseStatus CLOSE_AUTH_FAILED = WebSocketContract.CLOSE_AUTH_FAILED;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws IOException {

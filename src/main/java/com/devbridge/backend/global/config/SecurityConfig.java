@@ -3,6 +3,7 @@ package com.devbridge.backend.global.config;
 import com.devbridge.backend.global.auth.internal.InternalApiKeyAuthenticationFilter;
 import com.devbridge.backend.global.auth.jwt.JwtAuthenticationFilter;
 import com.devbridge.backend.global.auth.jwt.JwtTokenProvider;
+import com.devbridge.backend.global.config.websocket.WebSocketContract;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -46,7 +47,7 @@ public class SecurityConfig {
                                 "/error",
                                 "/h2-console/**",
                                 "/documents/**",
-                                "/ws/**"
+                                WebSocketContract.PATH_PATTERN
                         ).permitAll()
                         .requestMatchers("/internal/**").hasRole("INTERNAL")
                         .anyRequest().authenticated()
