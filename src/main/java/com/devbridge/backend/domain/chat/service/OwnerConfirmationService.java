@@ -12,6 +12,7 @@ import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
+import com.devbridge.backend.domain.workspace.service.WorkspaceService;
 import com.devbridge.backend.global.common.exception.ForbiddenException;
 import com.devbridge.backend.global.config.fastapi.FastApiClient;
 import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
@@ -41,6 +42,7 @@ public class OwnerConfirmationService {
     private final WebSocketSessionRegistry webSocketSessionRegistry;
     private final ObjectMapper objectMapper;
     private final WorkspaceContextValidator workspaceContextValidator;
+    private final WorkspaceService workspaceService;
 
     /**
      * [보존 메서드 - 자동 트리거 재사용 용도]
@@ -119,6 +121,9 @@ public class OwnerConfirmationService {
     public void createDirectQuestion(String workspaceId, String assignedOwnerId,
                                      String questionContent, String requesterEmployeeId) {
         Workspace workspace = workspaceContextValidator.getValidWorkspace(workspaceId);
+
+        // workspaceId는 X-Workspace-Id 헤더로 전달되는 클라이언트 입력이므로 멤버십을 검증한다.
+        workspaceService.validateMembership(workspace.getId(), requesterEmployeeId);
 
         User owner = userRepository.findById(assignedOwnerId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + assignedOwnerId));
@@ -233,6 +238,8 @@ public class OwnerConfirmationService {
     @Transactional(readOnly = true)
     public Page<OwnerConfirmationResponse> getAssignedConfirmations(String employeeId, String workspaceId,
                                                                     Pageable pageable) {
+        workspaceService.validateMembership(workspaceId, employeeId);
+
         return ownerConfirmationRepository
                 .findByAssignedOwner_EmployeeIdAndWorkspace_IdAndDeletedAtIsNull(employeeId, workspaceId, pageable)
                 .map(OwnerConfirmationResponse::from);
@@ -241,6 +248,8 @@ public class OwnerConfirmationService {
     @Transactional(readOnly = true)
     public Page<OwnerConfirmationResponse> getRequestedConfirmations(String employeeId, String workspaceId,
                                                                      Pageable pageable) {
+        workspaceService.validateMembership(workspaceId, employeeId);
+
         return ownerConfirmationRepository
                 .findByRequester_EmployeeIdAndWorkspace_IdAndDeletedAtIsNull(employeeId, workspaceId, pageable)
                 .map(OwnerConfirmationResponse::from);

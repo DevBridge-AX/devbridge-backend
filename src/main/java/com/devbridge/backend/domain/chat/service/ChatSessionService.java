@@ -8,6 +8,7 @@ import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
+import com.devbridge.backend.domain.workspace.service.WorkspaceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +24,7 @@ public class ChatSessionService {
     private final ChatSessionRepository chatSessionRepository;
     private final UserRepository userRepository;
     private final WorkspaceContextValidator workspaceContextValidator;
+    private final WorkspaceService workspaceService;
 
     @Transactional
     public ChatSessionResponse createSession(
@@ -34,6 +36,9 @@ public class ChatSessionService {
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. employeeId: " + employeeId));
 
         Workspace workspace = workspaceContextValidator.getValidWorkspace(workspaceId);
+
+        // workspaceId는 X-Workspace-Id 헤더로 전달되는 클라이언트 입력이므로 멤버십을 검증한다.
+        workspaceService.validateMembership(workspace.getId(), employeeId);
 
         ChatSession session = ChatSession.builder()
                 .workspace(workspace)
@@ -54,7 +59,8 @@ public class ChatSessionService {
 
     @Transactional(readOnly = true)
     public List<ChatSessionResponse> getSessions(String workspaceId, String employeeId) {
-        workspaceContextValidator.validateWorkspaceExists(workspaceId);
+        // validateMembership이 내부적으로 워크스페이스 존재 여부까지 검증하므로 별도 호출은 두지 않는다.
+        workspaceService.validateMembership(workspaceId, employeeId);
 
         List<Object[]> results = chatSessionRepository.findSessionsSortedByLastMessage(workspaceId, employeeId);
 
