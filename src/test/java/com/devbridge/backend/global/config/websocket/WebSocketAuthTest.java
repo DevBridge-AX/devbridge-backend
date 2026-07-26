@@ -25,6 +25,24 @@ class WebSocketAuthTest {
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
+    /**
+     * 계약 검증 테스트.
+     *
+     * <p>기대값을 {@link WebSocketContract} 상수가 아니라 <b>리터럴로 직접</b> 적는다.
+     * 상수를 참조하면 값을 바꿔도 테스트가 같이 따라 바뀌어 아무것도 못 잡는다.
+     * 이 값들은 운영 nginx의 location 블록과 프론트엔드에도 사본이 있어, 백엔드만 바꾸면
+     * 로컬은 전부 통과하면서 운영만 끊긴다(2026-06-25 장애 사례).
+     */
+    @Test
+    @DisplayName("불변 계약: WS 경로·close code·토큰 파라미터명이 변경되지 않았다")
+    void webSocketContract_shouldMatchExternalContract() {
+        assertThat(WebSocketContract.CHAT_ENDPOINT).isEqualTo("/ws/chat");
+        assertThat(WebSocketContract.PATH_PATTERN).isEqualTo("/ws/**");
+        assertThat(WebSocketContract.TOKEN_QUERY_PARAM).isEqualTo("token");
+        assertThat(WebSocketContract.CLOSE_CODE_AUTH_FAILED).isEqualTo(4401);
+        assertThat(WebSocketContract.CLOSE_REASON_AUTH_FAILED).isEqualTo("Authentication required");
+    }
+
     @Test
     @DisplayName("유효하지 않은 토큰 → 연결 후 close(4401) 수신")
     void connectWithInvalidToken_shouldReceiveClose4401() throws Exception {
