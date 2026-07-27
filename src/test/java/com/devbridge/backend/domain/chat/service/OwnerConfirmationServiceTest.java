@@ -14,6 +14,7 @@ import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
+import com.devbridge.backend.domain.workspace.service.WorkspaceService;
 import com.devbridge.backend.global.common.exception.ForbiddenException;
 import com.devbridge.backend.global.config.fastapi.FastApiClient;
 import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.PageRequest;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -65,6 +67,9 @@ class OwnerConfirmationServiceTest {
     @Mock
     private WorkspaceContextValidator workspaceContextValidator;
 
+    @Mock
+    private WorkspaceService workspaceService;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private OwnerConfirmationService ownerConfirmationService;
@@ -74,7 +79,7 @@ class OwnerConfirmationServiceTest {
         ownerConfirmationService = new OwnerConfirmationService(
                 userRepository, chatMessageRepository, ownerConfirmationRepository,
                 knowledgeDocumentRepository, notificationService, fastApiClient,
-                webSocketSessionRegistry, objectMapper, workspaceContextValidator);
+                webSocketSessionRegistry, objectMapper, workspaceContextValidator, workspaceService);
     }
 
     // --- triggerOwnerConfirmation ---
@@ -426,6 +431,100 @@ class OwnerConfirmationServiceTest {
         assertThatThrownBy(() -> ownerConfirmationService.getDetail("oc-1", "EMP999"))
                 .isInstanceOf(ForbiddenException.class)
                 .hasMessage("해당 확인 요청에 대한 접근 권한이 없습니다.");
+    }
+
+    @Test
+    void createOwnerConfirmationFromChat_타인의세션메시지로요청시_ForbiddenException이발생한다() {
+        User owner = createUser("owner-1", "EMP010", "김담당");
+        User sessionOwner = createUser("requester-1", "EMP001", "홍질문");
+        User intruder = createUser("intruder-1", "EMP999", "침입자");
+
+        Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
+        ChatSession session = ChatSession.builder()
+                .id("session-1").workspace(workspace)
+                .user(sessionOwner).sessionTitle("남의 세션").build();
+        ChatMessage chatMessage = ChatMessage.builder()
+                .id("msg-1").session(session)
+                .senderType("USER").content("남의 질문").build();
+
+        when(ownerConfirmationRepository.existsByQuestionMessage_IdAndStatus("msg-1", "PENDING"))
+                .thenReturn(false);
+        when(userRepository.findById("owner-1")).thenReturn(Optional.of(owner));
+        when(chatMessageRepository.findById("msg-1")).thenReturn(Optional.of(chatMessage));
+        when(userRepository.findByEmployeeId("EMP999")).thenReturn(Optional.of(intruder));
+
+        // messageId만 알면 남의 대화 메시지로 담당자를 배정하고 알림까지 보낼 수 있었다.
+        assertThatThrownBy(() -> ownerConfirmationService.createOwnerConfirmationFromChat(
+                "msg-1", "owner-1", "EMP999"))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessage("해당 메시지에 대한 접근 권한이 없습니다.");
+
+        verify(ownerConfirmationRepository, never()).save(any());
+        verify(notificationService, never()).createNotification(
+                any(), anyString(), anyString(), anyString(), anyString(), anyString());
+    }
+
+    // --- 워크스페이스 멤버십 검증 ---
+    // workspaceId는 X-Workspace-Id 헤더로 들어오는 클라이언트 입력이므로,
+    // 요청자가 해당 워크스페이스의 멤버인지 반드시 확인해야 한다.
+
+    @Test
+    void createDirectQuestion_비멤버가타워크스페이스에질문시_예외가발생하고저장되지않는다() {
+        Workspace otherWorkspace = Workspace.builder().id("ws-other").name("남의 워크스페이스").build();
+        when(workspaceContextValidator.getValidWorkspace("ws-other")).thenReturn(otherWorkspace);
+        doThrow(new IllegalArgumentException("The user is not a member of this workspace."))
+                .when(workspaceService).validateMembership("ws-other", "EMP999");
+
+        assertThatThrownBy(() -> ownerConfirmationService.createDirectQuestion(
+                "ws-other", "owner-1", "질문 내용", "EMP999"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The user is not a member of this workspace.");
+
+        verify(ownerConfirmationRepository, never()).save(any());
+        // 알림도 나가지 않아야 한다. 나가면 비멤버가 타 워크스페이스 사용자에게 알림을 보낼 수 있다.
+        verify(notificationService, never()).createNotification(
+                any(), anyString(), anyString(), anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void createDirectQuestion_멤버십검증이요청자사번으로수행된다() {
+        Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
+        User owner = createUser("owner-1", "EMP010", "김담당");
+        User requester = createUser("user-1", "EMP001", "홍질문");
+
+        when(workspaceContextValidator.getValidWorkspace("ws-1")).thenReturn(workspace);
+        when(userRepository.findById("owner-1")).thenReturn(Optional.of(owner));
+        when(userRepository.findByEmployeeId("EMP001")).thenReturn(Optional.of(requester));
+
+        ownerConfirmationService.createDirectQuestion("ws-1", "owner-1", "질문 내용", "EMP001");
+
+        // 담당자(owner)가 아니라 요청자(requester)의 사번으로 검증해야 한다.
+        verify(workspaceService).validateMembership("ws-1", "EMP001");
+        verify(ownerConfirmationRepository).save(any());
+    }
+
+    @Test
+    void getAssignedConfirmations_비멤버조회시_예외가발생한다() {
+        doThrow(new IllegalArgumentException("The user is not a member of this workspace."))
+                .when(workspaceService).validateMembership("ws-other", "EMP999");
+
+        assertThatThrownBy(() -> ownerConfirmationService.getAssignedConfirmations(
+                "EMP999", "ws-other", PageRequest.of(0, 10)))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verifyNoInteractions(ownerConfirmationRepository);
+    }
+
+    @Test
+    void getRequestedConfirmations_비멤버조회시_예외가발생한다() {
+        doThrow(new IllegalArgumentException("The user is not a member of this workspace."))
+                .when(workspaceService).validateMembership("ws-other", "EMP999");
+
+        assertThatThrownBy(() -> ownerConfirmationService.getRequestedConfirmations(
+                "EMP999", "ws-other", PageRequest.of(0, 10)))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verifyNoInteractions(ownerConfirmationRepository);
     }
 
     private User createUser(String id, String employeeId, String name) {

@@ -8,6 +8,7 @@ import com.devbridge.backend.domain.chat.entity.MessageCitation;
 import com.devbridge.backend.domain.chat.repository.ChatMessageRepository;
 import com.devbridge.backend.domain.chat.repository.ChatSessionRepository;
 import com.devbridge.backend.domain.chat.repository.MessageCitationRepository;
+import com.devbridge.backend.global.common.exception.ForbiddenException;
 import com.devbridge.backend.global.config.fastapi.FastApiProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -90,7 +91,15 @@ public class ChatMessageService {
     }
 
     @Transactional(readOnly = true)
-    public List<ChatMessageResponse> getMessages(String sessionId) {
+    public List<ChatMessageResponse> getMessages(String sessionId, String employeeId) {
+        ChatSession session = chatSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("세션을 찾을 수 없습니다: " + sessionId));
+
+        // sessionId는 경로 변수로 전달되는 클라이언트 입력이므로 세션 소유자인지 확인한다.
+        if (!session.getUser().getEmployeeId().equals(employeeId)) {
+            throw new ForbiddenException("해당 채팅방에 대한 접근 권한이 없습니다.");
+        }
+
         List<ChatMessage> messages = chatMessageRepository.findBySession_IdOrderByCreatedAtAsc(sessionId);
         return messages.stream()
                 .map(msg -> ChatMessageResponse.builder()

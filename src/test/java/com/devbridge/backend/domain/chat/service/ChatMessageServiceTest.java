@@ -11,6 +11,7 @@ import com.devbridge.backend.domain.chat.repository.ChatSessionRepository;
 import com.devbridge.backend.domain.chat.repository.MessageCitationRepository;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
+import com.devbridge.backend.global.common.exception.ForbiddenException;
 import com.devbridge.backend.global.config.fastapi.FastApiProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +30,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -378,8 +380,9 @@ class ChatMessageServiceTest {
     class GetMessages {
 
         @Test
-        @DisplayName("getMessages_withSavedMessages_mapsToResponseInCreatedOrder")
-        void getMessages_withSavedMessages_mapsToResponseInCreatedOrder() {
+        @DisplayName("getMessages_withSessionOwner_mapsToResponseInCreatedOrder")
+        void getMessages_withSessionOwner_mapsToResponseInCreatedOrder() {
+            when(chatSessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(session));
             when(chatMessageRepository.findBySession_IdOrderByCreatedAtAsc(SESSION_ID)).thenReturn(List.of(
                     ChatMessage.builder().id("M1").session(session).senderType("USER").content("질문")
                             .promptTokens(10).completionTokens(0).build(),
@@ -387,13 +390,36 @@ class ChatMessageServiceTest {
                             .promptTokens(100).completionTokens(50).build()
             ));
 
-            var responses = chatMessageService.getMessages(SESSION_ID);
+            var responses = chatMessageService.getMessages(SESSION_ID, "EMP001");
 
             assertThat(responses).hasSize(2);
             assertThat(responses.getFirst().id()).isEqualTo("M1");
             assertThat(responses.getFirst().sessionId()).isEqualTo(SESSION_ID);
             assertThat(responses.get(1).senderType()).isEqualTo("AI");
             assertThat(responses.get(1).completionTokens()).isEqualTo(50);
+        }
+
+        @Test
+        @DisplayName("getMessages_withNonOwner_throwsForbiddenException")
+        void getMessages_withNonOwner_throwsForbiddenException() {
+            when(chatSessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(session));
+
+            // sessionId만 알면 남의 대화 내용을 읽을 수 있었던 IDOR 경로다.
+            assertThatThrownBy(() -> chatMessageService.getMessages(SESSION_ID, "EMP999"))
+                    .isInstanceOf(ForbiddenException.class)
+                    .hasMessage("해당 채팅방에 대한 접근 권한이 없습니다.");
+
+            verify(chatMessageRepository, never()).findBySession_IdOrderByCreatedAtAsc(anyString());
+        }
+
+        @Test
+        @DisplayName("getMessages_withUnknownSession_throwsIllegalArgumentException")
+        void getMessages_withUnknownSession_throwsIllegalArgumentException() {
+            when(chatSessionRepository.findById(SESSION_ID)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> chatMessageService.getMessages(SESSION_ID, "EMP001"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("세션을 찾을 수 없습니다: " + SESSION_ID);
         }
     }
 }
