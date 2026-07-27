@@ -103,6 +103,11 @@ public class OwnerConfirmationService {
         User requester = userRepository.findByEmployeeId(requesterEmployeeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + requesterEmployeeId));
 
+        // messageId는 경로 변수로 전달되는 클라이언트 입력이므로 본인 세션의 메시지인지 확인한다.
+        if (!chatMessage.getSession().getUser().getEmployeeId().equals(requesterEmployeeId)) {
+            throw new ForbiddenException("해당 메시지에 대한 접근 권한이 없습니다.");
+        }
+
         OwnerConfirmation ownerConfirmation = OwnerConfirmation.builder()
                 .workspace(chatMessage.getSession().getWorkspace())
                 .questionMessage(chatMessage)

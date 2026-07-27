@@ -40,12 +40,14 @@ public interface ChatAPI {
     @Operation(summary = "채팅 메시지 목록 조회", description = "특정 채팅방의 메시지 내역을 조회합니다.")
     @GetMapping("/sessions/{sessionId}/messages")
     ResponseEntity<List<ChatMessageResponse>> getChatMessages(
-            @PathVariable("sessionId") String sessionId);
+            @PathVariable("sessionId") String sessionId,
+            @AuthenticationPrincipal String employeeId);
 
     @Operation(summary = "채팅방 삭제", description = "특정 채팅방을 삭제합니다.")
     @DeleteMapping("/sessions/{sessionId}")
     ResponseEntity<Void> deleteChatSession(
-            @PathVariable("sessionId") String sessionId);
+            @PathVariable("sessionId") String sessionId,
+            @AuthenticationPrincipal String employeeId);
 
     @Operation(summary = "담당자 확인 요청", description = "RAG 근거 부족 시 사용자가 선택한 담당자에게 확인 요청을 생성합니다.")
     @PostMapping("/messages/{messageId}/owner-confirmation")

@@ -46,13 +46,13 @@ public class ChatController implements ChatAPI {
     }
 
     @Override
-    public ResponseEntity<List<ChatMessageResponse>> getChatMessages(String sessionId) {
-        return ResponseEntity.ok(chatMessageService.getMessages(sessionId));
+    public ResponseEntity<List<ChatMessageResponse>> getChatMessages(String sessionId, String employeeId) {
+        return ResponseEntity.ok(chatMessageService.getMessages(sessionId, employeeId));
     }
 
     @Override
-    public ResponseEntity<Void> deleteChatSession(String sessionId) {
-        chatSessionService.deleteSession(sessionId);
+    public ResponseEntity<Void> deleteChatSession(String sessionId, String employeeId) {
+        chatSessionService.deleteSession(sessionId, employeeId);
         return ResponseEntity.ok().build();
     }
 

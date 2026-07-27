@@ -433,6 +433,37 @@ class OwnerConfirmationServiceTest {
                 .hasMessage("해당 확인 요청에 대한 접근 권한이 없습니다.");
     }
 
+    @Test
+    void createOwnerConfirmationFromChat_타인의세션메시지로요청시_ForbiddenException이발생한다() {
+        User owner = createUser("owner-1", "EMP010", "김담당");
+        User sessionOwner = createUser("requester-1", "EMP001", "홍질문");
+        User intruder = createUser("intruder-1", "EMP999", "침입자");
+
+        Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
+        ChatSession session = ChatSession.builder()
+                .id("session-1").workspace(workspace)
+                .user(sessionOwner).sessionTitle("남의 세션").build();
+        ChatMessage chatMessage = ChatMessage.builder()
+                .id("msg-1").session(session)
+                .senderType("USER").content("남의 질문").build();
+
+        when(ownerConfirmationRepository.existsByQuestionMessage_IdAndStatus("msg-1", "PENDING"))
+                .thenReturn(false);
+        when(userRepository.findById("owner-1")).thenReturn(Optional.of(owner));
+        when(chatMessageRepository.findById("msg-1")).thenReturn(Optional.of(chatMessage));
+        when(userRepository.findByEmployeeId("EMP999")).thenReturn(Optional.of(intruder));
+
+        // messageId만 알면 남의 대화 메시지로 담당자를 배정하고 알림까지 보낼 수 있었다.
+        assertThatThrownBy(() -> ownerConfirmationService.createOwnerConfirmationFromChat(
+                "msg-1", "owner-1", "EMP999"))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessage("해당 메시지에 대한 접근 권한이 없습니다.");
+
+        verify(ownerConfirmationRepository, never()).save(any());
+        verify(notificationService, never()).createNotification(
+                any(), anyString(), anyString(), anyString(), anyString(), anyString());
+    }
+
     // --- 워크스페이스 멤버십 검증 ---
     // workspaceId는 X-Workspace-Id 헤더로 들어오는 클라이언트 입력이므로,
     // 요청자가 해당 워크스페이스의 멤버인지 반드시 확인해야 한다.

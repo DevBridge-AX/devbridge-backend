@@ -9,6 +9,7 @@ import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
 import com.devbridge.backend.domain.workspace.service.WorkspaceService;
+import com.devbridge.backend.global.common.exception.ForbiddenException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -161,12 +162,27 @@ class ChatSessionServiceTest {
     }
 
     @Test
-    void deleteSession_성공적으로세션을삭제한다() {
-        ChatSession session = ChatSession.builder().id("session-1").build();
+    void deleteSession_세션소유자가삭제하면성공한다() {
+        User owner = User.builder().id("user-1").employeeId("EMP001").build();
+        ChatSession session = ChatSession.builder().id("session-1").user(owner).build();
         when(chatSessionRepository.findById("session-1")).thenReturn(Optional.of(session));
 
-        chatSessionService.deleteSession("session-1");
+        chatSessionService.deleteSession("session-1", "EMP001");
 
         verify(chatSessionRepository, times(1)).delete(session);
+    }
+
+    @Test
+    void deleteSession_타인의세션삭제시도시_ForbiddenException이발생한다() {
+        User owner = User.builder().id("user-1").employeeId("EMP001").build();
+        ChatSession session = ChatSession.builder().id("session-1").user(owner).build();
+        when(chatSessionRepository.findById("session-1")).thenReturn(Optional.of(session));
+
+        // sessionId만 알면 남의 채팅방을 지울 수 있었던 IDOR 경로다.
+        assertThatThrownBy(() -> chatSessionService.deleteSession("session-1", "EMP999"))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessage("해당 채팅방에 대한 접근 권한이 없습니다.");
+
+        verify(chatSessionRepository, never()).delete(any(ChatSession.class));
     }
 }
