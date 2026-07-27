@@ -4,6 +4,7 @@ import com.devbridge.backend.domain.notification.dto.NotificationResponse;
 import com.devbridge.backend.domain.notification.entity.Notification;
 import com.devbridge.backend.domain.notification.repository.NotificationRepository;
 import com.devbridge.backend.domain.user.entity.User;
+import com.devbridge.backend.global.common.exception.ForbiddenException;
 import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -59,7 +60,13 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
-    public Page<NotificationResponse> getNotifications(String employeeId, Boolean isRead, Pageable pageable) {
+    public Page<NotificationResponse> getNotifications(String employeeId, String requesterEmployeeId,
+                                                       Boolean isRead, Pageable pageable) {
+        // employeeId는 경로 변수로 전달되는 클라이언트 입력이므로 본인 알림인지 확인한다.
+        if (!employeeId.equals(requesterEmployeeId)) {
+            throw new ForbiddenException("본인의 알림만 조회할 수 있습니다.");
+        }
+
         Page<Notification> page = isRead != null
                 ? notificationRepository.findByUser_EmployeeIdAndIsReadAndDeletedAtIsNull(employeeId, isRead, pageable)
                 : notificationRepository.findByUser_EmployeeIdAndDeletedAtIsNull(employeeId, pageable);
@@ -67,9 +74,15 @@ public class NotificationService {
     }
 
     @Transactional
-    public void readNotification(String id) {
+    public void readNotification(String id, String employeeId) {
         Notification notification = notificationRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 알림이 존재하지 않습니다."));
+
+        // 알림 ID는 경로 변수로 전달되는 클라이언트 입력이므로 수신자 본인인지 확인한다.
+        if (!notification.getUser().getEmployeeId().equals(employeeId)) {
+            throw new ForbiddenException("해당 알림에 대한 접근 권한이 없습니다.");
+        }
+
         notification.markAsRead();
     }
 }

@@ -4,6 +4,7 @@ import com.devbridge.backend.domain.notification.dto.NotificationResponse;
 import com.devbridge.backend.domain.notification.entity.Notification;
 import com.devbridge.backend.domain.notification.repository.NotificationRepository;
 import com.devbridge.backend.domain.user.entity.User;
+import com.devbridge.backend.global.common.exception.ForbiddenException;
 import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -127,7 +128,7 @@ class NotificationServiceTest {
         when(notificationRepository.findByUser_EmployeeIdAndIsReadAndDeletedAtIsNull("EMP002", false, pageable))
                 .thenReturn(new PageImpl<>(List.of(unread), pageable, 1));
 
-        Page<NotificationResponse> result = notificationService.getNotifications("EMP002", false, pageable);
+        Page<NotificationResponse> result = notificationService.getNotifications("EMP002", "EMP002", false, pageable);
 
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getContent().get(0).getIsRead()).isFalse();
@@ -148,7 +149,7 @@ class NotificationServiceTest {
         when(notificationRepository.findByUser_EmployeeIdAndDeletedAtIsNull("EMP002", pageable))
                 .thenReturn(new PageImpl<>(List.of(n1, n2), pageable, 2));
 
-        Page<NotificationResponse> result = notificationService.getNotifications("EMP002", null, pageable);
+        Page<NotificationResponse> result = notificationService.getNotifications("EMP002", "EMP002", null, pageable);
 
         assertThat(result.getContent()).hasSize(2);
         verify(notificationRepository).findByUser_EmployeeIdAndDeletedAtIsNull("EMP002", pageable);
@@ -166,7 +167,7 @@ class NotificationServiceTest {
         when(notificationRepository.findByUser_EmployeeIdAndDeletedAtIsNull("EMP002", pageable))
                 .thenReturn(new PageImpl<>(List.of(n1), pageable, 6));
 
-        Page<NotificationResponse> result = notificationService.getNotifications("EMP002", null, pageable);
+        Page<NotificationResponse> result = notificationService.getNotifications("EMP002", "EMP002", null, pageable);
 
         assertThat(result.getNumber()).isEqualTo(1);
         assertThat(result.getSize()).isEqualTo(5);
@@ -185,7 +186,7 @@ class NotificationServiceTest {
 
         when(notificationRepository.findById("notification-1")).thenReturn(Optional.of(notification));
 
-        notificationService.readNotification("notification-1");
+        notificationService.readNotification("notification-1", "EMP002");
 
         assertThat(notification.getIsRead()).isTrue();
     }
@@ -194,9 +195,43 @@ class NotificationServiceTest {
     void readNotification_존재하지않으면예외가발생한다() {
         when(notificationRepository.findById("notification-1")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> notificationService.readNotification("notification-1"))
+        assertThatThrownBy(() -> notificationService.readNotification("notification-1", "EMP002"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("해당 알림이 존재하지 않습니다.");
+    }
+
+    // --- 알림 소유권 검증 ---
+    // employeeId와 알림 ID 모두 경로 변수로 전달되는 클라이언트 입력이므로 본인 것인지 확인해야 한다.
+
+    @Test
+    void getNotifications_타인의사번으로조회시_ForbiddenException이발생한다() {
+        PageRequest pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        // URL의 사번만 바꾸면 남의 알림 목록을 통째로 볼 수 있었던 IDOR 경로다.
+        assertThatThrownBy(() -> notificationService.getNotifications("EMP002", "EMP999", null, pageable))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessage("본인의 알림만 조회할 수 있습니다.");
+
+        verifyNoInteractions(notificationRepository);
+    }
+
+    @Test
+    void readNotification_타인의알림읽음처리시도시_ForbiddenException이발생한다() {
+        User recipient = createTestUser();
+        Notification notification = Notification.builder()
+                .id("notification-1")
+                .user(recipient)
+                .type("MEETING_UPDATED")
+                .referenceId("meeting-1")
+                .build();
+
+        when(notificationRepository.findById("notification-1")).thenReturn(Optional.of(notification));
+
+        assertThatThrownBy(() -> notificationService.readNotification("notification-1", "EMP999"))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessage("해당 알림에 대한 접근 권한이 없습니다.");
+
+        assertThat(notification.getIsRead()).isFalse();
     }
 
     private User createTestUser() {

@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Notification", description = "시스템 알림 API 명세")
@@ -15,11 +16,14 @@ public interface NotificationAPI {
     @GetMapping("/users/{employeeId}")
     ResponseEntity<Page<NotificationResponse>> getNotifications(
             @PathVariable("employeeId") String employeeId,
+            @AuthenticationPrincipal String requesterEmployeeId,
             @RequestParam(value = "isRead", required = false) Boolean isRead,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size);
 
     @Operation(summary = "알림 읽음 처리", description = "알림을 확인한 경우 읽음 상태로 처리합니다.")
     @PutMapping("/{id}/read")
-    ResponseEntity<Void> readNotification(@PathVariable("id") String id);
+    ResponseEntity<Void> readNotification(
+            @PathVariable("id") String id,
+            @AuthenticationPrincipal String employeeId);
 }

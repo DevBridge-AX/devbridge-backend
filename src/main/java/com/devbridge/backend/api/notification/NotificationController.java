@@ -17,14 +17,15 @@ public class NotificationController implements NotificationAPI {
 
     @Override
     public ResponseEntity<Page<NotificationResponse>> getNotifications(
-            String employeeId, Boolean isRead, int page, int size) {
+            String employeeId, String requesterEmployeeId, Boolean isRead, int page, int size) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return ResponseEntity.ok(notificationService.getNotifications(employeeId, isRead, pageable));
+        return ResponseEntity.ok(
+                notificationService.getNotifications(employeeId, requesterEmployeeId, isRead, pageable));
     }
 
     @Override
-    public ResponseEntity<Void> readNotification(String id) {
-        notificationService.readNotification(id);
+    public ResponseEntity<Void> readNotification(String id, String employeeId) {
+        notificationService.readNotification(id, employeeId);
         return ResponseEntity.ok().build();
     }
 }
