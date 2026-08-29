@@ -11,7 +11,7 @@ import com.devbridge.backend.domain.datasource.entity.KnowledgeDocument;
 import com.devbridge.backend.domain.datasource.repository.KnowledgeDocumentRepository;
 import com.devbridge.backend.domain.notification.service.NotificationService;
 import com.devbridge.backend.domain.user.entity.User;
-import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.domain.user.service.UserInternalService;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
 import com.devbridge.backend.domain.workspace.service.WorkspaceService;
@@ -44,7 +44,7 @@ import static org.mockito.Mockito.*;
 class OwnerConfirmationServiceTest {
 
     @Mock
-    private UserRepository userRepository;
+    private UserInternalService userInternalService;
 
     @Mock
     private ChatMessageRepository chatMessageRepository;
@@ -77,7 +77,7 @@ class OwnerConfirmationServiceTest {
     @BeforeEach
     void setUp() {
         ownerConfirmationService = new OwnerConfirmationService(
-                userRepository, chatMessageRepository, ownerConfirmationRepository,
+                userInternalService, chatMessageRepository, ownerConfirmationRepository,
                 knowledgeDocumentRepository, notificationService, fastApiClient,
                 webSocketSessionRegistry, objectMapper, workspaceContextValidator, workspaceService);
     }
@@ -97,7 +97,7 @@ class OwnerConfirmationServiceTest {
                 .id("msg-1").session(session)
                 .senderType("USER").content("테스트 질문").build();
 
-        when(userRepository.findById("owner-1")).thenReturn(Optional.of(owner));
+        when(userInternalService.findById("owner-1")).thenReturn(Optional.of(owner));
         when(chatMessageRepository.findById("msg-1")).thenReturn(Optional.of(chatMessage));
         when(ownerConfirmationRepository.save(any(OwnerConfirmation.class))).thenAnswer(invocation -> {
             OwnerConfirmation oc = invocation.getArgument(0);
@@ -120,7 +120,7 @@ class OwnerConfirmationServiceTest {
 
     @Test
     void triggerOwnerConfirmation_User가없으면OptionalEmpty반환하고저장도안된다() {
-        when(userRepository.findById("unknown-owner")).thenReturn(Optional.empty());
+        when(userInternalService.findById("unknown-owner")).thenReturn(Optional.empty());
 
         Optional<String> result = ownerConfirmationService.triggerOwnerConfirmation("msg-1", "unknown-owner");
 
@@ -146,9 +146,9 @@ class OwnerConfirmationServiceTest {
 
         when(ownerConfirmationRepository.existsByQuestionMessage_IdAndStatus("msg-1", "PENDING"))
                 .thenReturn(false);
-        when(userRepository.findById("owner-1")).thenReturn(Optional.of(owner));
+        when(userInternalService.findById("owner-1")).thenReturn(Optional.of(owner));
         when(chatMessageRepository.findById("msg-1")).thenReturn(Optional.of(chatMessage));
-        when(userRepository.findByEmployeeId("EMP001")).thenReturn(Optional.of(requester));
+        when(userInternalService.findByEmployeeId("EMP001")).thenReturn(Optional.of(requester));
         when(ownerConfirmationRepository.save(any(OwnerConfirmation.class))).thenAnswer(invocation -> {
             OwnerConfirmation oc = invocation.getArgument(0);
             ReflectionTestUtils.setField(oc, "id", "oc-new");
@@ -197,7 +197,7 @@ class OwnerConfirmationServiceTest {
                 .id("doc-1").dataSource(dataSource).uploadedBy(uploader).title("설계 문서").build();
 
         when(knowledgeDocumentRepository.findById("doc-1")).thenReturn(Optional.of(document));
-        when(userRepository.findByEmployeeId("EMP030")).thenReturn(Optional.of(requester));
+        when(userInternalService.findByEmployeeId("EMP030")).thenReturn(Optional.of(requester));
         when(ownerConfirmationRepository.save(any(OwnerConfirmation.class))).thenAnswer(invocation -> {
             OwnerConfirmation oc = invocation.getArgument(0);
             ReflectionTestUtils.setField(oc, "id", "oc-doc-1");
@@ -232,7 +232,7 @@ class OwnerConfirmationServiceTest {
                 .id("doc-1").dataSource(dataSource).uploadedBy(uploader).title("설계 문서").build();
 
         when(knowledgeDocumentRepository.findById("doc-1")).thenReturn(Optional.of(document));
-        when(userRepository.findByEmployeeId("EMP020")).thenReturn(Optional.of(uploader));
+        when(userInternalService.findByEmployeeId("EMP020")).thenReturn(Optional.of(uploader));
 
         assertThatThrownBy(() -> ownerConfirmationService.createOwnerConfirmationFromDocument(
                 "doc-1", "질문입니다", "EMP020"))
@@ -449,9 +449,9 @@ class OwnerConfirmationServiceTest {
 
         when(ownerConfirmationRepository.existsByQuestionMessage_IdAndStatus("msg-1", "PENDING"))
                 .thenReturn(false);
-        when(userRepository.findById("owner-1")).thenReturn(Optional.of(owner));
+        when(userInternalService.findById("owner-1")).thenReturn(Optional.of(owner));
         when(chatMessageRepository.findById("msg-1")).thenReturn(Optional.of(chatMessage));
-        when(userRepository.findByEmployeeId("EMP999")).thenReturn(Optional.of(intruder));
+        when(userInternalService.findByEmployeeId("EMP999")).thenReturn(Optional.of(intruder));
 
         // messageId만 알면 남의 대화 메시지로 담당자를 배정하고 알림까지 보낼 수 있었다.
         assertThatThrownBy(() -> ownerConfirmationService.createOwnerConfirmationFromChat(
@@ -493,8 +493,8 @@ class OwnerConfirmationServiceTest {
         User requester = createUser("user-1", "EMP001", "홍질문");
 
         when(workspaceContextValidator.getValidWorkspace("ws-1")).thenReturn(workspace);
-        when(userRepository.findById("owner-1")).thenReturn(Optional.of(owner));
-        when(userRepository.findByEmployeeId("EMP001")).thenReturn(Optional.of(requester));
+        when(userInternalService.findById("owner-1")).thenReturn(Optional.of(owner));
+        when(userInternalService.findByEmployeeId("EMP001")).thenReturn(Optional.of(requester));
 
         ownerConfirmationService.createDirectQuestion("ws-1", "owner-1", "질문 내용", "EMP001");
 

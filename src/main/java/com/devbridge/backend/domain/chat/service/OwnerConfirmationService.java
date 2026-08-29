@@ -9,7 +9,7 @@ import com.devbridge.backend.domain.datasource.entity.KnowledgeDocument;
 import com.devbridge.backend.domain.datasource.repository.KnowledgeDocumentRepository;
 import com.devbridge.backend.domain.notification.service.NotificationService;
 import com.devbridge.backend.domain.user.entity.User;
-import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.domain.user.service.UserInternalService;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
 import com.devbridge.backend.domain.workspace.service.WorkspaceService;
@@ -33,7 +33,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class OwnerConfirmationService {
 
-    private final UserRepository userRepository;
+    private final UserInternalService userInternalService;
     private final ChatMessageRepository chatMessageRepository;
     private final OwnerConfirmationRepository ownerConfirmationRepository;
     private final KnowledgeDocumentRepository knowledgeDocumentRepository;
@@ -62,7 +62,7 @@ public class OwnerConfirmationService {
      */
     @Transactional
     public Optional<String> triggerOwnerConfirmation(String messageId, String suggestedOwnerId) {
-        User owner = userRepository.findById(suggestedOwnerId).orElse(null);
+        User owner = userInternalService.findById(suggestedOwnerId).orElse(null);
         if (owner == null) {
             log.warn("suggested_owner_id에 해당하는 사용자를 찾을 수 없습니다: {}", suggestedOwnerId);
             return Optional.empty();
@@ -94,13 +94,13 @@ public class OwnerConfirmationService {
             throw new IllegalStateException("이미 담당자가 배정된 질문입니다.");
         }
 
-        User owner = userRepository.findById(assignedOwnerId)
+        User owner = userInternalService.findById(assignedOwnerId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + assignedOwnerId));
 
         ChatMessage chatMessage = chatMessageRepository.findById(messageId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 채팅 메시지가 존재하지 않습니다: " + messageId));
 
-        User requester = userRepository.findByEmployeeId(requesterEmployeeId)
+        User requester = userInternalService.findByEmployeeId(requesterEmployeeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + requesterEmployeeId));
 
         // messageId는 경로 변수로 전달되는 클라이언트 입력이므로 본인 세션의 메시지인지 확인한다.
@@ -130,10 +130,10 @@ public class OwnerConfirmationService {
         // workspaceId는 X-Workspace-Id 헤더로 전달되는 클라이언트 입력이므로 멤버십을 검증한다.
         workspaceService.validateMembership(workspace.getId(), requesterEmployeeId);
 
-        User owner = userRepository.findById(assignedOwnerId)
+        User owner = userInternalService.findById(assignedOwnerId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + assignedOwnerId));
 
-        User requester = userRepository.findByEmployeeId(requesterEmployeeId)
+        User requester = userInternalService.findByEmployeeId(requesterEmployeeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + requesterEmployeeId));
 
         if (owner.getId().equals(requester.getId())) {
@@ -171,7 +171,7 @@ public class OwnerConfirmationService {
             throw new IllegalArgumentException("등록자 정보가 없는 문서입니다. 담당자를 지정할 수 없습니다.");
         }
 
-        User requester = userRepository.findByEmployeeId(requesterEmployeeId)
+        User requester = userInternalService.findByEmployeeId(requesterEmployeeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + requesterEmployeeId));
 
         if (uploadedBy.getId().equals(requester.getId())) {

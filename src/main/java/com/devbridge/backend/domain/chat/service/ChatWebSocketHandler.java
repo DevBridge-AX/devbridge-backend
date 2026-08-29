@@ -4,7 +4,7 @@ import com.devbridge.backend.domain.chat.dto.ConversationContext;
 import com.devbridge.backend.domain.chat.dto.fastapi.FastApiChatRequest;
 import com.devbridge.backend.domain.chat.dto.fastapi.FastApiDoneEvent;
 import com.devbridge.backend.domain.chat.entity.ChatMessage;
-import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.domain.user.service.UserInternalService;
 import com.devbridge.backend.global.config.fastapi.FastApiClient;
 import com.devbridge.backend.global.config.websocket.WebSocketContract;
 import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
@@ -29,7 +29,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     private final FastApiClient fastApiClient;
     private final ChatMessageService chatMessageService;
-    private final UserRepository userRepository;
+    private final UserInternalService userInternalService;
     private final ObjectMapper objectMapper;
     private final WebSocketSessionRegistry webSocketSessionRegistry;
 
@@ -164,7 +164,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             if (!Boolean.TRUE.equals(doneEvent.getIsGroundable())
                     && doneEvent.getSuggestedOwnerId() != null) {
                 String suggestedOwnerId = doneEvent.getSuggestedOwnerId();
-                userRepository.findById(suggestedOwnerId).ifPresent(owner -> {
+                userInternalService.findById(suggestedOwnerId).ifPresent(owner -> {
                     try {
                         String confirmMsg = objectMapper.writeValueAsString(
                                 new java.util.LinkedHashMap<>() {{

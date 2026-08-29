@@ -5,7 +5,7 @@ import com.devbridge.backend.domain.chat.dto.fastapi.FastApiChatRequest;
 import com.devbridge.backend.domain.chat.dto.fastapi.FastApiDoneEvent;
 import com.devbridge.backend.domain.chat.entity.ChatMessage;
 import com.devbridge.backend.domain.user.entity.User;
-import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.domain.user.service.UserInternalService;
 import com.devbridge.backend.global.config.fastapi.FastApiClient;
 import com.devbridge.backend.global.config.websocket.WebSocketContract;
 import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
@@ -62,7 +62,7 @@ class ChatWebSocketHandlerTest {
     private ChatMessageService chatMessageService;
 
     @Mock
-    private UserRepository userRepository;
+    private UserInternalService userInternalService;
 
     @Mock
     private WebSocketSessionRegistry webSocketSessionRegistry;
@@ -78,7 +78,7 @@ class ChatWebSocketHandlerTest {
     @BeforeEach
     void setUp() {
         handler = new ChatWebSocketHandler(
-                fastApiClient, chatMessageService, userRepository, objectMapper, webSocketSessionRegistry);
+                fastApiClient, chatMessageService, userInternalService, objectMapper, webSocketSessionRegistry);
         attributes = new HashMap<>();
         lenient().when(session.getAttributes()).thenReturn(attributes);
         lenient().when(session.isOpen()).thenReturn(true);
@@ -290,7 +290,7 @@ class ChatWebSocketHandlerTest {
         void handleSseEvent_withSuggestedOwner_sendsOwnerConfirmationSuggestedMessage() throws Exception {
             when(chatMessageService.saveAiMessage(anyString(), anyString(), anyString(), any()))
                     .thenReturn(ChatMessage.builder().id("SAVED-ID").build());
-            when(userRepository.findById("OWNER-001")).thenReturn(
+            when(userInternalService.findById("OWNER-001")).thenReturn(
                     Optional.of(User.builder().id("OWNER-001").name("담당자").build()));
 
             receive(sse("done", "{\"is_groundable\":false,\"confidence\":0.2,"
@@ -316,7 +316,7 @@ class ChatWebSocketHandlerTest {
 
             // 근거가 충분하면 담당자 추천 메시지를 보내지 않는다(조회조차 하지 않는다).
             assertThat(parse(sentMessages().getLast()).path("type").asText()).isEqualTo("done");
-            verify(userRepository, never()).findById(anyString());
+            verify(userInternalService, never()).findById(anyString());
         }
 
         @Test
