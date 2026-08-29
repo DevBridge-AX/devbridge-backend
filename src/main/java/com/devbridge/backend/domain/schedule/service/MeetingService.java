@@ -21,7 +21,7 @@ import com.devbridge.backend.domain.schedule.repository.MeetingParticipantReposi
 import com.devbridge.backend.domain.schedule.repository.MeetingRepository;
 import com.devbridge.backend.domain.schedule.repository.ParticipantAvailableTimeRepository;
 import com.devbridge.backend.domain.user.entity.User;
-import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.domain.user.service.UserInternalService;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
 import com.devbridge.backend.domain.workspace.service.WorkspaceService;
@@ -53,14 +53,14 @@ public class MeetingService {
     private final WorkspaceService workspaceService;
     private final MeetingReferenceService meetingReferenceService;
     private final ObjectMapper objectMapper;
-    private final UserRepository userRepository;
+    private final UserInternalService userInternalService;
     private final NotificationService notificationService;
 
     private static final String NOTIFICATION_TYPE_MEETING_INVITED = "MEETING_INVITED";
     private static final String NOTIFICATION_TYPE_MEETING_UPDATED = "MEETING_UPDATED";
 
     private User resolveUser(String employeeId) {
-        return userRepository.findByEmployeeId(employeeId)
+        return userInternalService.findByEmployeeId(employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + employeeId));
     }
 
@@ -236,7 +236,7 @@ public class MeetingService {
                                     String workspaceId) {
         meetingParticipantRepository.findByMeetingId(meetingId).stream()
                 .filter(p -> !p.getEmployeeId().equals(actorEmployeeId))
-                .forEach(p -> userRepository.findByEmployeeId(p.getEmployeeId())
+                .forEach(p -> userInternalService.findByEmployeeId(p.getEmployeeId())
                         .ifPresent(recipient -> notificationService.createNotification(
                                 recipient, notificationType, meetingId, title, message, workspaceId)));
     }
@@ -244,7 +244,7 @@ public class MeetingService {
     private MeetingDetailResponse buildDetailResponse(Meeting meeting) {
         List<MeetingParticipantResponse> participants = meetingParticipantRepository.findByMeetingId(meeting.getId()).stream()
                 .map(participant -> {
-                    var user = userRepository.findByEmployeeId(participant.getEmployeeId()).orElse(null);
+                    var user = userInternalService.findByEmployeeId(participant.getEmployeeId()).orElse(null);
                     return new MeetingParticipantResponse(
                             participant.getEmployeeId(),
                             user != null ? user.getName() : null,

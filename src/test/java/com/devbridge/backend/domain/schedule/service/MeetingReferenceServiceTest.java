@@ -12,7 +12,7 @@ import com.devbridge.backend.domain.schedule.repository.MeetingParticipantReposi
 import com.devbridge.backend.domain.schedule.repository.MeetingReferenceRepository;
 import com.devbridge.backend.domain.schedule.repository.MeetingRepository;
 import com.devbridge.backend.domain.user.entity.User;
-import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.domain.user.service.UserInternalService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -36,8 +36,9 @@ import static org.mockito.Mockito.when;
  * {@link MeetingReferenceService} 특성 테스트(characterization test).
  *
  * <p>"올바른 동작"이 아니라 <b>현재 동작</b>을 그대로 고정하는 것이 목적이다.
- * 이 서비스는 {@code UserRepository}(C-3 대상)와 {@code KnowledgeDocumentRepository}(C-4 대상)를
- * 모두 직접 참조하므로, 두 참조 제거 작업 전에 예외 타입·메시지를 고정하는 안전망이 필요하다.
+ * 이 서비스는 {@code KnowledgeDocumentRepository}(C-4 대상)를 여전히 직접 참조하므로,
+ * 그 참조 제거 작업 전에 예외 타입·메시지를 고정하는 안전망이 필요하다.
+ * {@code UserRepository} 직접 참조는 {@link UserInternalService}로 치환 완료했다(C-3, refactor/schedule).
  */
 @ExtendWith(MockitoExtension.class)
 class MeetingReferenceServiceTest {
@@ -58,7 +59,7 @@ class MeetingReferenceServiceTest {
     private KnowledgeDocumentRepository knowledgeDocumentRepository;
 
     @Mock
-    private UserRepository userRepository;
+    private UserInternalService userInternalService;
 
     private MeetingReferenceService meetingReferenceService;
 
@@ -69,7 +70,7 @@ class MeetingReferenceServiceTest {
                 meetingReferenceRepository,
                 meetingParticipantRepository,
                 knowledgeDocumentRepository,
-                userRepository
+                userInternalService
         );
     }
 
@@ -90,7 +91,7 @@ class MeetingReferenceServiceTest {
     }
 
     private void givenUser() {
-        when(userRepository.findByEmployeeId(EMPLOYEE_ID)).thenReturn(Optional.of(user()));
+        when(userInternalService.findByEmployeeId(EMPLOYEE_ID)).thenReturn(Optional.of(user()));
     }
 
     private void givenParticipant() {
@@ -146,7 +147,7 @@ class MeetingReferenceServiceTest {
         @Test
         @DisplayName("addReference_withUnknownEmployee_throwsIllegalArgumentException")
         void addReference_withUnknownEmployee_throwsIllegalArgumentException() {
-            when(userRepository.findByEmployeeId(EMPLOYEE_ID)).thenReturn(Optional.empty());
+            when(userInternalService.findByEmployeeId(EMPLOYEE_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> meetingReferenceService.addReference(MEETING_ID, EMPLOYEE_ID, request(null)))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -217,7 +218,7 @@ class MeetingReferenceServiceTest {
         @Test
         @DisplayName("deleteReference_withUnknownEmployee_throwsIllegalArgumentException")
         void deleteReference_withUnknownEmployee_throwsIllegalArgumentException() {
-            when(userRepository.findByEmployeeId(EMPLOYEE_ID)).thenReturn(Optional.empty());
+            when(userInternalService.findByEmployeeId(EMPLOYEE_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> meetingReferenceService.deleteReference(MEETING_ID, REFERENCE_ID, EMPLOYEE_ID))
                     .isInstanceOf(IllegalArgumentException.class)
