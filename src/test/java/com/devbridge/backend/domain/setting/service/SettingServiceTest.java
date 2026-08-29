@@ -6,7 +6,7 @@ import com.devbridge.backend.domain.setting.dto.UpdateProfileRequest;
 import com.devbridge.backend.domain.user.dto.UserResponse;
 import com.devbridge.backend.domain.user.entity.JobRole;
 import com.devbridge.backend.domain.user.entity.User;
-import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.domain.user.service.UserInternalService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -27,9 +27,8 @@ import static org.mockito.Mockito.when;
  * {@link SettingService} 특성 테스트(characterization test).
  *
  * <p>"올바른 동작"이 아니라 <b>현재 동작</b>을 그대로 고정하는 것이 목적이다.
- * 이 서비스는 {@code UserRepository}를 직접 참조하므로(C-3 대상), 참조 제거 작업 전에
- * 예외 타입·메시지를 고정하는 안전망이 필요하다. raw throw 2건(비밀번호 검증 실패)은
- * 보안 관련 경로라 특히 중요하다.
+ * {@code UserRepository} 직접 참조는 {@link UserInternalService}로 치환 완료했다(C-3, refactor/setting).
+ * raw throw 2건(비밀번호 검증 실패)은 보안 관련 경로라 특히 중요하다.
  */
 @ExtendWith(MockitoExtension.class)
 class SettingServiceTest {
@@ -41,7 +40,7 @@ class SettingServiceTest {
     private static final String NEW_HASH = "new-encoded";
 
     @Mock
-    private UserRepository userRepository;
+    private UserInternalService userInternalService;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -50,7 +49,7 @@ class SettingServiceTest {
 
     @BeforeEach
     void setUp() {
-        settingService = new SettingService(userRepository, passwordEncoder);
+        settingService = new SettingService(userInternalService, passwordEncoder);
     }
 
     private User user() {
@@ -72,11 +71,11 @@ class SettingServiceTest {
     }
 
     private void givenUser(User user) {
-        when(userRepository.findByEmployeeId(EMPLOYEE_ID)).thenReturn(Optional.of(user));
+        when(userInternalService.findByEmployeeId(EMPLOYEE_ID)).thenReturn(Optional.of(user));
     }
 
     private void givenUserNotFound() {
-        when(userRepository.findByEmployeeId(EMPLOYEE_ID)).thenReturn(Optional.empty());
+        when(userInternalService.findByEmployeeId(EMPLOYEE_ID)).thenReturn(Optional.empty());
     }
 
     @Nested
