@@ -15,6 +15,8 @@ import com.devbridge.backend.domain.user.service.UserInternalService;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
 import com.devbridge.backend.domain.workspace.service.WorkspaceService;
+import com.devbridge.backend.global.common.exception.BusinessException;
+import com.devbridge.backend.global.common.exception.ErrorCode;
 import com.devbridge.backend.global.common.exception.ForbiddenException;
 import com.devbridge.backend.global.config.fastapi.FastApiClient;
 import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
@@ -177,8 +179,10 @@ class OwnerConfirmationServiceTest {
                 .thenReturn(true);
 
         assertThatThrownBy(() -> ownerConfirmationService.createOwnerConfirmationFromChat("msg-1", "owner-1", "EMP001"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("이미 담당자가 배정된 질문입니다.");
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("이미 담당자가 배정된 질문입니다.")
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.CHAT_OWNER_ALREADY_ASSIGNED));
 
         verify(ownerConfirmationRepository, never()).save(any());
     }
@@ -236,8 +240,10 @@ class OwnerConfirmationServiceTest {
 
         assertThatThrownBy(() -> ownerConfirmationService.createOwnerConfirmationFromDocument(
                 "doc-1", "질문입니다", "EMP020"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("본인이 등록한 문서입니다.");
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("본인이 등록한 문서입니다.")
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.CHAT_CANNOT_QUESTION_OWN_DOCUMENT));
     }
 
     // --- submitAnswer ---
@@ -337,8 +343,10 @@ class OwnerConfirmationServiceTest {
                 .thenReturn(Optional.of(confirmation));
 
         assertThatThrownBy(() -> ownerConfirmationService.submitAnswer("oc-1", "EMP010", "새 답변"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("이미 답변이 완료된 요청입니다.");
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("이미 답변이 완료된 요청입니다.")
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.CHAT_ANSWER_ALREADY_SUBMITTED));
     }
 
     @Test

@@ -13,6 +13,8 @@ import com.devbridge.backend.domain.user.service.UserInternalService;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
 import com.devbridge.backend.domain.workspace.service.WorkspaceService;
+import com.devbridge.backend.global.common.exception.BusinessException;
+import com.devbridge.backend.global.common.exception.ErrorCode;
 import com.devbridge.backend.global.common.exception.ForbiddenException;
 import com.devbridge.backend.global.config.fastapi.FastApiClient;
 import com.devbridge.backend.global.config.websocket.WebSocketSessionRegistry;
@@ -69,7 +71,7 @@ public class OwnerConfirmationService {
         }
 
         ChatMessage chatMessage = chatMessageRepository.findById(messageId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 채팅 메시지가 존재하지 않습니다: " + messageId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_MESSAGE_NOT_FOUND, "해당 채팅 메시지가 존재하지 않습니다: " + messageId));
 
         OwnerConfirmation ownerConfirmation = OwnerConfirmation.builder()
                 .workspace(chatMessage.getSession().getWorkspace())
@@ -91,17 +93,17 @@ public class OwnerConfirmationService {
     public void createOwnerConfirmationFromChat(String messageId, String assignedOwnerId,
                                                 String requesterEmployeeId) {
         if (ownerConfirmationRepository.existsByQuestionMessage_IdAndStatus(messageId, "PENDING")) {
-            throw new IllegalStateException("이미 담당자가 배정된 질문입니다.");
+            throw new BusinessException(ErrorCode.CHAT_OWNER_ALREADY_ASSIGNED);
         }
 
         User owner = userInternalService.findById(assignedOwnerId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + assignedOwnerId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_USER_NOT_FOUND, "해당 사용자가 존재하지 않습니다: " + assignedOwnerId));
 
         ChatMessage chatMessage = chatMessageRepository.findById(messageId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 채팅 메시지가 존재하지 않습니다: " + messageId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_MESSAGE_NOT_FOUND, "해당 채팅 메시지가 존재하지 않습니다: " + messageId));
 
         User requester = userInternalService.findByEmployeeId(requesterEmployeeId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + requesterEmployeeId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_USER_NOT_FOUND, "해당 사용자가 존재하지 않습니다: " + requesterEmployeeId));
 
         // messageId는 경로 변수로 전달되는 클라이언트 입력이므로 본인 세션의 메시지인지 확인한다.
         if (!chatMessage.getSession().getUser().getEmployeeId().equals(requesterEmployeeId)) {
@@ -131,13 +133,13 @@ public class OwnerConfirmationService {
         workspaceService.validateMembership(workspace.getId(), requesterEmployeeId);
 
         User owner = userInternalService.findById(assignedOwnerId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + assignedOwnerId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_USER_NOT_FOUND, "해당 사용자가 존재하지 않습니다: " + assignedOwnerId));
 
         User requester = userInternalService.findByEmployeeId(requesterEmployeeId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + requesterEmployeeId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_USER_NOT_FOUND, "해당 사용자가 존재하지 않습니다: " + requesterEmployeeId));
 
         if (owner.getId().equals(requester.getId())) {
-            throw new IllegalArgumentException("본인에게는 질문을 보낼 수 없습니다.");
+            throw new BusinessException(ErrorCode.CHAT_CANNOT_QUESTION_SELF);
         }
 
         OwnerConfirmation ownerConfirmation = OwnerConfirmation.builder()
@@ -164,18 +166,19 @@ public class OwnerConfirmationService {
     public void createOwnerConfirmationFromDocument(String documentId, String questionContent,
                                                     String requesterEmployeeId) {
         KnowledgeDocument document = knowledgeDocumentRepository.findById(documentId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 문서가 존재하지 않습니다: " + documentId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_DOCUMENT_NOT_FOUND,
+                        "해당 문서가 존재하지 않습니다: " + documentId));
 
         User uploadedBy = document.getUploadedBy();
         if (uploadedBy == null) {
-            throw new IllegalArgumentException("등록자 정보가 없는 문서입니다. 담당자를 지정할 수 없습니다.");
+            throw new BusinessException(ErrorCode.CHAT_DOCUMENT_UPLOADER_MISSING);
         }
 
         User requester = userInternalService.findByEmployeeId(requesterEmployeeId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + requesterEmployeeId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_USER_NOT_FOUND, "해당 사용자가 존재하지 않습니다: " + requesterEmployeeId));
 
         if (uploadedBy.getId().equals(requester.getId())) {
-            throw new IllegalArgumentException("본인이 등록한 문서입니다.");
+            throw new BusinessException(ErrorCode.CHAT_CANNOT_QUESTION_OWN_DOCUMENT);
         }
 
         OwnerConfirmation ownerConfirmation = OwnerConfirmation.builder()
@@ -197,7 +200,7 @@ public class OwnerConfirmationService {
     public OwnerConfirmationResponse submitAnswer(String confirmationId, String ownerEmployeeId,
                                                   String answerContent) {
         OwnerConfirmation confirmation = ownerConfirmationRepository.findByIdAndDeletedAtIsNull(confirmationId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 확인 요청이 존재하지 않습니다: " + confirmationId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_CONFIRMATION_NOT_FOUND, "해당 확인 요청이 존재하지 않습니다: " + confirmationId));
 
         if (!confirmation.getAssignedOwner().getEmployeeId().equals(ownerEmployeeId)) {
             throw new ForbiddenException("권한이 없습니다. 배정된 담당자만 답변할 수 있습니다.");
@@ -227,7 +230,7 @@ public class OwnerConfirmationService {
     @Transactional(readOnly = true)
     public OwnerConfirmationResponse getDetail(String confirmationId, String employeeId) {
         OwnerConfirmation confirmation = ownerConfirmationRepository.findByIdAndDeletedAtIsNull(confirmationId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 확인 요청이 존재하지 않습니다: " + confirmationId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_CONFIRMATION_NOT_FOUND, "해당 확인 요청이 존재하지 않습니다: " + confirmationId));
 
         boolean isOwner = confirmation.getAssignedOwner().getEmployeeId().equals(employeeId);
         boolean isRequester = confirmation.getRequester() != null

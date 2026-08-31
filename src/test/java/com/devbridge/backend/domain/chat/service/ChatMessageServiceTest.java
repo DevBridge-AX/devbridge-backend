@@ -11,6 +11,8 @@ import com.devbridge.backend.domain.chat.repository.ChatSessionRepository;
 import com.devbridge.backend.domain.chat.repository.MessageCitationRepository;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
+import com.devbridge.backend.global.common.exception.BusinessException;
+import com.devbridge.backend.global.common.exception.ErrorCode;
 import com.devbridge.backend.global.common.exception.ForbiddenException;
 import com.devbridge.backend.global.config.fastapi.FastApiProperties;
 import org.junit.jupiter.api.BeforeEach;
@@ -129,8 +131,10 @@ class ChatMessageServiceTest {
             when(chatSessionRepository.findById(SESSION_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> chatMessageService.saveUserMessage(SESSION_ID, "안녕하세요"))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("세션을 찾을 수 없습니다: " + SESSION_ID);
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("세션을 찾을 수 없습니다: " + SESSION_ID)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.CHAT_SESSION_NOT_FOUND));
 
             verify(chatMessageRepository, never()).save(any());
         }
@@ -335,8 +339,10 @@ class ChatMessageServiceTest {
 
             assertThatThrownBy(() -> chatMessageService.saveAiMessage(
                     SESSION_ID, MESSAGE_ID, "본문", doneEvent(null, true, null, tokenUsage)))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("세션을 찾을 수 없습니다: " + SESSION_ID);
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("세션을 찾을 수 없습니다: " + SESSION_ID)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.CHAT_SESSION_NOT_FOUND));
         }
     }
 
@@ -370,8 +376,10 @@ class ChatMessageServiceTest {
             when(chatSessionRepository.findById(SESSION_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> chatMessageService.getConversationContext(SESSION_ID))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("세션을 찾을 수 없습니다: " + SESSION_ID);
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("세션을 찾을 수 없습니다: " + SESSION_ID)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.CHAT_SESSION_NOT_FOUND));
         }
     }
 
@@ -418,8 +426,10 @@ class ChatMessageServiceTest {
             when(chatSessionRepository.findById(SESSION_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> chatMessageService.getMessages(SESSION_ID, "EMP001"))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("세션을 찾을 수 없습니다: " + SESSION_ID);
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("세션을 찾을 수 없습니다: " + SESSION_ID)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.CHAT_SESSION_NOT_FOUND));
         }
     }
 }
