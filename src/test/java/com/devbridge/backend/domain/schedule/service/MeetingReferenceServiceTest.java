@@ -13,6 +13,8 @@ import com.devbridge.backend.domain.schedule.repository.MeetingReferenceReposito
 import com.devbridge.backend.domain.schedule.repository.MeetingRepository;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.service.UserInternalService;
+import com.devbridge.backend.global.common.exception.BusinessException;
+import com.devbridge.backend.global.common.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -104,6 +106,15 @@ class MeetingReferenceServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
+    /** {@link BusinessException} 타입·{@link ErrorCode}·메시지를 한 번에 고정한다. */
+    private void assertBusinessException(org.assertj.core.api.ThrowableAssert.ThrowingCallable callable,
+                                          ErrorCode errorCode, String message) {
+        assertThatThrownBy(callable)
+                .isInstanceOf(BusinessException.class)
+                .hasMessage(message)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode()).isEqualTo(errorCode));
+    }
+
     @Nested
     @DisplayName("addReference")
     class AddReference {
@@ -149,9 +160,8 @@ class MeetingReferenceServiceTest {
         void addReference_withUnknownEmployee_throwsIllegalArgumentException() {
             when(userInternalService.findByEmployeeId(EMPLOYEE_ID)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> meetingReferenceService.addReference(MEETING_ID, EMPLOYEE_ID, request(null)))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("해당 사용자가 존재하지 않습니다: " + EMPLOYEE_ID);
+            assertBusinessException(() -> meetingReferenceService.addReference(MEETING_ID, EMPLOYEE_ID, request(null)),
+                    ErrorCode.SCHEDULE_USER_NOT_FOUND, "해당 사용자가 존재하지 않습니다: " + EMPLOYEE_ID);
 
             verify(meetingReferenceRepository, never()).save(any());
         }
@@ -163,9 +173,8 @@ class MeetingReferenceServiceTest {
             when(meetingParticipantRepository.findByMeetingIdAndEmployeeId(MEETING_ID, EMPLOYEE_ID))
                     .thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> meetingReferenceService.addReference(MEETING_ID, EMPLOYEE_ID, request(null)))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("해당 회의의 참석자가 아닙니다.");
+            assertBusinessException(() -> meetingReferenceService.addReference(MEETING_ID, EMPLOYEE_ID, request(null)),
+                    ErrorCode.SCHEDULE_NOT_PARTICIPANT, "해당 회의의 참석자가 아닙니다.");
         }
 
         @Test
@@ -175,9 +184,8 @@ class MeetingReferenceServiceTest {
             givenParticipant();
             when(meetingRepository.findById(MEETING_ID)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> meetingReferenceService.addReference(MEETING_ID, EMPLOYEE_ID, request(null)))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("해당 회의가 존재하지 않습니다.");
+            assertBusinessException(() -> meetingReferenceService.addReference(MEETING_ID, EMPLOYEE_ID, request(null)),
+                    ErrorCode.SCHEDULE_MEETING_NOT_FOUND, "해당 회의가 존재하지 않습니다.");
         }
 
         @Test
@@ -188,10 +196,9 @@ class MeetingReferenceServiceTest {
             when(meetingRepository.findById(MEETING_ID)).thenReturn(Optional.of(meeting()));
             when(knowledgeDocumentRepository.findById("missing-doc")).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> meetingReferenceService.addReference(
-                    MEETING_ID, EMPLOYEE_ID, request("missing-doc")))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("해당 문서가 존재하지 않습니다.");
+            assertBusinessException(() -> meetingReferenceService.addReference(
+                    MEETING_ID, EMPLOYEE_ID, request("missing-doc")),
+                    ErrorCode.SCHEDULE_DOCUMENT_NOT_FOUND, "해당 문서가 존재하지 않습니다.");
         }
     }
 
@@ -220,9 +227,8 @@ class MeetingReferenceServiceTest {
         void deleteReference_withUnknownEmployee_throwsIllegalArgumentException() {
             when(userInternalService.findByEmployeeId(EMPLOYEE_ID)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> meetingReferenceService.deleteReference(MEETING_ID, REFERENCE_ID, EMPLOYEE_ID))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("해당 사용자가 존재하지 않습니다: " + EMPLOYEE_ID);
+            assertBusinessException(() -> meetingReferenceService.deleteReference(MEETING_ID, REFERENCE_ID, EMPLOYEE_ID),
+                    ErrorCode.SCHEDULE_USER_NOT_FOUND, "해당 사용자가 존재하지 않습니다: " + EMPLOYEE_ID);
 
             verify(meetingReferenceRepository, never()).delete(any());
         }
@@ -234,9 +240,8 @@ class MeetingReferenceServiceTest {
             when(meetingParticipantRepository.findByMeetingIdAndEmployeeId(MEETING_ID, EMPLOYEE_ID))
                     .thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> meetingReferenceService.deleteReference(MEETING_ID, REFERENCE_ID, EMPLOYEE_ID))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("해당 회의의 참석자가 아닙니다.");
+            assertBusinessException(() -> meetingReferenceService.deleteReference(MEETING_ID, REFERENCE_ID, EMPLOYEE_ID),
+                    ErrorCode.SCHEDULE_NOT_PARTICIPANT, "해당 회의의 참석자가 아닙니다.");
         }
 
         @Test
@@ -247,9 +252,8 @@ class MeetingReferenceServiceTest {
             when(meetingReferenceRepository.findByIdAndMeetingId(REFERENCE_ID, MEETING_ID))
                     .thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> meetingReferenceService.deleteReference(MEETING_ID, REFERENCE_ID, EMPLOYEE_ID))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("해당 회의의 첨부파일이 아닙니다.");
+            assertBusinessException(() -> meetingReferenceService.deleteReference(MEETING_ID, REFERENCE_ID, EMPLOYEE_ID),
+                    ErrorCode.SCHEDULE_REFERENCE_NOT_FOUND, "해당 회의의 첨부파일이 아닙니다.");
         }
     }
 

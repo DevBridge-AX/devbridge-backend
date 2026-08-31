@@ -11,6 +11,8 @@ import com.devbridge.backend.domain.schedule.repository.MeetingReferenceReposito
 import com.devbridge.backend.domain.schedule.repository.MeetingRepository;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.service.UserInternalService;
+import com.devbridge.backend.global.common.exception.BusinessException;
+import com.devbridge.backend.global.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,17 +31,18 @@ public class MeetingReferenceService {
 
     private User resolveUser(String employeeId) {
         return userInternalService.findByEmployeeId(employeeId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + employeeId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_USER_NOT_FOUND,
+                        "해당 사용자가 존재하지 않습니다: " + employeeId));
     }
 
     @Transactional
     public MeetingReferenceResponse addReference(String meetingId, String employeeId, MeetingReferenceRequest request) {
         User user = resolveUser(employeeId);
         meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, employeeId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 회의의 참석자가 아닙니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_NOT_PARTICIPANT));
 
         Meeting meeting = meetingRepository.findById(meetingId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 회의가 존재하지 않습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_MEETING_NOT_FOUND));
 
         MeetingReference reference = createReference(meeting, employeeId, request);
 
@@ -50,10 +53,10 @@ public class MeetingReferenceService {
     public void deleteReference(String meetingId, String referenceId, String employeeId) {
         User user = resolveUser(employeeId);
         meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, employeeId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 회의의 참석자가 아닙니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_NOT_PARTICIPANT));
 
         MeetingReference reference = meetingReferenceRepository.findByIdAndMeetingId(referenceId, meetingId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 회의의 첨부파일이 아닙니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_REFERENCE_NOT_FOUND));
 
         meetingReferenceRepository.delete(reference);
     }
@@ -63,7 +66,7 @@ public class MeetingReferenceService {
         KnowledgeDocument document = null;
         if (request.documentId() != null) {
             document = knowledgeDocumentRepository.findById(request.documentId())
-                    .orElseThrow(() -> new IllegalArgumentException("해당 문서가 존재하지 않습니다."));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_DOCUMENT_NOT_FOUND));
         }
 
         MeetingReference reference = MeetingReference.builder()
