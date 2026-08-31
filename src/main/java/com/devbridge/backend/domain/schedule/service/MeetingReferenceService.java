@@ -10,7 +10,7 @@ import com.devbridge.backend.domain.schedule.repository.MeetingParticipantReposi
 import com.devbridge.backend.domain.schedule.repository.MeetingReferenceRepository;
 import com.devbridge.backend.domain.schedule.repository.MeetingRepository;
 import com.devbridge.backend.domain.user.entity.User;
-import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.domain.user.service.UserInternalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,10 +25,10 @@ public class MeetingReferenceService {
     private final MeetingReferenceRepository meetingReferenceRepository;
     private final MeetingParticipantRepository meetingParticipantRepository;
     private final KnowledgeDocumentRepository knowledgeDocumentRepository;
-    private final UserRepository userRepository;
+    private final UserInternalService userInternalService;
 
     private User resolveUser(String employeeId) {
-        return userRepository.findByEmployeeId(employeeId)
+        return userInternalService.findByEmployeeId(employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + employeeId));
     }
 

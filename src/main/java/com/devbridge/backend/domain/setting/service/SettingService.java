@@ -5,7 +5,7 @@ import com.devbridge.backend.domain.setting.dto.UpdatePasswordRequest;
 import com.devbridge.backend.domain.setting.dto.UpdateProfileRequest;
 import com.devbridge.backend.domain.user.dto.UserResponse;
 import com.devbridge.backend.domain.user.entity.User;
-import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.domain.user.service.UserInternalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -15,12 +15,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class SettingService {
 
-    private final UserRepository userRepository;
+    private final UserInternalService userInternalService;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
     public UserResponse getUser(String employeeId) {
-        User user = userRepository.findByEmployeeId(employeeId)
+        User user = userInternalService.findByEmployeeId(employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. employeeId: " + employeeId));
 
         return UserResponse.builder()
@@ -37,7 +37,7 @@ public class SettingService {
 
     @Transactional(readOnly = true)
     public ProfileResponse getProfile(String employeeId) {
-        User user = userRepository.findByEmployeeId(employeeId)
+        User user = userInternalService.findByEmployeeId(employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. employeeId: " + employeeId));
 
         return new ProfileResponse(
@@ -53,7 +53,7 @@ public class SettingService {
 
     @Transactional
     public void updateProfile(String employeeId, UpdateProfileRequest request) {
-        User user = userRepository.findByEmployeeId(employeeId)
+        User user = userInternalService.findByEmployeeId(employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. employeeId: " + employeeId));
 
         user.updateProfile(request.name(), request.department(), request.position(), request.jobRole());
@@ -61,7 +61,7 @@ public class SettingService {
 
     @Transactional
     public void changePassword(String employeeId, UpdatePasswordRequest request) {
-        User user = userRepository.findByEmployeeId(employeeId)
+        User user = userInternalService.findByEmployeeId(employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. employeeId: " + employeeId));
 
         if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
@@ -74,7 +74,7 @@ public class SettingService {
 
     @Transactional(readOnly = true)
     public void verifyPassword(String employeeId, String password) {
-        User user = userRepository.findByEmployeeId(employeeId)
+        User user = userInternalService.findByEmployeeId(employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. employeeId: " + employeeId));
 
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {

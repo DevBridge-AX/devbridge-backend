@@ -11,6 +11,7 @@ import com.devbridge.backend.domain.user.entity.JobRole;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.ExternalHrEmployeeRepository;
 import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.domain.user.service.UserInternalService;
 import com.devbridge.backend.domain.workspace.service.WorkspaceAccessService;
 import com.devbridge.backend.global.auth.jwt.JwtTokenProvider;
 import jakarta.mail.MessagingException;
@@ -75,6 +76,9 @@ class AuthServiceTest {
     private UserRepository userRepository;
 
     @Mock
+    private UserInternalService userInternalService;
+
+    @Mock
     private WorkspaceAccessService workspaceAccessService;
 
     @Mock
@@ -105,6 +109,7 @@ class AuthServiceTest {
         authService = new AuthService(
                 hrEmployeeRepository,
                 userRepository,
+                userInternalService,
                 workspaceAccessService,
                 passwordEncoder,
                 redisTemplate,
@@ -423,7 +428,7 @@ class AuthServiceTest {
         @Test
         @DisplayName("signIn_withValidCredentials_returnsBearerTokenAndLastWorkspaceId")
         void signIn_withValidCredentials_returnsBearerTokenAndLastWorkspaceId() {
-            when(userRepository.findByEmployeeId(EMPLOYEE_ID)).thenReturn(Optional.of(user()));
+            when(userInternalService.findByEmployeeId(EMPLOYEE_ID)).thenReturn(Optional.of(user()));
             when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(true);
             when(jwtTokenProvider.createAccessToken(EMPLOYEE_ID, "USER")).thenReturn("access-token");
             when(workspaceAccessService.findLastWorkspaceIdByEmployeeId(EMPLOYEE_ID)).thenReturn("WS-001");
@@ -438,7 +443,7 @@ class AuthServiceTest {
         @Test
         @DisplayName("signIn_withUnknownEmployeeId_throwsIllegalArgumentException")
         void signIn_withUnknownEmployeeId_throwsIllegalArgumentException() {
-            when(userRepository.findByEmployeeId(EMPLOYEE_ID)).thenReturn(Optional.empty());
+            when(userInternalService.findByEmployeeId(EMPLOYEE_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> authService.signIn(request()))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -448,7 +453,7 @@ class AuthServiceTest {
         @Test
         @DisplayName("signIn_withWrongPassword_throwsSameMessageAsUnknownEmployeeId")
         void signIn_withWrongPassword_throwsSameMessageAsUnknownEmployeeId() {
-            when(userRepository.findByEmployeeId(EMPLOYEE_ID)).thenReturn(Optional.of(user()));
+            when(userInternalService.findByEmployeeId(EMPLOYEE_ID)).thenReturn(Optional.of(user()));
             when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(false);
 
             // 사번 미존재와 비밀번호 불일치가 동일한 메시지를 반환한다(사용자 열거 방지).

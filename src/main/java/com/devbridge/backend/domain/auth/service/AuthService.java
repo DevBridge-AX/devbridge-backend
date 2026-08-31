@@ -10,6 +10,7 @@ import com.devbridge.backend.domain.user.entity.ExternalHrEmployee;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.repository.ExternalHrEmployeeRepository;
 import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.domain.user.service.UserInternalService;
 import com.devbridge.backend.domain.workspace.service.WorkspaceAccessService;
 import com.devbridge.backend.global.auth.jwt.JwtTokenProvider;
 import jakarta.mail.MessagingException;
@@ -37,7 +38,10 @@ import java.util.concurrent.TimeUnit;
 public class AuthService {
 
     private final ExternalHrEmployeeRepository hrEmployeeRepository;
+    // signUp의 신규 사용자 저장(:137)에만 사용한다. 조회는 UserInternalService를 거친다 —
+    // 엔티티 생성(write)은 UserInternalService 설계 범위 밖으로 남겨둔 결정이다.
     private final UserRepository userRepository;
+    private final UserInternalService userInternalService;
     private final WorkspaceAccessService workspaceAccessService;
     private final PasswordEncoder passwordEncoder;
     private final StringRedisTemplate redisTemplate;
@@ -141,7 +145,7 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public SignInResponse signIn(SignInRequest request) {
-        User user = userRepository.findByEmployeeId(request.getEmployeeId())
+        User user = userInternalService.findByEmployeeId(request.getEmployeeId())
                 .orElseThrow(() -> new IllegalArgumentException("사번 또는 비밀번호가 일치하지 않습니다."));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {

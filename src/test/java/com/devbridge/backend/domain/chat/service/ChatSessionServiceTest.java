@@ -5,7 +5,7 @@ import com.devbridge.backend.domain.chat.dto.CreateChatSessionRequest;
 import com.devbridge.backend.domain.chat.entity.ChatSession;
 import com.devbridge.backend.domain.chat.repository.ChatSessionRepository;
 import com.devbridge.backend.domain.user.entity.User;
-import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.domain.user.service.UserInternalService;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
 import com.devbridge.backend.domain.workspace.service.WorkspaceService;
@@ -33,7 +33,7 @@ class ChatSessionServiceTest {
     private ChatSessionRepository chatSessionRepository;
 
     @Mock
-    private UserRepository userRepository;
+    private UserInternalService userInternalService;
 
     @Mock
     private WorkspaceContextValidator workspaceContextValidator;
@@ -46,7 +46,7 @@ class ChatSessionServiceTest {
     @BeforeEach
     void setUp() {
         chatSessionService = new ChatSessionService(
-                chatSessionRepository, userRepository, workspaceContextValidator, workspaceService);
+                chatSessionRepository, userInternalService, workspaceContextValidator, workspaceService);
     }
 
     @Test
@@ -62,7 +62,7 @@ class ChatSessionServiceTest {
                 .sessionTitle("새로운 대화")
                 .build();
 
-        when(userRepository.findByEmployeeId("EMP001")).thenReturn(Optional.of(user));
+        when(userInternalService.findByEmployeeId("EMP001")).thenReturn(Optional.of(user));
         when(workspaceContextValidator.getValidWorkspace("workspace-1")).thenReturn(workspace);
         when(chatSessionRepository.save(any(ChatSession.class))).thenReturn(session);
 
@@ -121,7 +121,7 @@ class ChatSessionServiceTest {
         Workspace otherWorkspace = Workspace.builder().id("ws-other").build();
         CreateChatSessionRequest request = CreateChatSessionRequest.builder().sessionTitle("침입 시도").build();
 
-        when(userRepository.findByEmployeeId("EMP999")).thenReturn(Optional.of(user));
+        when(userInternalService.findByEmployeeId("EMP999")).thenReturn(Optional.of(user));
         when(workspaceContextValidator.getValidWorkspace("ws-other")).thenReturn(otherWorkspace);
         doThrow(new IllegalArgumentException("The user is not a member of this workspace."))
                 .when(workspaceService).validateMembership("ws-other", "EMP999");
@@ -141,7 +141,7 @@ class ChatSessionServiceTest {
         ChatSession session = ChatSession.builder()
                 .id("session-1").workspace(workspace).user(user).sessionTitle("새로운 대화").build();
 
-        when(userRepository.findByEmployeeId("EMP001")).thenReturn(Optional.of(user));
+        when(userInternalService.findByEmployeeId("EMP001")).thenReturn(Optional.of(user));
         when(workspaceContextValidator.getValidWorkspace("workspace-1")).thenReturn(workspace);
         when(chatSessionRepository.save(any(ChatSession.class))).thenReturn(session);
 

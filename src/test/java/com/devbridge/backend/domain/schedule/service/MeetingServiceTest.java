@@ -20,7 +20,7 @@ import com.devbridge.backend.domain.schedule.repository.MeetingRepository;
 import com.devbridge.backend.domain.schedule.repository.ParticipantAvailableTimeRepository;
 import com.devbridge.backend.domain.notification.service.NotificationService;
 import com.devbridge.backend.domain.user.entity.User;
-import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.domain.user.service.UserInternalService;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
 import com.devbridge.backend.domain.workspace.service.WorkspaceService;
@@ -70,7 +70,7 @@ class MeetingServiceTest {
     private MeetingReferenceService meetingReferenceService;
 
     @Mock
-    private UserRepository userRepository;
+    private UserInternalService userInternalService;
 
     @Mock
     private NotificationService notificationService;
@@ -82,13 +82,13 @@ class MeetingServiceTest {
     void setUp() {
         objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
         meetingService = new MeetingService(
-                meetingRepository, meetingParticipantRepository, participantAvailableTimeRepository, workspaceContextValidator, workspaceService, meetingReferenceService, objectMapper, userRepository, notificationService);
+                meetingRepository, meetingParticipantRepository, participantAvailableTimeRepository, workspaceContextValidator, workspaceService, meetingReferenceService, objectMapper, userInternalService, notificationService);
 
-        lenient().when(userRepository.findById(anyString())).thenAnswer(invocation -> {
+        lenient().when(userInternalService.findById(anyString())).thenAnswer(invocation -> {
             String id = invocation.getArgument(0);
             return Optional.of(User.builder().id(id).employeeId(id).name("Mock User").systemRole("USER").authProvider("LOCAL").build());
         });
-        lenient().when(userRepository.findByEmployeeId(anyString())).thenAnswer(invocation -> {
+        lenient().when(userInternalService.findByEmployeeId(anyString())).thenAnswer(invocation -> {
             String empId = invocation.getArgument(0);
             return Optional.of(User.builder().id(empId).employeeId(empId).name("Mock User").systemRole("USER").authProvider("LOCAL").build());
         });

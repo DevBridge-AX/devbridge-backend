@@ -5,7 +5,7 @@ import com.devbridge.backend.domain.chat.dto.CreateChatSessionRequest;
 import com.devbridge.backend.domain.chat.entity.ChatSession;
 import com.devbridge.backend.domain.chat.repository.ChatSessionRepository;
 import com.devbridge.backend.domain.user.entity.User;
-import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.domain.user.service.UserInternalService;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
 import com.devbridge.backend.domain.workspace.service.WorkspaceService;
@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 public class ChatSessionService {
 
     private final ChatSessionRepository chatSessionRepository;
-    private final UserRepository userRepository;
+    private final UserInternalService userInternalService;
     private final WorkspaceContextValidator workspaceContextValidator;
     private final WorkspaceService workspaceService;
 
@@ -33,7 +33,7 @@ public class ChatSessionService {
             String employeeId,
             CreateChatSessionRequest request
     ) {
-        User user = userRepository.findByEmployeeId(employeeId)
+        User user = userInternalService.findByEmployeeId(employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. employeeId: " + employeeId));
 
         Workspace workspace = workspaceContextValidator.getValidWorkspace(workspaceId);
