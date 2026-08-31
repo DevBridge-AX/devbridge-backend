@@ -13,6 +13,8 @@ import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.domain.user.service.UserInternalService;
 import com.devbridge.backend.domain.workspace.service.WorkspaceAccessService;
 import com.devbridge.backend.global.auth.jwt.JwtTokenProvider;
+import com.devbridge.backend.global.common.exception.BusinessException;
+import com.devbridge.backend.global.common.exception.ErrorCode;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
@@ -53,10 +55,10 @@ public class AuthService {
     public String verifyHr(VerifyHrRequest request) {
         ExternalHrEmployee hr = hrEmployeeRepository
                 .findByEmployeeIdAndName(request.employeeId(), request.name())
-                .orElseThrow(() -> new IllegalArgumentException("일치하는 사원 정보를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_HR_NOT_FOUND));
 
         if (!hr.isActive()) {
-            throw new IllegalArgumentException("비활성화된 사원입니다.");
+            throw new BusinessException(ErrorCode.AUTH_INACTIVE_EMPLOYEE);
         }
 
         return maskEmail(hr.getEmail());
@@ -64,7 +66,7 @@ public class AuthService {
 
     public void validateAndSendEmailAuthCode(SendEmailRequest request) {
         hrEmployeeRepository.findByEmployeeIdAndEmail(request.employeeId(), request.email())
-                .orElseThrow(() -> new IllegalArgumentException("사번과 등록된 이메일 정보가 일치하지 않습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_EMPLOYEE_EMAIL_MISMATCH));
         sendEmailAuthCode(request);
     }
 
@@ -87,7 +89,7 @@ public class AuthService {
 
             mailSender.send(message);
         } catch (MessagingException e) {
-            throw new RuntimeException("이메일 발송 중 오류가 발생했습니다.", e);
+            throw new BusinessException(ErrorCode.AUTH_EMAIL_SEND_FAILED, "이메일 발송 중 오류가 발생했습니다.", e);
         }
     }
 
@@ -95,7 +97,7 @@ public class AuthService {
         String key = "auth:code:" + request.email();
         String savedCode = redisTemplate.opsForValue().get(key);
         if (savedCode == null || !savedCode.equals(request.code())) {
-            throw new IllegalArgumentException("인증번호가 불일치하거나 만료되었습니다.");
+            throw new BusinessException(ErrorCode.AUTH_CODE_MISMATCH);
         }
 
         redisTemplate.delete(key);
@@ -109,16 +111,16 @@ public class AuthService {
         if (!environment.acceptsProfiles(Profiles.of("dev", "local", "default"))) {
             String isVerified = redisTemplate.opsForValue().get(verifiedKey);
             if (isVerified == null || !isVerified.equals("true")) {
-                throw new IllegalArgumentException("이메일 인증이 완료되지 않았습니다.");
+                throw new BusinessException(ErrorCode.AUTH_EMAIL_NOT_VERIFIED);
             }
         }
 
         ExternalHrEmployee hr = hrEmployeeRepository
                 .findByEmployeeIdAndEmail(request.employeeId(), request.email())
-                .orElseThrow(() -> new IllegalArgumentException("인증 실패"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_VERIFICATION_FAILED));
 
         if (!hr.isActive()) {
-            throw new IllegalArgumentException("인증 실패");
+            throw new BusinessException(ErrorCode.AUTH_VERIFICATION_FAILED);
         }
 
         String systemRole = "USER";   // 부서명, 직급명 코드로 변경 & 권한 부여
@@ -146,10 +148,10 @@ public class AuthService {
     @Transactional(readOnly = true)
     public SignInResponse signIn(SignInRequest request) {
         User user = userInternalService.findByEmployeeId(request.getEmployeeId())
-                .orElseThrow(() -> new IllegalArgumentException("사번 또는 비밀번호가 일치하지 않습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_CREDENTIAL_MISMATCH));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new IllegalArgumentException("사번 또는 비밀번호가 일치하지 않습니다.");
+            throw new BusinessException(ErrorCode.AUTH_CREDENTIAL_MISMATCH);
         }
 
         String accessToken = jwtTokenProvider.createAccessToken(user.getEmployeeId(), user.getSystemRole());
