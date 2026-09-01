@@ -257,6 +257,29 @@ docker compose down
 
 ---
 
+## ⚠️ 10. Operational Notes (프로덕션 운영 시 유의사항)
+
+### 백엔드는 단일 인스턴스 전제로 동작합니다
+
+`WebSocketSessionRegistry`가 **인메모리 전용**(Redis pub/sub 없음)이라, 백엔드 컨테이너를
+2대 이상으로 스케일하면 다른 인스턴스에 연결된 사용자에게 실시간 알림·채팅 메시지가
+전달되지 않습니다. `docker-compose.prod.yml`의 `app` 서비스도 이 전제로 구성되어 있으며,
+수평 확장이 필요해지면 세션 레지스트리를 Redis 기반으로 먼저 전환해야 합니다.
+
+### WebSocket 인증 토큰이 쿼리 파라미터로 전달됩니다
+
+`wss://.../ws/chat?token=<JWT>` 형식으로 토큰을 쿼리 파라미터에 실어 전달합니다. 이 값이
+nginx access log 등에 평문으로 남을 수 있으므로, 운영 nginx 설정에서 해당 쿼리 파라미터를
+로그에서 마스킹하는 것을 권장합니다(예: `log_format`에서 `$request` 대신 마스킹된 URI 사용).
+nginx 설정은 이 레포에서 관리하지 않으므로 EC2 운영 설정에서 별도로 적용해야 합니다.
+
+### 배포 후 체크리스트
+
+- [ ] `wss://<운영도메인>/ws/chat?token=<유효한 JWT>`로 접속해 **101 Switching Protocols**
+      응답을 확인한다.
+
+---
+
 ## 🧭 Project Message
 
 DevBridge AX는 프로젝트 산출물을 단순히 보관하는 서비스가 아니라, 팀이 다시 이해하고 활용할 수 있는 지식으로 연결하는 플랫폼입니다.
