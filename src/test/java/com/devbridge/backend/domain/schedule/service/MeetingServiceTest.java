@@ -24,6 +24,8 @@ import com.devbridge.backend.domain.user.service.UserInternalService;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
 import com.devbridge.backend.domain.workspace.service.WorkspaceService;
+import com.devbridge.backend.global.common.exception.BusinessException;
+import com.devbridge.backend.global.common.exception.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
@@ -377,8 +379,10 @@ class MeetingServiceTest {
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> meetingService.getMeetingDetail("meeting-1", "EMP999"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("해당 회의의 참석자가 아닙니다.");
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("해당 회의의 참석자가 아닙니다.")
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.SCHEDULE_NOT_PARTICIPANT));
     }
 
     @Test
@@ -454,8 +458,10 @@ class MeetingServiceTest {
         UpdateMeetingRequest request = new UpdateMeetingRequest("수정된 회의", "목적", "아젠다", "회의실 A");
 
         assertThatThrownBy(() -> meetingService.updateMeeting("meeting-1", "EMP002", request))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("회의 주최자만 회의 정보를 수정할 수 있습니다.");
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("회의 주최자만 회의 정보를 수정할 수 있습니다.")
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.SCHEDULE_NOT_HOST));
 
         verify(notificationService, never()).createNotification(any(), any(), any(), any(), any(), any());
     }

@@ -25,6 +25,8 @@ import com.devbridge.backend.domain.user.service.UserInternalService;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
 import com.devbridge.backend.domain.workspace.service.WorkspaceService;
+import com.devbridge.backend.global.common.exception.BusinessException;
+import com.devbridge.backend.global.common.exception.ErrorCode;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -61,7 +63,8 @@ public class MeetingService {
 
     private User resolveUser(String employeeId) {
         return userInternalService.findByEmployeeId(employeeId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다: " + employeeId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_USER_NOT_FOUND,
+                        "해당 사용자가 존재하지 않습니다: " + employeeId));
     }
 
     @Transactional
@@ -198,10 +201,10 @@ public class MeetingService {
         resolveUser(employeeId);
 
         meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, employeeId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 회의의 참석자가 아닙니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_NOT_PARTICIPANT));
 
         Meeting meeting = meetingRepository.findById(meetingId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 회의가 존재하지 않습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_MEETING_NOT_FOUND));
 
         return buildDetailResponse(meeting);
     }
@@ -211,14 +214,14 @@ public class MeetingService {
         resolveUser(employeeId);
 
         MeetingParticipant participant = meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, employeeId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 회의의 참석자가 아닙니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_NOT_PARTICIPANT));
 
         if (participant.getRole() != ParticipantRole.HOST) {
-            throw new IllegalArgumentException("회의 주최자만 회의 정보를 수정할 수 있습니다.");
+            throw new BusinessException(ErrorCode.SCHEDULE_NOT_HOST);
         }
 
         Meeting meeting = meetingRepository.findById(meetingId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 회의가 존재하지 않습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_MEETING_NOT_FOUND));
 
         meeting.updateInfo(request.title(), request.purpose(), request.agenda(), request.location());
 
@@ -280,7 +283,7 @@ public class MeetingService {
 
         MeetingParticipant participant = meetingParticipantRepository
                 .findByMeetingIdAndEmployeeId(meetingId, employeeId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 회의의 참석자가 아닙니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_NOT_PARTICIPANT));
 
         List<ParticipantAvailableTime> availableTimes = request.availableTimes().stream()
                 .map(slot -> ParticipantAvailableTime.builder()
@@ -385,7 +388,8 @@ public class MeetingService {
         try {
             return objectMapper.writeValueAsString(candidateTimeSlots);
         } catch (JsonProcessingException e) {
-            throw new IllegalStateException("후보 시간 목록 직렬화에 실패했습니다.", e);
+            throw new BusinessException(ErrorCode.SCHEDULE_CANDIDATE_SERIALIZE_FAILED,
+                    "후보 시간 목록 직렬화에 실패했습니다.", e);
         }
     }
 
@@ -397,7 +401,8 @@ public class MeetingService {
         try {
             return objectMapper.readValue(topCandidateTimesJson, new TypeReference<List<CandidateTimeSlot>>() {});
         } catch (JsonProcessingException e) {
-            throw new IllegalStateException("후보 시간 목록 역직렬화에 실패했습니다.", e);
+            throw new BusinessException(ErrorCode.SCHEDULE_CANDIDATE_DESERIALIZE_FAILED,
+                    "후보 시간 목록 역직렬화에 실패했습니다.", e);
         }
     }
 

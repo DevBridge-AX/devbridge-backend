@@ -7,6 +7,8 @@ import com.devbridge.backend.domain.user.dto.UserResponse;
 import com.devbridge.backend.domain.user.entity.JobRole;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.service.UserInternalService;
+import com.devbridge.backend.global.common.exception.BusinessException;
+import com.devbridge.backend.global.common.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -115,8 +117,10 @@ class SettingServiceTest {
             givenUserNotFound();
 
             assertThatThrownBy(() -> settingService.getUser(EMPLOYEE_ID))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("사용자를 찾을 수 없습니다. employeeId: " + EMPLOYEE_ID);
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("사용자를 찾을 수 없습니다. employeeId: " + EMPLOYEE_ID)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.SETTING_USER_NOT_FOUND));
         }
     }
 
@@ -141,8 +145,10 @@ class SettingServiceTest {
             givenUserNotFound();
 
             assertThatThrownBy(() -> settingService.getProfile(EMPLOYEE_ID))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("사용자를 찾을 수 없습니다. employeeId: " + EMPLOYEE_ID);
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("사용자를 찾을 수 없습니다. employeeId: " + EMPLOYEE_ID)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.SETTING_USER_NOT_FOUND));
         }
     }
 
@@ -187,8 +193,10 @@ class SettingServiceTest {
 
             assertThatThrownBy(() -> settingService.updateProfile(EMPLOYEE_ID,
                     new UpdateProfileRequest("김철수", null, null, null)))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("사용자를 찾을 수 없습니다. employeeId: " + EMPLOYEE_ID);
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("사용자를 찾을 수 없습니다. employeeId: " + EMPLOYEE_ID)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.SETTING_USER_NOT_FOUND));
         }
     }
 
@@ -218,8 +226,10 @@ class SettingServiceTest {
 
             assertThatThrownBy(() -> settingService.changePassword(
                     EMPLOYEE_ID, new UpdatePasswordRequest(CURRENT_PASSWORD, NEW_PASSWORD)))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("현재 비밀번호가 일치하지 않습니다.");
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("현재 비밀번호가 일치하지 않습니다.")
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.SETTING_PASSWORD_MISMATCH));
 
             // 검증 실패 시 새 비밀번호로 인코딩하지 않는다.
             assertThat(user.getPasswordHash()).isEqualTo(CURRENT_HASH);
@@ -232,8 +242,10 @@ class SettingServiceTest {
 
             assertThatThrownBy(() -> settingService.changePassword(
                     EMPLOYEE_ID, new UpdatePasswordRequest(CURRENT_PASSWORD, NEW_PASSWORD)))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("사용자를 찾을 수 없습니다. employeeId: " + EMPLOYEE_ID);
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("사용자를 찾을 수 없습니다. employeeId: " + EMPLOYEE_ID)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.SETTING_USER_NOT_FOUND));
         }
     }
 
@@ -258,8 +270,10 @@ class SettingServiceTest {
             when(passwordEncoder.matches("wrong-password", CURRENT_HASH)).thenReturn(false);
 
             assertThatThrownBy(() -> settingService.verifyPassword(EMPLOYEE_ID, "wrong-password"))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("현재 비밀번호가 일치하지 않습니다.");
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("현재 비밀번호가 일치하지 않습니다.")
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.SETTING_PASSWORD_MISMATCH));
         }
 
         @Test
@@ -268,8 +282,10 @@ class SettingServiceTest {
             givenUserNotFound();
 
             assertThatThrownBy(() -> settingService.verifyPassword(EMPLOYEE_ID, CURRENT_PASSWORD))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("사용자를 찾을 수 없습니다. employeeId: " + EMPLOYEE_ID);
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("사용자를 찾을 수 없습니다. employeeId: " + EMPLOYEE_ID)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.SETTING_USER_NOT_FOUND));
         }
     }
 }

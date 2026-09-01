@@ -5,6 +5,8 @@ import com.devbridge.backend.domain.task.entity.Task;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.global.common.BaseEntity;
+import com.devbridge.backend.global.common.exception.BusinessException;
+import com.devbridge.backend.global.common.exception.ErrorCode;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -68,7 +70,7 @@ public class OwnerConfirmation extends BaseEntity {
 
     public void submitAnswer(String answerContent) {
         if (!"PENDING".equals(this.status)) {
-            throw new IllegalStateException("이미 답변이 완료된 요청입니다.");
+            throw new BusinessException(ErrorCode.CHAT_ANSWER_ALREADY_SUBMITTED);
         }
         this.answerContent = answerContent;
         this.status = "ANSWERED";

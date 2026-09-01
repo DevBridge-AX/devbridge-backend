@@ -14,6 +14,8 @@ import com.devbridge.backend.domain.user.repository.UserRepository;
 import com.devbridge.backend.domain.user.service.UserInternalService;
 import com.devbridge.backend.domain.workspace.service.WorkspaceAccessService;
 import com.devbridge.backend.global.auth.jwt.JwtTokenProvider;
+import com.devbridge.backend.global.common.exception.BusinessException;
+import com.devbridge.backend.global.common.exception.ErrorCode;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.servlet.http.HttpServletRequest;
@@ -56,9 +58,9 @@ import static org.mockito.Mockito.when;
  * `auth` 도메인은 이 레포에서 유일하게 테스트가 0건이면서 raw throw를 6건 보유한 도메인이라,
  * 도메인 경계 정리(`UserRepository` 직접 참조 제거)와 예외 체계 도입 전에 안전망이 필요하다.
  *
- * <p><b>예외 타입이 곧 HTTP 상태코드다.</b> `GlobalExceptionHandler` 기준으로
- * {@link IllegalArgumentException}은 400, {@link RuntimeException}은 500으로 매핑된다.
- * 따라서 타입과 메시지를 리터럴로 고정해 상태코드 회귀를 감지한다.
+ * <p><b>예외 타입이 곧 HTTP 상태코드다.</b> C-5(예외 체계 정리) 이후로는 {@link BusinessException}이
+ * {@link ErrorCode}를 통해 상태코드를 결정한다 — {@code ErrorCode}와 메시지를 리터럴로 고정해
+ * 상태코드 회귀를 감지한다.
  */
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
@@ -137,6 +139,15 @@ class AuthServiceTest {
                 .build();
     }
 
+    /** {@link BusinessException} 타입·{@link ErrorCode}·메시지를 한 번에 고정한다. */
+    private void assertBusinessException(org.assertj.core.api.ThrowableAssert.ThrowingCallable callable,
+                                          ErrorCode errorCode, String message) {
+        assertThatThrownBy(callable)
+                .isInstanceOf(BusinessException.class)
+                .hasMessage(message)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode()).isEqualTo(errorCode));
+    }
+
     @Nested
     @DisplayName("verifyHr")
     class VerifyHr {
@@ -172,9 +183,8 @@ class AuthServiceTest {
             when(hrEmployeeRepository.findByEmployeeIdAndName(EMPLOYEE_ID, NAME))
                     .thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> authService.verifyHr(new VerifyHrRequest(EMPLOYEE_ID, NAME)))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("일치하는 사원 정보를 찾을 수 없습니다.");
+            assertBusinessException(() -> authService.verifyHr(new VerifyHrRequest(EMPLOYEE_ID, NAME)),
+                    ErrorCode.AUTH_HR_NOT_FOUND, "일치하는 사원 정보를 찾을 수 없습니다.");
         }
 
         @Test
@@ -183,9 +193,8 @@ class AuthServiceTest {
             when(hrEmployeeRepository.findByEmployeeIdAndName(EMPLOYEE_ID, NAME))
                     .thenReturn(Optional.of(hrEmployee(false)));
 
-            assertThatThrownBy(() -> authService.verifyHr(new VerifyHrRequest(EMPLOYEE_ID, NAME)))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("비활성화된 사원입니다.");
+            assertBusinessException(() -> authService.verifyHr(new VerifyHrRequest(EMPLOYEE_ID, NAME)),
+                    ErrorCode.AUTH_INACTIVE_EMPLOYEE, "비활성화된 사원입니다.");
         }
     }
 
@@ -199,10 +208,9 @@ class AuthServiceTest {
             when(hrEmployeeRepository.findByEmployeeIdAndEmail(EMPLOYEE_ID, EMAIL))
                     .thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> authService.validateAndSendEmailAuthCode(
-                    new SendEmailRequest(EMPLOYEE_ID, EMAIL)))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("사번과 등록된 이메일 정보가 일치하지 않습니다.");
+            assertBusinessException(() -> authService.validateAndSendEmailAuthCode(
+                    new SendEmailRequest(EMPLOYEE_ID, EMAIL)),
+                    ErrorCode.AUTH_EMPLOYEE_EMAIL_MISMATCH, "사번과 등록된 이메일 정보가 일치하지 않습니다.");
 
             verify(mailSender, never()).send(any(MimeMessage.class));
         }
@@ -231,14 +239,17 @@ class AuthServiceTest {
             when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
             doThrow(new MessagingException("발송 실패")).when(mimeMessage).setRecipient(any(), any());
 
-            // 현재 구현은 RuntimeException을 던지며, GlobalExceptionHandler의 handleGeneral에 걸려
-            // HTTP 500 + "서버 오류가 발생했습니다."로 응답한다.
-            // 이메일 발송 실패는 서버 장애가 아니므로 상태코드가 부적절하나, 여기서는 현재 동작을 고정한다.
+            // BusinessException(AUTH_EMAIL_SEND_FAILED)이 500으로 매핑된다.
+            // 이메일 발송 실패는 서버 장애가 아니므로 상태코드가 부적절하나, 프론트 합의 전까지 현재 동작을 고정한다.
             assertThatThrownBy(() -> authService.sendEmailAuthCode(new SendEmailRequest(EMPLOYEE_ID, EMAIL)))
-                    .isInstanceOf(RuntimeException.class)
-                    .isNotInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(BusinessException.class)
                     .hasMessage("이메일 발송 중 오류가 발생했습니다.")
-                    .hasCauseInstanceOf(MessagingException.class);
+                    .hasCauseInstanceOf(MessagingException.class)
+                    .satisfies(e -> {
+                        ErrorCode errorCode = ((BusinessException) e).getErrorCode();
+                        assertThat(errorCode).isEqualTo(ErrorCode.AUTH_EMAIL_SEND_FAILED);
+                        assertThat(errorCode.getHttpStatus()).isEqualTo(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR);
+                    });
 
             // 인증코드는 메일 발송 이전에 이미 저장된다(발송 실패해도 Redis에 남는다).
             verify(valueOperations).set(anyString(), anyString(), anyLong(), any(TimeUnit.class));
@@ -265,9 +276,8 @@ class AuthServiceTest {
         void verifyEmailAuthCode_withExpiredCode_throwsIllegalArgumentException() {
             when(valueOperations.get("auth:code:" + EMAIL)).thenReturn(null);
 
-            assertThatThrownBy(() -> authService.verifyEmailAuthCode(new VerifyEmailRequest(EMAIL, "123456")))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("인증번호가 불일치하거나 만료되었습니다.");
+            assertBusinessException(() -> authService.verifyEmailAuthCode(new VerifyEmailRequest(EMAIL, "123456")),
+                    ErrorCode.AUTH_CODE_MISMATCH, "인증번호가 불일치하거나 만료되었습니다.");
 
             verify(redisTemplate, never()).delete(anyString());
         }
@@ -277,9 +287,8 @@ class AuthServiceTest {
         void verifyEmailAuthCode_withWrongCode_throwsIllegalArgumentException() {
             when(valueOperations.get("auth:code:" + EMAIL)).thenReturn("123456");
 
-            assertThatThrownBy(() -> authService.verifyEmailAuthCode(new VerifyEmailRequest(EMAIL, "999999")))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("인증번호가 불일치하거나 만료되었습니다.");
+            assertBusinessException(() -> authService.verifyEmailAuthCode(new VerifyEmailRequest(EMAIL, "999999")),
+                    ErrorCode.AUTH_CODE_MISMATCH, "인증번호가 불일치하거나 만료되었습니다.");
         }
     }
 
@@ -371,9 +380,8 @@ class AuthServiceTest {
             givenNonLocalProfile();
             when(valueOperations.get("auth:verified:" + EMAIL)).thenReturn(null);
 
-            assertThatThrownBy(() -> authService.signUp(request()))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("이메일 인증이 완료되지 않았습니다.");
+            assertBusinessException(() -> authService.signUp(request()),
+                    ErrorCode.AUTH_EMAIL_NOT_VERIFIED, "이메일 인증이 완료되지 않았습니다.");
 
             verify(userRepository, never()).save(any());
         }
@@ -386,9 +394,8 @@ class AuthServiceTest {
             when(hrEmployeeRepository.findByEmployeeIdAndEmail(EMPLOYEE_ID, EMAIL))
                     .thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> authService.signUp(request()))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("인증 실패");
+            assertBusinessException(() -> authService.signUp(request()),
+                    ErrorCode.AUTH_VERIFICATION_FAILED, "인증 실패");
         }
 
         @Test
@@ -400,9 +407,8 @@ class AuthServiceTest {
                     .thenReturn(Optional.of(hrEmployee(false)));
 
             // 미존재와 비활성이 동일한 메시지를 사용한다(사용자 열거 방지).
-            assertThatThrownBy(() -> authService.signUp(request()))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("인증 실패");
+            assertBusinessException(() -> authService.signUp(request()),
+                    ErrorCode.AUTH_VERIFICATION_FAILED, "인증 실패");
 
             verify(userRepository, never()).save(any());
         }
@@ -445,9 +451,8 @@ class AuthServiceTest {
         void signIn_withUnknownEmployeeId_throwsIllegalArgumentException() {
             when(userInternalService.findByEmployeeId(EMPLOYEE_ID)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> authService.signIn(request()))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("사번 또는 비밀번호가 일치하지 않습니다.");
+            assertBusinessException(() -> authService.signIn(request()),
+                    ErrorCode.AUTH_CREDENTIAL_MISMATCH, "사번 또는 비밀번호가 일치하지 않습니다.");
         }
 
         @Test
@@ -457,9 +462,8 @@ class AuthServiceTest {
             when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(false);
 
             // 사번 미존재와 비밀번호 불일치가 동일한 메시지를 반환한다(사용자 열거 방지).
-            assertThatThrownBy(() -> authService.signIn(request()))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("사번 또는 비밀번호가 일치하지 않습니다.");
+            assertBusinessException(() -> authService.signIn(request()),
+                    ErrorCode.AUTH_CREDENTIAL_MISMATCH, "사번 또는 비밀번호가 일치하지 않습니다.");
 
             verify(jwtTokenProvider, never()).createAccessToken(anyString(), anyString());
         }

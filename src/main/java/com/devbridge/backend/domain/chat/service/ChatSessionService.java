@@ -9,6 +9,8 @@ import com.devbridge.backend.domain.user.service.UserInternalService;
 import com.devbridge.backend.domain.workspace.entity.Workspace;
 import com.devbridge.backend.domain.workspace.service.WorkspaceContextValidator;
 import com.devbridge.backend.domain.workspace.service.WorkspaceService;
+import com.devbridge.backend.global.common.exception.BusinessException;
+import com.devbridge.backend.global.common.exception.ErrorCode;
 import com.devbridge.backend.global.common.exception.ForbiddenException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,7 +36,8 @@ public class ChatSessionService {
             CreateChatSessionRequest request
     ) {
         User user = userInternalService.findByEmployeeId(employeeId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. employeeId: " + employeeId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_USER_NOT_FOUND,
+                        "사용자를 찾을 수 없습니다. employeeId: " + employeeId));
 
         Workspace workspace = workspaceContextValidator.getValidWorkspace(workspaceId);
 
@@ -84,7 +87,8 @@ public class ChatSessionService {
     @Transactional
     public void deleteSession(String sessionId, String employeeId) {
         ChatSession session = chatSessionRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("세션을 찾을 수 없습니다: " + sessionId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_SESSION_NOT_FOUND,
+                        "세션을 찾을 수 없습니다: " + sessionId));
 
         // sessionId는 경로 변수로 전달되는 클라이언트 입력이므로 세션 소유자인지 확인한다.
         if (!session.getUser().getEmployeeId().equals(employeeId)) {
