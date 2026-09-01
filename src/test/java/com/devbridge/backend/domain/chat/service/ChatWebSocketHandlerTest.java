@@ -151,7 +151,7 @@ class ChatWebSocketHandlerTest {
             verify(session).close(captor.capture());
             assertThat(captor.getValue().getCode()).isEqualTo(4401);
             // 인증되지 않은 세션의 메시지는 처리되지 않는다.
-            verify(chatMessageService, never()).saveUserMessage(anyString(), anyString());
+            verify(chatMessageService, never()).saveUserMessage(anyString(), anyString(), anyString());
         }
     }
 
@@ -171,7 +171,7 @@ class ChatWebSocketHandlerTest {
             handler.handleMessage(session, new TextMessage("{\"type\":\"ping\"}"));
 
             // chat_message 외의 type은 무시된다. 에러 응답도 보내지 않는다.
-            verify(chatMessageService, never()).saveUserMessage(anyString(), anyString());
+            verify(chatMessageService, never()).saveUserMessage(anyString(), anyString(), anyString());
             verify(session, never()).sendMessage(any());
         }
 
@@ -196,7 +196,7 @@ class ChatWebSocketHandlerTest {
             handler.handleMessage(session, new TextMessage(
                     "{\"type\":\"chat_message\",\"session_id\":\"" + SESSION_ID + "\",\"content\":\"질문입니다\"}"));
 
-            verify(chatMessageService).saveUserMessage(SESSION_ID, "질문입니다");
+            verify(chatMessageService).saveUserMessage(SESSION_ID, EMPLOYEE_ID, "질문입니다");
 
             // 프론트는 이 'searching' 메시지를 받아 로딩 상태를 표시한다.
             JsonNode searching = parse(sentMessages().getFirst());
@@ -395,7 +395,7 @@ class ChatWebSocketHandlerTest {
             assertThat(error.path("type").asText()).isEqualTo("error");
             assertThat(error.path("message").asText()).isEqualTo("AI 서비스 연결 오류가 발생했습니다.");
             // 사용자 메시지는 이미 저장된 뒤이므로 질문은 남고 답변만 없는 상태가 된다.
-            verify(chatMessageService).saveUserMessage(SESSION_ID, "질문");
+            verify(chatMessageService).saveUserMessage(SESSION_ID, EMPLOYEE_ID, "질문");
             verify(chatMessageService, never()).saveAiMessage(anyString(), anyString(), anyString(), any());
         }
     }

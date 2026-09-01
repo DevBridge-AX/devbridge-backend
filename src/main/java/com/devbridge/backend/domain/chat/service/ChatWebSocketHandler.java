@@ -83,9 +83,13 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         String sessionId = payload.path("session_id").asText();
         String content = payload.path("content").asText();
 
+        String employeeId = (String) session.getAttributes().get("employeeId");
         String role = (String) session.getAttributes().get("jobRole");
 
-        chatMessageService.saveUserMessage(sessionId, content);
+        // sessionId는 클라이언트가 보낸 payload 값이므로, 연결 인증된 사용자가 실제로
+        // 그 세션의 소유자인지 확인한다 — 아니면 남의 세션에 메시지를 주입하거나
+        // 대화 맥락을 읽을 수 있었다.
+        chatMessageService.saveUserMessage(sessionId, employeeId, content);
 
         sendMessage(session, createSearchingMessage());
 

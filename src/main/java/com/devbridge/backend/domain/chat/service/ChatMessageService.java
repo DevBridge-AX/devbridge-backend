@@ -38,10 +38,15 @@ public class ChatMessageService {
     private final FastApiProperties fastApiProperties;
 
     @Transactional
-    public ChatMessage saveUserMessage(String sessionId, String content) {
+    public ChatMessage saveUserMessage(String sessionId, String employeeId, String content) {
         ChatSession session = chatSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_SESSION_NOT_FOUND,
                         "세션을 찾을 수 없습니다: " + sessionId));
+
+        // sessionId는 WebSocket 메시지 payload로 전달되는 클라이언트 입력이므로 세션 소유자인지 확인한다.
+        if (!session.getUser().getEmployeeId().equals(employeeId)) {
+            throw new ForbiddenException("해당 채팅방에 대한 접근 권한이 없습니다.");
+        }
 
         ChatMessage userMessage = ChatMessage.builder()
                 .session(session)
