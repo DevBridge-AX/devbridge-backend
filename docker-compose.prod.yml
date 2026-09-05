@@ -42,6 +42,9 @@ services:
     restart: always
 
   app:
+    # ⚠️ 단일 인스턴스 전제: WebSocketSessionRegistry가 인메모리 전용(Redis pub/sub 없음)이라
+    # 이 서비스를 2대 이상으로 스케일하면 다른 인스턴스에 붙은 사용자에게 알림이 전달되지 않는다.
+    # replicas를 늘리기 전에 세션 레지스트리를 Redis 기반으로 먼저 전환해야 한다.
     image: ${APP_IMAGE}
     container_name: devbridge-app
     ports:

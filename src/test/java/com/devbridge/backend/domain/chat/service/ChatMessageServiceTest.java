@@ -117,7 +117,7 @@ class ChatMessageServiceTest {
             when(chatMessageRepository.save(any(ChatMessage.class)))
                     .thenAnswer(invocation -> invocation.getArgument(0));
 
-            chatMessageService.saveUserMessage(SESSION_ID, "안녕하세요");
+            chatMessageService.saveUserMessage(SESSION_ID, "EMP001", "안녕하세요");
 
             ArgumentCaptor<ChatMessage> captor = ArgumentCaptor.forClass(ChatMessage.class);
             verify(chatMessageRepository).save(captor.capture());
@@ -130,11 +130,25 @@ class ChatMessageServiceTest {
         void saveUserMessage_withUnknownSession_throwsIllegalArgumentException() {
             when(chatSessionRepository.findById(SESSION_ID)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> chatMessageService.saveUserMessage(SESSION_ID, "안녕하세요"))
+            assertThatThrownBy(() -> chatMessageService.saveUserMessage(SESSION_ID, "EMP001", "안녕하세요"))
                     .isInstanceOf(BusinessException.class)
                     .hasMessage("세션을 찾을 수 없습니다: " + SESSION_ID)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ErrorCode.CHAT_SESSION_NOT_FOUND));
+
+            verify(chatMessageRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("saveUserMessage_withNonOwnerEmployeeId_throwsForbiddenException")
+        void saveUserMessage_withNonOwnerEmployeeId_throwsForbiddenException() {
+            // sessionId는 WebSocket payload로 전달되는 클라이언트 입력이므로, 세션 소유자가
+            // 아닌 employeeId로 호출하면 남의 세션에 메시지를 주입할 수 없어야 한다.
+            when(chatSessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(session));
+
+            assertThatThrownBy(() -> chatMessageService.saveUserMessage(SESSION_ID, "EMP999", "침입 메시지"))
+                    .isInstanceOf(ForbiddenException.class)
+                    .hasMessage("해당 채팅방에 대한 접근 권한이 없습니다.");
 
             verify(chatMessageRepository, never()).save(any());
         }
