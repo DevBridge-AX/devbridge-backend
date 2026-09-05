@@ -55,6 +55,7 @@ public enum ErrorCode {
     SCHEDULE_REFERENCE_NOT_FOUND(HttpStatus.BAD_REQUEST, "해당 회의의 첨부파일이 아닙니다."),
     SCHEDULE_DOCUMENT_NOT_FOUND(HttpStatus.BAD_REQUEST, "해당 문서가 존재하지 않습니다."),
     SCHEDULE_NOT_HOST(HttpStatus.BAD_REQUEST, "회의 주최자만 회의 정보를 수정할 수 있습니다."),
+    SCHEDULE_INVALID_TITLE(HttpStatus.BAD_REQUEST, "회의 제목은 빈 값일 수 없습니다."),
     SCHEDULE_CANDIDATE_SERIALIZE_FAILED(HttpStatus.CONFLICT, "후보 시간 목록 직렬화에 실패했습니다."),
     SCHEDULE_CANDIDATE_DESERIALIZE_FAILED(HttpStatus.CONFLICT, "후보 시간 목록 역직렬화에 실패했습니다."),
 

@@ -69,10 +69,18 @@ public class Meeting extends BaseEntity {
     private List<MeetingReference> references = new ArrayList<>();
 
     public void updateInfo(String title, String purpose, String agenda, String location) {
-        this.title = title;
-        this.purpose = purpose;
-        this.agenda = agenda;
-        this.location = location;
+        if (title != null) {
+            this.title = title;
+        }
+        if (purpose != null) {
+            this.purpose = purpose;
+        }
+        if (agenda != null) {
+            this.agenda = agenda;
+        }
+        if (location != null) {
+            this.location = location;
+        }
     }
 
     public void selectTopCandidateTimes(String topCandidateTimesJson) {

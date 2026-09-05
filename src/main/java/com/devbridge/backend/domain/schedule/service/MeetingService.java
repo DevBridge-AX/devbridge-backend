@@ -220,9 +220,14 @@ public class MeetingService {
             throw new BusinessException(ErrorCode.SCHEDULE_NOT_HOST);
         }
 
+        if (request.title() != null && request.title().isBlank()) {
+            throw new BusinessException(ErrorCode.SCHEDULE_INVALID_TITLE);
+        }
+
         Meeting meeting = meetingRepository.findById(meetingId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_MEETING_NOT_FOUND));
 
+        // 제공된 필드만 반영한다(null은 미변경). PATCH 의미상 필드를 하나씩 개별 수정할 수 있어야 한다.
         meeting.updateInfo(request.title(), request.purpose(), request.agenda(), request.location());
 
         notifyParticipants(meetingId, employeeId,
