@@ -60,11 +60,23 @@ public class MeetingService {
 
     private static final String NOTIFICATION_TYPE_MEETING_INVITED = "MEETING_INVITED";
     private static final String NOTIFICATION_TYPE_MEETING_UPDATED = "MEETING_UPDATED";
+    private static final String NOTIFICATION_TYPE_MEETING_CANCELED = "MEETING_CANCELED";
 
     private User resolveUser(String employeeId) {
         return userInternalService.findByEmployeeId(employeeId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_USER_NOT_FOUND,
                         "해당 사용자가 존재하지 않습니다: " + employeeId));
+    }
+
+    private MeetingParticipant resolveHost(String meetingId, String employeeId) {
+        MeetingParticipant participant = meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, employeeId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_NOT_PARTICIPANT));
+
+        if (participant.getRole() != ParticipantRole.HOST) {
+            throw new BusinessException(ErrorCode.SCHEDULE_NOT_HOST);
+        }
+
+        return participant;
     }
 
     @Transactional
@@ -212,13 +224,7 @@ public class MeetingService {
     @Transactional
     public MeetingDetailResponse updateMeeting(String meetingId, String employeeId, UpdateMeetingRequest request) {
         resolveUser(employeeId);
-
-        MeetingParticipant participant = meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, employeeId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_NOT_PARTICIPANT));
-
-        if (participant.getRole() != ParticipantRole.HOST) {
-            throw new BusinessException(ErrorCode.SCHEDULE_NOT_HOST);
-        }
+        resolveHost(meetingId, employeeId);
 
         if (request.title() != null && request.title().isBlank()) {
             throw new BusinessException(ErrorCode.SCHEDULE_INVALID_TITLE);
@@ -234,6 +240,29 @@ public class MeetingService {
                 NOTIFICATION_TYPE_MEETING_UPDATED,
                 "회의 일정이 변경되었습니다",
                 "참여 중인 회의의 상세 정보가 변경되었습니다.",
+                meeting.getWorkspace().getId());
+
+        return buildDetailResponse(meeting);
+    }
+
+    @Transactional
+    public MeetingDetailResponse cancelMeeting(String meetingId, String employeeId) {
+        resolveUser(employeeId);
+        resolveHost(meetingId, employeeId);
+
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_MEETING_NOT_FOUND));
+
+        if (meeting.getStatus() == MeetingStatus.CANCELED) {
+            throw new BusinessException(ErrorCode.SCHEDULE_ALREADY_CANCELED);
+        }
+
+        meeting.cancel();
+
+        notifyParticipants(meetingId, employeeId,
+                NOTIFICATION_TYPE_MEETING_CANCELED,
+                "회의가 취소되었습니다",
+                "참여 중인 회의가 주최자에 의해 취소되었습니다.",
                 meeting.getWorkspace().getId());
 
         return buildDetailResponse(meeting);

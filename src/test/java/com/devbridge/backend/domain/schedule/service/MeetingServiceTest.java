@@ -529,6 +529,93 @@ class MeetingServiceTest {
     }
 
     @Test
+    void cancelMeeting_Host가요청하면_회의가취소되고_참석자에게알림이전송된다() {
+        Workspace ws = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
+        Meeting meeting = Meeting.builder()
+                .id("meeting-1")
+                .workspace(ws)
+                .title("주간 회의")
+                .durationMinutes(60)
+                .status(MeetingStatus.GATHERING)
+                .build();
+
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .meeting(meeting)
+                .employeeId("EMP001")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        MeetingParticipant attendee = MeetingParticipant.builder()
+                .id("participant-attendee")
+                .meeting(meeting)
+                .employeeId("EMP002")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.ATTENDEE)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP001"))
+                .thenReturn(Optional.of(host));
+        when(meetingRepository.findById("meeting-1")).thenReturn(Optional.of(meeting));
+        when(meetingParticipantRepository.findByMeetingId("meeting-1")).thenReturn(List.of(host, attendee));
+        when(meetingReferenceService.getReferences("meeting-1")).thenReturn(List.of());
+
+        MeetingDetailResponse response = meetingService.cancelMeeting("meeting-1", "EMP001");
+
+        assertThat(meeting.getStatus()).isEqualTo(MeetingStatus.CANCELED);
+        assertThat(response.status()).isEqualTo(MeetingStatus.CANCELED);
+        verify(notificationService).createNotification(any(User.class), eq("MEETING_CANCELED"), eq("meeting-1"),
+                eq("회의가 취소되었습니다"), eq("참여 중인 회의가 주최자에 의해 취소되었습니다."), any());
+    }
+
+    @Test
+    void cancelMeeting_이미취소된회의면_예외가발생한다() {
+        Meeting meeting = Meeting.builder()
+                .id("meeting-1")
+                .title("주간 회의")
+                .durationMinutes(60)
+                .status(MeetingStatus.CANCELED)
+                .build();
+
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .employeeId("EMP001")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP001"))
+                .thenReturn(Optional.of(host));
+        when(meetingRepository.findById("meeting-1")).thenReturn(Optional.of(meeting));
+
+        assertThatThrownBy(() -> meetingService.cancelMeeting("meeting-1", "EMP001"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.SCHEDULE_ALREADY_CANCELED));
+    }
+
+    @Test
+    void cancelMeeting_Host가아니면_예외가발생한다() {
+        MeetingParticipant attendee = MeetingParticipant.builder()
+                .id("participant-attendee")
+                .employeeId("EMP002")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.ATTENDEE)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP002"))
+                .thenReturn(Optional.of(attendee));
+
+        assertThatThrownBy(() -> meetingService.cancelMeeting("meeting-1", "EMP002"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.SCHEDULE_NOT_HOST));
+
+        verify(meetingRepository, never()).findById(any());
+    }
+
+    @Test
     void createMeeting_참석자에게MEETING_INVITED알림이전송된다_생성자본인제외() {
         Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
         when(workspaceContextValidator.getValidWorkspace("ws-1")).thenReturn(workspace);

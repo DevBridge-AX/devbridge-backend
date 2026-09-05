@@ -65,6 +65,11 @@ public class MeetingController implements MeetingAPI {
     }
 
     @Override
+    public ResponseEntity<MeetingDetailResponse> cancelMeeting(String meetingId, String employeeId) {
+        return ResponseEntity.ok(meetingService.cancelMeeting(meetingId, employeeId));
+    }
+
+    @Override
     public ResponseEntity<MeetingReferenceResponse> addReference(
             String meetingId, String employeeId, MeetingReferenceRequest request) {
         return ResponseEntity.ok(meetingReferenceService.addReference(meetingId, employeeId, request));

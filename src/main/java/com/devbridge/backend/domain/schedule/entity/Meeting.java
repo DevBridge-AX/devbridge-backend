@@ -93,4 +93,8 @@ public class Meeting extends BaseEntity {
         this.confirmedEndTime = confirmedEndTime;
         this.status = MeetingStatus.CONFIRMED;
     }
+
+    public void cancel() {
+        this.status = MeetingStatus.CANCELED;
+    }
 }

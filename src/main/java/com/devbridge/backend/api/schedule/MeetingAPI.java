@@ -76,6 +76,12 @@ public interface MeetingAPI {
             @AuthenticationPrincipal String employeeId,
             @Valid @RequestBody UpdateMeetingRequest request);
 
+    @Operation(summary = "회의 취소", description = "회의 주최자가 회의를 취소합니다. 이미 취소된 회의는 다시 취소할 수 없으며, 취소 시 다른 참석자 전원에게 알림이 전달됩니다.")
+    @PatchMapping("/{meetingId}/cancel")
+    ResponseEntity<MeetingDetailResponse> cancelMeeting(
+            @PathVariable("meetingId") String meetingId,
+            @AuthenticationPrincipal String employeeId);
+
     @Operation(summary = "회의 첨부파일 추가", description = "회의 상세 화면에서 파일 업로드 또는 링크 형태의 첨부파일을 추가합니다.")
     @PostMapping("/{meetingId}/references")
     ResponseEntity<MeetingReferenceResponse> addReference(

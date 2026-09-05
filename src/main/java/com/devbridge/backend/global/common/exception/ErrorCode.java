@@ -58,6 +58,7 @@ public enum ErrorCode {
     SCHEDULE_INVALID_TITLE(HttpStatus.BAD_REQUEST, "회의 제목은 빈 값일 수 없습니다."),
     SCHEDULE_CANDIDATE_SERIALIZE_FAILED(HttpStatus.CONFLICT, "후보 시간 목록 직렬화에 실패했습니다."),
     SCHEDULE_CANDIDATE_DESERIALIZE_FAILED(HttpStatus.CONFLICT, "후보 시간 목록 역직렬화에 실패했습니다."),
+    SCHEDULE_ALREADY_CANCELED(HttpStatus.CONFLICT, "이미 취소된 회의입니다."),
 
     // setting
     SETTING_USER_NOT_FOUND(HttpStatus.BAD_REQUEST, "사용자를 찾을 수 없습니다."),

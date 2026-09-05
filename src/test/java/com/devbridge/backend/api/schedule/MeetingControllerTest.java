@@ -243,4 +243,20 @@ class MeetingControllerTest {
                         .with(csrf()))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    @DisplayName("9. 회의 취소 API 성공 테스트 (PATCH /api/meetings/{meetingId}/cancel)")
+    void cancelMeeting_Success() throws Exception {
+        MeetingDetailResponse detailResponse = new MeetingDetailResponse(
+                "meeting-uuid-123", "스프린트 회고", null, null, null, 60, MeetingStatus.CANCELED,
+                null, null, List.of(), List.of(), List.of());
+
+        when(meetingService.cancelMeeting(any(), any())).thenReturn(detailResponse);
+
+        mockMvc.perform(patch("/api/meetings/meeting-uuid-123/cancel")
+                        .with(authentication(getMockAuthentication("EMP001")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELED"));
+    }
 }
