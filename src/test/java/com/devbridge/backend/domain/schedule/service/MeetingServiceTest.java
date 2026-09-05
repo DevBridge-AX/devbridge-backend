@@ -153,8 +153,10 @@ class MeetingServiceTest {
 
     @Test
     void submitAvailableTimes_전원응답완료_교집합이소요시간이상이면_CONFIRMED로전환된다() {
+        Workspace ws = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
         Meeting meeting = Meeting.builder()
                 .id("meeting-2")
+                .workspace(ws)
                 .title("주간 회의")
                 .durationMinutes(60)
                 .status(MeetingStatus.GATHERING)
@@ -268,6 +270,124 @@ class MeetingServiceTest {
         assertThat(meeting.getConfirmedStartTime()).isNull();
         assertThat(meeting.getConfirmedEndTime()).isNull();
         assertThat(meeting.getTopCandidateTimes()).isEqualTo("[]");
+    }
+
+    @Test
+    void submitAvailableTimes_전원응답완료_자동확정되면_참석자전원에게알림이발송된다() {
+        Workspace ws = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
+        Meeting meeting = Meeting.builder()
+                .id("meeting-4")
+                .workspace(ws)
+                .title("주간 회의")
+                .durationMinutes(60)
+                .status(MeetingStatus.GATHERING)
+                .build();
+
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .meeting(meeting)
+                .employeeId("EMP001")
+                .status(ParticipantStatus.RESPONDED)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        MeetingParticipant attendee = MeetingParticipant.builder()
+                .id("participant-attendee")
+                .meeting(meeting)
+                .employeeId("EMP002")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.ATTENDEE)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-4", "EMP002"))
+                .thenReturn(Optional.of(attendee));
+        when(meetingParticipantRepository.findByMeetingId("meeting-4"))
+                .thenReturn(List.of(host, attendee));
+
+        LocalDateTime rangeStart = LocalDateTime.of(2026, 6, 15, 9, 0);
+        LocalDateTime rangeEnd = LocalDateTime.of(2026, 6, 15, 11, 0);
+
+        when(participantAvailableTimeRepository.findByMeetingParticipant_MeetingId("meeting-4"))
+                .thenReturn(List.of(
+                        ParticipantAvailableTime.builder()
+                                .id("time-host")
+                                .meetingParticipant(host)
+                                .startTime(rangeStart)
+                                .endTime(rangeEnd)
+                                .build(),
+                        ParticipantAvailableTime.builder()
+                                .id("time-attendee")
+                                .meetingParticipant(attendee)
+                                .startTime(rangeStart)
+                                .endTime(rangeEnd)
+                                .build()));
+
+        SubmitAvailableTimesRequest request = new SubmitAvailableTimesRequest(
+                List.of(new TimeSlotRequest(rangeStart, rangeEnd)));
+
+        meetingService.submitAvailableTimes("meeting-4", "EMP002", request);
+
+        assertThat(meeting.getStatus()).isEqualTo(MeetingStatus.CONFIRMED);
+        verify(notificationService, times(2)).createNotification(any(User.class), eq("MEETING_CONFIRMED"),
+                eq("meeting-4"), eq("회의 일정이 확정되었습니다"),
+                eq("제출된 가능 시간을 기반으로 회의 일정이 자동으로 확정되었습니다."), any());
+    }
+
+    @Test
+    void submitAvailableTimes_교집합이부족해SELECTING상태로남으면_알림을보내지않는다() {
+        Meeting meeting = Meeting.builder()
+                .id("meeting-5")
+                .title("주간 회의")
+                .durationMinutes(60)
+                .status(MeetingStatus.GATHERING)
+                .build();
+
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .meeting(meeting)
+                .employeeId("EMP001")
+                .status(ParticipantStatus.RESPONDED)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        MeetingParticipant attendee = MeetingParticipant.builder()
+                .id("participant-attendee")
+                .meeting(meeting)
+                .employeeId("EMP002")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.ATTENDEE)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-5", "EMP002"))
+                .thenReturn(Optional.of(attendee));
+        when(meetingParticipantRepository.findByMeetingId("meeting-5"))
+                .thenReturn(List.of(host, attendee));
+
+        LocalDateTime rangeStart = LocalDateTime.of(2026, 6, 15, 9, 0);
+        LocalDateTime rangeEnd = LocalDateTime.of(2026, 6, 15, 9, 30);
+
+        when(participantAvailableTimeRepository.findByMeetingParticipant_MeetingId("meeting-5"))
+                .thenReturn(List.of(
+                        ParticipantAvailableTime.builder()
+                                .id("time-host")
+                                .meetingParticipant(host)
+                                .startTime(rangeStart)
+                                .endTime(rangeEnd)
+                                .build(),
+                        ParticipantAvailableTime.builder()
+                                .id("time-attendee")
+                                .meetingParticipant(attendee)
+                                .startTime(rangeStart)
+                                .endTime(rangeEnd)
+                                .build()));
+
+        SubmitAvailableTimesRequest request = new SubmitAvailableTimesRequest(
+                List.of(new TimeSlotRequest(rangeStart, rangeEnd)));
+
+        meetingService.submitAvailableTimes("meeting-5", "EMP002", request);
+
+        assertThat(meeting.getStatus()).isEqualTo(MeetingStatus.SELECTING);
+        verify(notificationService, never()).createNotification(any(), eq("MEETING_CONFIRMED"), any(), any(), any(), any());
     }
 
     @Test

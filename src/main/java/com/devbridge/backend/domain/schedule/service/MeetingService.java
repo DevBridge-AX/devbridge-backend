@@ -499,6 +499,12 @@ public class MeetingService {
 
         TimeRange bestRange = sufficientRanges.get(0);
         meeting.confirmSchedule(bestRange.start(), bestRange.start().plusMinutes(meeting.getDurationMinutes()));
+
+        notifyParticipants(meeting.getId(), null,
+                NOTIFICATION_TYPE_MEETING_CONFIRMED,
+                "회의 일정이 확정되었습니다",
+                "제출된 가능 시간을 기반으로 회의 일정이 자동으로 확정되었습니다.",
+                meeting.getWorkspace().getId());
     }
 
     private List<TimeRange> mergeRanges(List<TimeRange> ranges) {
