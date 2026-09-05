@@ -467,6 +467,68 @@ class MeetingServiceTest {
     }
 
     @Test
+    void updateMeeting_필드를null로보내면_해당필드는기존값이유지된다() {
+        Workspace ws = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
+        Meeting meeting = Meeting.builder()
+                .id("meeting-1")
+                .workspace(ws)
+                .title("주간 회의")
+                .purpose("기존 목적")
+                .agenda("기존 아젠다")
+                .location("기존 장소")
+                .durationMinutes(60)
+                .status(MeetingStatus.GATHERING)
+                .build();
+
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .meeting(meeting)
+                .employeeId("EMP001")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP001"))
+                .thenReturn(Optional.of(host));
+        when(meetingRepository.findById("meeting-1")).thenReturn(Optional.of(meeting));
+        when(meetingParticipantRepository.findByMeetingId("meeting-1")).thenReturn(List.of(host));
+        when(meetingReferenceService.getReferences("meeting-1")).thenReturn(List.of());
+
+        UpdateMeetingRequest request = new UpdateMeetingRequest(null, null, null, "새 장소");
+
+        MeetingDetailResponse response = meetingService.updateMeeting("meeting-1", "EMP001", request);
+
+        assertThat(meeting.getTitle()).isEqualTo("주간 회의");
+        assertThat(meeting.getPurpose()).isEqualTo("기존 목적");
+        assertThat(meeting.getAgenda()).isEqualTo("기존 아젠다");
+        assertThat(meeting.getLocation()).isEqualTo("새 장소");
+        assertThat(response.location()).isEqualTo("새 장소");
+    }
+
+    @Test
+    void updateMeeting_title이빈값이면_예외가발생한다() {
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .employeeId("EMP001")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP001"))
+                .thenReturn(Optional.of(host));
+
+        UpdateMeetingRequest request = new UpdateMeetingRequest("  ", null, null, null);
+
+        assertThatThrownBy(() -> meetingService.updateMeeting("meeting-1", "EMP001", request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("회의 제목은 빈 값일 수 없습니다.")
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.SCHEDULE_INVALID_TITLE));
+
+        verify(meetingRepository, never()).findById(any());
+    }
+
+    @Test
     void createMeeting_참석자에게MEETING_INVITED알림이전송된다_생성자본인제외() {
         Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
         when(workspaceContextValidator.getValidWorkspace("ws-1")).thenReturn(workspace);
