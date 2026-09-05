@@ -259,4 +259,43 @@ class MeetingControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELED"));
     }
+
+    @Test
+    @DisplayName("10. 회의 시간 수동 확정 API 성공 테스트 (POST /api/meetings/{meetingId}/confirm)")
+    void confirmMeetingManually_Success() throws Exception {
+        LocalDateTime start = LocalDateTime.of(2026, 6, 20, 14, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 6, 20, 15, 0);
+        ManualConfirmRequest request = new ManualConfirmRequest(start, end);
+
+        MeetingDetailResponse detailResponse = new MeetingDetailResponse(
+                "meeting-uuid-123", "스프린트 회고", null, null, null, 60, MeetingStatus.CONFIRMED,
+                start, end, List.of(), List.of(), List.of());
+
+        when(meetingService.confirmMeetingManually(any(), any(), any())).thenReturn(detailResponse);
+
+        mockMvc.perform(post("/api/meetings/meeting-uuid-123/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .with(authentication(getMockAuthentication("EMP001")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.confirmedStartTime").value("2026-06-20T14:00:00"));
+    }
+
+    @Test
+    @DisplayName("11. 회의 재조율 요청 API 성공 테스트 (POST /api/meetings/{meetingId}/reopen)")
+    void reopenMeeting_Success() throws Exception {
+        MeetingDetailResponse detailResponse = new MeetingDetailResponse(
+                "meeting-uuid-123", "스프린트 회고", null, null, null, 60, MeetingStatus.GATHERING,
+                null, null, List.of(), List.of(), List.of());
+
+        when(meetingService.reopenMeeting(any(), any())).thenReturn(detailResponse);
+
+        mockMvc.perform(post("/api/meetings/meeting-uuid-123/reopen")
+                        .with(authentication(getMockAuthentication("EMP001")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("GATHERING"));
+    }
 }

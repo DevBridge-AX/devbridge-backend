@@ -3,6 +3,7 @@ package com.devbridge.backend.domain.schedule.service;
 import com.devbridge.backend.domain.schedule.dto.CandidateTimeSlot;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingRequest;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingResponse;
+import com.devbridge.backend.domain.schedule.dto.ManualConfirmRequest;
 import com.devbridge.backend.domain.schedule.dto.MeetingDetailResponse;
 import com.devbridge.backend.domain.schedule.dto.MeetingSummaryResponse;
 import com.devbridge.backend.domain.schedule.dto.SubmitAvailableTimesRequest;
@@ -613,6 +614,192 @@ class MeetingServiceTest {
                         .isEqualTo(ErrorCode.SCHEDULE_NOT_HOST));
 
         verify(meetingRepository, never()).findById(any());
+    }
+
+    @Test
+    void confirmMeetingManually_Host가요청하면_직접지정한시간으로확정되고_알림이전송된다() {
+        Workspace ws = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
+        Meeting meeting = Meeting.builder()
+                .id("meeting-1")
+                .workspace(ws)
+                .title("주간 회의")
+                .durationMinutes(60)
+                .status(MeetingStatus.SELECTING)
+                .build();
+
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .meeting(meeting)
+                .employeeId("EMP001")
+                .status(ParticipantStatus.RESPONDED)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        MeetingParticipant attendee = MeetingParticipant.builder()
+                .id("participant-attendee")
+                .meeting(meeting)
+                .employeeId("EMP002")
+                .status(ParticipantStatus.RESPONDED)
+                .role(ParticipantRole.ATTENDEE)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP001"))
+                .thenReturn(Optional.of(host));
+        when(meetingRepository.findById("meeting-1")).thenReturn(Optional.of(meeting));
+        when(meetingParticipantRepository.findByMeetingId("meeting-1")).thenReturn(List.of(host, attendee));
+        when(meetingReferenceService.getReferences("meeting-1")).thenReturn(List.of());
+
+        LocalDateTime start = LocalDateTime.of(2026, 6, 20, 14, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 6, 20, 15, 0);
+        ManualConfirmRequest request = new ManualConfirmRequest(start, end);
+
+        MeetingDetailResponse response = meetingService.confirmMeetingManually("meeting-1", "EMP001", request);
+
+        assertThat(meeting.getStatus()).isEqualTo(MeetingStatus.CONFIRMED);
+        assertThat(response.confirmedStartTime()).isEqualTo(start);
+        assertThat(response.confirmedEndTime()).isEqualTo(end);
+        verify(notificationService).createNotification(any(User.class), eq("MEETING_CONFIRMED"), eq("meeting-1"),
+                eq("회의 일정이 확정되었습니다"), eq("주최자가 회의 시간을 직접 확정했습니다."), any());
+    }
+
+    @Test
+    void confirmMeetingManually_종료시간이시작시간보다빠르면_예외가발생한다() {
+        Meeting meeting = Meeting.builder()
+                .id("meeting-1")
+                .title("주간 회의")
+                .durationMinutes(60)
+                .status(MeetingStatus.SELECTING)
+                .build();
+
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .employeeId("EMP001")
+                .status(ParticipantStatus.RESPONDED)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP001"))
+                .thenReturn(Optional.of(host));
+        when(meetingRepository.findById("meeting-1")).thenReturn(Optional.of(meeting));
+
+        LocalDateTime start = LocalDateTime.of(2026, 6, 20, 15, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 6, 20, 14, 0);
+        ManualConfirmRequest request = new ManualConfirmRequest(start, end);
+
+        assertThatThrownBy(() -> meetingService.confirmMeetingManually("meeting-1", "EMP001", request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.SCHEDULE_INVALID_TIME_RANGE));
+    }
+
+    @Test
+    void confirmMeetingManually_이미확정된회의면_예외가발생한다() {
+        Meeting meeting = Meeting.builder()
+                .id("meeting-1")
+                .title("주간 회의")
+                .durationMinutes(60)
+                .status(MeetingStatus.CONFIRMED)
+                .build();
+
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .employeeId("EMP001")
+                .status(ParticipantStatus.RESPONDED)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP001"))
+                .thenReturn(Optional.of(host));
+        when(meetingRepository.findById("meeting-1")).thenReturn(Optional.of(meeting));
+
+        ManualConfirmRequest request = new ManualConfirmRequest(
+                LocalDateTime.of(2026, 6, 20, 14, 0), LocalDateTime.of(2026, 6, 20, 15, 0));
+
+        assertThatThrownBy(() -> meetingService.confirmMeetingManually("meeting-1", "EMP001", request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.SCHEDULE_ALREADY_CONFIRMED));
+    }
+
+    @Test
+    void reopenMeeting_SELECTING상태면_GATHERING으로되돌아가고_기존제출시간이초기화된다() {
+        Workspace ws = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
+        Meeting meeting = Meeting.builder()
+                .id("meeting-1")
+                .workspace(ws)
+                .title("주간 회의")
+                .durationMinutes(60)
+                .status(MeetingStatus.SELECTING)
+                .build();
+
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .meeting(meeting)
+                .employeeId("EMP001")
+                .status(ParticipantStatus.RESPONDED)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        MeetingParticipant attendee = MeetingParticipant.builder()
+                .id("participant-attendee")
+                .meeting(meeting)
+                .employeeId("EMP002")
+                .status(ParticipantStatus.RESPONDED)
+                .role(ParticipantRole.ATTENDEE)
+                .build();
+
+        ParticipantAvailableTime existingTime = ParticipantAvailableTime.builder()
+                .id("time-1")
+                .meetingParticipant(attendee)
+                .startTime(LocalDateTime.of(2026, 6, 15, 9, 0))
+                .endTime(LocalDateTime.of(2026, 6, 15, 10, 0))
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP001"))
+                .thenReturn(Optional.of(host));
+        when(meetingRepository.findById("meeting-1")).thenReturn(Optional.of(meeting));
+        when(participantAvailableTimeRepository.findByMeetingParticipant_MeetingId("meeting-1"))
+                .thenReturn(List.of(existingTime));
+        when(meetingParticipantRepository.findByMeetingId("meeting-1")).thenReturn(List.of(host, attendee));
+        when(meetingReferenceService.getReferences("meeting-1")).thenReturn(List.of());
+
+        MeetingDetailResponse response = meetingService.reopenMeeting("meeting-1", "EMP001");
+
+        assertThat(meeting.getStatus()).isEqualTo(MeetingStatus.GATHERING);
+        assertThat(response.status()).isEqualTo(MeetingStatus.GATHERING);
+        assertThat(host.getStatus()).isEqualTo(ParticipantStatus.PENDING);
+        assertThat(attendee.getStatus()).isEqualTo(ParticipantStatus.PENDING);
+        verify(participantAvailableTimeRepository).deleteAll(List.of(existingTime));
+        verify(notificationService).createNotification(any(User.class), eq("MEETING_REOPENED"), eq("meeting-1"),
+                eq("회의 일정 재조율이 요청되었습니다"), eq("가능한 시간을 다시 제출해주세요."), any());
+    }
+
+    @Test
+    void reopenMeeting_SELECTING상태가아니면_예외가발생한다() {
+        Meeting meeting = Meeting.builder()
+                .id("meeting-1")
+                .title("주간 회의")
+                .durationMinutes(60)
+                .status(MeetingStatus.GATHERING)
+                .build();
+
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .employeeId("EMP001")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP001"))
+                .thenReturn(Optional.of(host));
+        when(meetingRepository.findById("meeting-1")).thenReturn(Optional.of(meeting));
+
+        assertThatThrownBy(() -> meetingService.reopenMeeting("meeting-1", "EMP001"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.SCHEDULE_INVALID_STATUS_FOR_REOPEN));
+
+        verify(participantAvailableTimeRepository, never()).deleteAll(any());
     }
 
     @Test

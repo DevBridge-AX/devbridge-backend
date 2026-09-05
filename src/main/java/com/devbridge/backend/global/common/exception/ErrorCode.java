@@ -59,6 +59,9 @@ public enum ErrorCode {
     SCHEDULE_CANDIDATE_SERIALIZE_FAILED(HttpStatus.CONFLICT, "후보 시간 목록 직렬화에 실패했습니다."),
     SCHEDULE_CANDIDATE_DESERIALIZE_FAILED(HttpStatus.CONFLICT, "후보 시간 목록 역직렬화에 실패했습니다."),
     SCHEDULE_ALREADY_CANCELED(HttpStatus.CONFLICT, "이미 취소된 회의입니다."),
+    SCHEDULE_ALREADY_CONFIRMED(HttpStatus.CONFLICT, "이미 확정된 회의입니다."),
+    SCHEDULE_INVALID_TIME_RANGE(HttpStatus.BAD_REQUEST, "종료 시간은 시작 시간보다 이후여야 합니다."),
+    SCHEDULE_INVALID_STATUS_FOR_REOPEN(HttpStatus.CONFLICT, "재조율은 후보 시간 선정(SELECTING) 상태에서만 가능합니다."),
 
     // setting
     SETTING_USER_NOT_FOUND(HttpStatus.BAD_REQUEST, "사용자를 찾을 수 없습니다."),

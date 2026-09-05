@@ -3,6 +3,7 @@ package com.devbridge.backend.api.schedule;
 import com.devbridge.backend.domain.schedule.dto.ConfirmedScheduleResponse;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingRequest;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingResponse;
+import com.devbridge.backend.domain.schedule.dto.ManualConfirmRequest;
 import com.devbridge.backend.domain.schedule.dto.MeetingDetailResponse;
 import com.devbridge.backend.domain.schedule.dto.MeetingReferenceRequest;
 import com.devbridge.backend.domain.schedule.dto.MeetingReferenceResponse;
@@ -79,6 +80,19 @@ public interface MeetingAPI {
     @Operation(summary = "회의 취소", description = "회의 주최자가 회의를 취소합니다. 이미 취소된 회의는 다시 취소할 수 없으며, 취소 시 다른 참석자 전원에게 알림이 전달됩니다.")
     @PatchMapping("/{meetingId}/cancel")
     ResponseEntity<MeetingDetailResponse> cancelMeeting(
+            @PathVariable("meetingId") String meetingId,
+            @AuthenticationPrincipal String employeeId);
+
+    @Operation(summary = "회의 시간 수동 확정", description = "주최자가 자동 확정 결과와 무관하게 회의 시간을 직접 지정해 확정합니다. 이미 확정되었거나 취소된 회의는 수동 확정할 수 없습니다.")
+    @PostMapping("/{meetingId}/confirm")
+    ResponseEntity<MeetingDetailResponse> confirmMeetingManually(
+            @PathVariable("meetingId") String meetingId,
+            @AuthenticationPrincipal String employeeId,
+            @Valid @RequestBody ManualConfirmRequest request);
+
+    @Operation(summary = "회의 재조율 요청", description = "자동 확정이 실패해 후보 시간 선정(SELECTING) 상태에 머물러 있는 회의를 시간 수집(GATHERING) 상태로 되돌립니다. 기존에 제출된 참석자 가능 시간은 모두 초기화되며, 참석자 전원에게 재제출 알림이 전달됩니다.")
+    @PostMapping("/{meetingId}/reopen")
+    ResponseEntity<MeetingDetailResponse> reopenMeeting(
             @PathVariable("meetingId") String meetingId,
             @AuthenticationPrincipal String employeeId);
 

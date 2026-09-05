@@ -97,4 +97,11 @@ public class Meeting extends BaseEntity {
     public void cancel() {
         this.status = MeetingStatus.CANCELED;
     }
+
+    public void reopen() {
+        this.status = MeetingStatus.GATHERING;
+        this.topCandidateTimes = null;
+        this.confirmedStartTime = null;
+        this.confirmedEndTime = null;
+    }
 }
