@@ -238,7 +238,7 @@ public class MeetingService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_MEETING_NOT_FOUND));
 
         // 제공된 필드만 반영한다(null은 미변경). PATCH 의미상 필드를 하나씩 개별 수정할 수 있어야 한다.
-        meeting.updateInfo(request.title(), request.purpose(), request.agenda(), request.location());
+        meeting.updateInfo(request.title(), request.purpose(), request.agenda(), request.location(), request.meetingLink());
 
         notifyParticipants(meetingId, employeeId,
                 NOTIFICATION_TYPE_MEETING_UPDATED,
@@ -416,6 +416,7 @@ public class MeetingService {
                 meeting.getPurpose(),
                 meeting.getAgenda(),
                 meeting.getLocation(),
+                meeting.getMeetingLink(),
                 meeting.getDurationMinutes(),
                 meeting.getStatus(),
                 meeting.getConfirmedStartTime(),

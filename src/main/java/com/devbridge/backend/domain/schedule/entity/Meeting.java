@@ -68,7 +68,7 @@ public class Meeting extends BaseEntity {
     @OneToMany(mappedBy = "meeting", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MeetingReference> references = new ArrayList<>();
 
-    public void updateInfo(String title, String purpose, String agenda, String location) {
+    public void updateInfo(String title, String purpose, String agenda, String location, String meetingLink) {
         if (title != null) {
             this.title = title;
         }
@@ -80,6 +80,9 @@ public class Meeting extends BaseEntity {
         }
         if (location != null) {
             this.location = location;
+        }
+        if (meetingLink != null) {
+            this.meetingLink = meetingLink;
         }
     }
 

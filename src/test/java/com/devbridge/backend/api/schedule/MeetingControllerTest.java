@@ -165,7 +165,7 @@ class MeetingControllerTest {
                 LocalDateTime.of(2026, 6, 15, 12, 0));
 
         MeetingDetailResponse detailResponse = new MeetingDetailResponse(
-                "meeting-uuid-123", "스프린트 회고", "회고 진행", "지난 스프린트 회고", "회의실 A", 60, MeetingStatus.CONFIRMED,
+                "meeting-uuid-123", "스프린트 회고", "회고 진행", "지난 스프린트 회고", "회의실 A", null, 60, MeetingStatus.CONFIRMED,
                 LocalDateTime.of(2026, 6, 15, 10, 0),
                 LocalDateTime.of(2026, 6, 15, 11, 0),
                 List.of(candidate),
@@ -206,10 +206,10 @@ class MeetingControllerTest {
     @DisplayName("7. 회의 정보 수정 API 성공 테스트 (PATCH /api/meetings/{meetingId})")
     void updateMeeting_Success() throws Exception {
         // given
-        UpdateMeetingRequest request = new UpdateMeetingRequest("수정된 회의", "목적", "아젠다", "회의실 A");
+        UpdateMeetingRequest request = new UpdateMeetingRequest("수정된 회의", "목적", "아젠다", "회의실 A", null);
 
         MeetingDetailResponse detailResponse = new MeetingDetailResponse(
-                "meeting-uuid-123", "수정된 회의", "목적", "아젠다", "회의실 A", 60, MeetingStatus.GATHERING,
+                "meeting-uuid-123", "수정된 회의", "목적", "아젠다", "회의실 A", null, 60, MeetingStatus.GATHERING,
                 null, null, List.of(), List.of(), List.of());
 
         when(meetingService.updateMeeting(any(), any(), any()))
@@ -232,7 +232,7 @@ class MeetingControllerTest {
     @DisplayName("8. [예외] 회의 정보 수정 API - 주최자가 아닌 경우 예외 테스트")
     void updateMeeting_NotHost_Failure() throws Exception {
         // given
-        UpdateMeetingRequest request = new UpdateMeetingRequest("수정된 회의", "목적", "아젠다", "회의실 A");
+        UpdateMeetingRequest request = new UpdateMeetingRequest("수정된 회의", "목적", "아젠다", "회의실 A", null);
 
         when(meetingService.updateMeeting(any(), any(), any()))
                 .thenThrow(new IllegalArgumentException("회의 주최자만 회의 정보를 수정할 수 있습니다."));
@@ -250,7 +250,7 @@ class MeetingControllerTest {
     @DisplayName("9. 회의 취소 API 성공 테스트 (PATCH /api/meetings/{meetingId}/cancel)")
     void cancelMeeting_Success() throws Exception {
         MeetingDetailResponse detailResponse = new MeetingDetailResponse(
-                "meeting-uuid-123", "스프린트 회고", null, null, null, 60, MeetingStatus.CANCELED,
+                "meeting-uuid-123", "스프린트 회고", null, null, null, null, 60, MeetingStatus.CANCELED,
                 null, null, List.of(), List.of(), List.of());
 
         when(meetingService.cancelMeeting(any(), any())).thenReturn(detailResponse);
@@ -270,7 +270,7 @@ class MeetingControllerTest {
         ManualConfirmRequest request = new ManualConfirmRequest(start, end);
 
         MeetingDetailResponse detailResponse = new MeetingDetailResponse(
-                "meeting-uuid-123", "스프린트 회고", null, null, null, 60, MeetingStatus.CONFIRMED,
+                "meeting-uuid-123", "스프린트 회고", null, null, null, null, 60, MeetingStatus.CONFIRMED,
                 start, end, List.of(), List.of(), List.of());
 
         when(meetingService.confirmMeetingManually(any(), any(), any())).thenReturn(detailResponse);
@@ -289,7 +289,7 @@ class MeetingControllerTest {
     @DisplayName("11. 회의 재조율 요청 API 성공 테스트 (POST /api/meetings/{meetingId}/reopen)")
     void reopenMeeting_Success() throws Exception {
         MeetingDetailResponse detailResponse = new MeetingDetailResponse(
-                "meeting-uuid-123", "스프린트 회고", null, null, null, 60, MeetingStatus.GATHERING,
+                "meeting-uuid-123", "스프린트 회고", null, null, null, null, 60, MeetingStatus.GATHERING,
                 null, null, List.of(), List.of(), List.of());
 
         when(meetingService.reopenMeeting(any(), any())).thenReturn(detailResponse);
@@ -310,7 +310,7 @@ class MeetingControllerTest {
                 "EMP005", "박민준", "기획팀", "PM", ParticipantRole.ATTENDEE, ParticipantStatus.PENDING);
 
         MeetingDetailResponse detailResponse = new MeetingDetailResponse(
-                "meeting-uuid-123", "스프린트 회고", null, null, null, 60, MeetingStatus.GATHERING,
+                "meeting-uuid-123", "스프린트 회고", null, null, null, null, 60, MeetingStatus.GATHERING,
                 null, null, List.of(), List.of(newParticipant), List.of());
 
         when(meetingService.addParticipants(any(), any(), any())).thenReturn(detailResponse);

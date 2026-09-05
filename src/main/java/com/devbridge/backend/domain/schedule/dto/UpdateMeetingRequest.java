@@ -7,6 +7,8 @@ public record UpdateMeetingRequest(
 
         String agenda,
 
-        String location
+        String location,
+
+        String meetingLink
 ) {
 }

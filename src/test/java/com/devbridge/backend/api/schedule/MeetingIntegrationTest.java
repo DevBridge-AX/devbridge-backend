@@ -192,7 +192,7 @@ class MeetingIntegrationTest {
                 .andExpect(jsonPath("$[0].confirmedEndTime").value("2026-06-15T11:00:00"));
 
         // Step 7. 주최자가 아닌 EMP004가 회의 정보 수정을 시도하면 거부됨 (PATCH /api/meetings/{id})
-        UpdateMeetingRequest updateRequest = new UpdateMeetingRequest("API 설계 회고 미팅(수정)", "API 설계 회고(수정)", "지난 스프린트 API 설계 리뷰 및 차기 계획", "회의실 B");
+        UpdateMeetingRequest updateRequest = new UpdateMeetingRequest("API 설계 회고 미팅(수정)", "API 설계 회고(수정)", "지난 스프린트 API 설계 리뷰 및 차기 계획", "회의실 B", null);
 
         mockMvc.perform(patch("/api/meetings/" + meetingId)
                         .contentType(MediaType.APPLICATION_JSON)

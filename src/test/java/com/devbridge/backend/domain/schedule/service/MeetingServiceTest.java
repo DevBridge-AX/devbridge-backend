@@ -421,7 +421,7 @@ class MeetingServiceTest {
         when(meetingParticipantRepository.findByMeetingId("meeting-1")).thenReturn(List.of(host, attendee));
         when(meetingReferenceService.getReferences("meeting-1")).thenReturn(List.of());
 
-        UpdateMeetingRequest request = new UpdateMeetingRequest("수정된 회의", "목적", "아젠다", "회의실 A");
+        UpdateMeetingRequest request = new UpdateMeetingRequest("수정된 회의", "목적", "아젠다", "회의실 A", null);
 
         MeetingDetailResponse response = meetingService.updateMeeting("meeting-1", "EMP001", request);
 
@@ -458,7 +458,7 @@ class MeetingServiceTest {
         when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP002"))
                 .thenReturn(Optional.of(attendee));
 
-        UpdateMeetingRequest request = new UpdateMeetingRequest("수정된 회의", "목적", "아젠다", "회의실 A");
+        UpdateMeetingRequest request = new UpdateMeetingRequest("수정된 회의", "목적", "아젠다", "회의실 A", null);
 
         assertThatThrownBy(() -> meetingService.updateMeeting("meeting-1", "EMP002", request))
                 .isInstanceOf(BusinessException.class)
@@ -497,7 +497,7 @@ class MeetingServiceTest {
         when(meetingParticipantRepository.findByMeetingId("meeting-1")).thenReturn(List.of(host));
         when(meetingReferenceService.getReferences("meeting-1")).thenReturn(List.of());
 
-        UpdateMeetingRequest request = new UpdateMeetingRequest(null, null, null, "새 장소");
+        UpdateMeetingRequest request = new UpdateMeetingRequest(null, null, null, "새 장소", null);
 
         MeetingDetailResponse response = meetingService.updateMeeting("meeting-1", "EMP001", request);
 
@@ -506,6 +506,43 @@ class MeetingServiceTest {
         assertThat(meeting.getAgenda()).isEqualTo("기존 아젠다");
         assertThat(meeting.getLocation()).isEqualTo("새 장소");
         assertThat(response.location()).isEqualTo("새 장소");
+    }
+
+    @Test
+    void updateMeeting_meetingLink만변경하면_다른필드는유지되고_meetingLink만반영된다() {
+        Workspace ws = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
+        Meeting meeting = Meeting.builder()
+                .id("meeting-1")
+                .workspace(ws)
+                .title("주간 회의")
+                .purpose("기존 목적")
+                .agenda("기존 아젠다")
+                .location("기존 장소")
+                .durationMinutes(60)
+                .status(MeetingStatus.GATHERING)
+                .build();
+
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .meeting(meeting)
+                .employeeId("EMP001")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP001"))
+                .thenReturn(Optional.of(host));
+        when(meetingRepository.findById("meeting-1")).thenReturn(Optional.of(meeting));
+        when(meetingParticipantRepository.findByMeetingId("meeting-1")).thenReturn(List.of(host));
+        when(meetingReferenceService.getReferences("meeting-1")).thenReturn(List.of());
+
+        UpdateMeetingRequest request = new UpdateMeetingRequest(null, null, null, null, "https://meet.example.com/room-1");
+
+        MeetingDetailResponse response = meetingService.updateMeeting("meeting-1", "EMP001", request);
+
+        assertThat(meeting.getLocation()).isEqualTo("기존 장소");
+        assertThat(meeting.getMeetingLink()).isEqualTo("https://meet.example.com/room-1");
+        assertThat(response.meetingLink()).isEqualTo("https://meet.example.com/room-1");
     }
 
     @Test
@@ -520,7 +557,7 @@ class MeetingServiceTest {
         when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP001"))
                 .thenReturn(Optional.of(host));
 
-        UpdateMeetingRequest request = new UpdateMeetingRequest("  ", null, null, null);
+        UpdateMeetingRequest request = new UpdateMeetingRequest("  ", null, null, null, null);
 
         assertThatThrownBy(() -> meetingService.updateMeeting("meeting-1", "EMP001", request))
                 .isInstanceOf(BusinessException.class)
