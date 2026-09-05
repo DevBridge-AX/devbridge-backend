@@ -69,7 +69,7 @@ public interface MeetingAPI {
             @PathVariable("meetingId") String meetingId,
             @AuthenticationPrincipal String employeeId);
 
-    @Operation(summary = "회의 정보 수정", description = "회의 주최자가 제목, 목적, 아젠다, 장소를 수정합니다. 주최자가 아닌 경우 수정할 수 없으며, 수정 시 다른 참석자 전원에게 알림이 전달됩니다.")
+    @Operation(summary = "회의 정보 수정", description = "회의 주최자가 제목, 목적, 아젠다, 장소를 부분 수정합니다. 요청에 포함되지 않은(null) 필드는 기존 값이 유지되므로 필드를 하나씩 개별적으로 수정할 수 있습니다. 주최자가 아닌 경우 수정할 수 없으며, 수정 시 다른 참석자 전원에게 알림이 전달됩니다.")
     @PatchMapping("/{meetingId}")
     ResponseEntity<MeetingDetailResponse> updateMeeting(
             @PathVariable("meetingId") String meetingId,
