@@ -1,5 +1,6 @@
 package com.devbridge.backend.api.schedule;
 
+import com.devbridge.backend.domain.schedule.dto.AddParticipantsRequest;
 import com.devbridge.backend.domain.schedule.dto.ConfirmedScheduleResponse;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingRequest;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingResponse;
@@ -79,6 +80,18 @@ public class MeetingController implements MeetingAPI {
     @Override
     public ResponseEntity<MeetingDetailResponse> reopenMeeting(String meetingId, String employeeId) {
         return ResponseEntity.ok(meetingService.reopenMeeting(meetingId, employeeId));
+    }
+
+    @Override
+    public ResponseEntity<MeetingDetailResponse> addParticipants(
+            String meetingId, String employeeId, AddParticipantsRequest request) {
+        return ResponseEntity.ok(meetingService.addParticipants(meetingId, employeeId, request));
+    }
+
+    @Override
+    public ResponseEntity<Void> removeParticipant(String meetingId, String employeeId, String targetEmployeeId) {
+        meetingService.removeParticipant(meetingId, employeeId, targetEmployeeId);
+        return ResponseEntity.noContent().build();
     }
 
     @Override

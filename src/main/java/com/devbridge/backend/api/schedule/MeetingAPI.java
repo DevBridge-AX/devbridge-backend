@@ -1,5 +1,6 @@
 package com.devbridge.backend.api.schedule;
 
+import com.devbridge.backend.domain.schedule.dto.AddParticipantsRequest;
 import com.devbridge.backend.domain.schedule.dto.ConfirmedScheduleResponse;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingRequest;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingResponse;
@@ -95,6 +96,20 @@ public interface MeetingAPI {
     ResponseEntity<MeetingDetailResponse> reopenMeeting(
             @PathVariable("meetingId") String meetingId,
             @AuthenticationPrincipal String employeeId);
+
+    @Operation(summary = "회의 참석자 추가", description = "회의 주최자가 참석자를 추가로 초대합니다. 이미 등록된 참석자는 중복으로 추가할 수 없습니다.")
+    @PostMapping("/{meetingId}/participants")
+    ResponseEntity<MeetingDetailResponse> addParticipants(
+            @PathVariable("meetingId") String meetingId,
+            @AuthenticationPrincipal String employeeId,
+            @Valid @RequestBody AddParticipantsRequest request);
+
+    @Operation(summary = "회의 참석자 제외", description = "회의 주최자가 참석자를 제외합니다. 주최자 본인은 제외할 수 없습니다.")
+    @DeleteMapping("/{meetingId}/participants/{employeeId}")
+    ResponseEntity<Void> removeParticipant(
+            @PathVariable("meetingId") String meetingId,
+            @AuthenticationPrincipal String employeeId,
+            @PathVariable("employeeId") String targetEmployeeId);
 
     @Operation(summary = "회의 첨부파일 추가", description = "회의 상세 화면에서 파일 업로드 또는 링크 형태의 첨부파일을 추가합니다.")
     @PostMapping("/{meetingId}/references")

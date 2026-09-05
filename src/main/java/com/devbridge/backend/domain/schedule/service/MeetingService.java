@@ -1,6 +1,7 @@
 package com.devbridge.backend.domain.schedule.service;
 
 import com.devbridge.backend.domain.notification.service.NotificationService;
+import com.devbridge.backend.domain.schedule.dto.AddParticipantsRequest;
 import com.devbridge.backend.domain.schedule.dto.CandidateTimeSlot;
 import com.devbridge.backend.domain.schedule.dto.ConfirmedScheduleResponse;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingRequest;
@@ -329,6 +330,60 @@ public class MeetingService {
                 meeting.getWorkspace().getId());
 
         return buildDetailResponse(meeting);
+    }
+
+    @Transactional
+    public MeetingDetailResponse addParticipants(String meetingId, String employeeId, AddParticipantsRequest request) {
+        resolveUser(employeeId);
+        resolveHost(meetingId, employeeId);
+
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_MEETING_NOT_FOUND));
+
+        if (meeting.getStatus() == MeetingStatus.CANCELED) {
+            throw new BusinessException(ErrorCode.SCHEDULE_ALREADY_CANCELED);
+        }
+
+        for (String newEmployeeId : request.employeeIds()) {
+            if (meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, newEmployeeId).isPresent()) {
+                throw new BusinessException(ErrorCode.SCHEDULE_PARTICIPANT_ALREADY_EXISTS,
+                        "이미 참석자로 등록된 사용자입니다: " + newEmployeeId);
+            }
+        }
+
+        List<MeetingParticipant> newParticipants = request.employeeIds().stream()
+                .map(newEmployeeId -> MeetingParticipant.builder()
+                        .meeting(meeting)
+                        .employeeId(newEmployeeId)
+                        .status(ParticipantStatus.PENDING)
+                        .role(ParticipantRole.ATTENDEE)
+                        .build())
+                .toList();
+
+        meetingParticipantRepository.saveAll(newParticipants);
+
+        newParticipants.forEach(p -> userInternalService.findByEmployeeId(p.getEmployeeId())
+                .ifPresent(recipient -> notificationService.createNotification(
+                        recipient, NOTIFICATION_TYPE_MEETING_INVITED, meetingId,
+                        "회의에 초대되었습니다", "새 회의에 참석자로 초대되었습니다.",
+                        meeting.getWorkspace().getId())));
+
+        return buildDetailResponse(meeting);
+    }
+
+    @Transactional
+    public void removeParticipant(String meetingId, String employeeId, String targetEmployeeId) {
+        resolveUser(employeeId);
+        resolveHost(meetingId, employeeId);
+
+        MeetingParticipant target = meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, targetEmployeeId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_PARTICIPANT_NOT_FOUND));
+
+        if (target.getRole() == ParticipantRole.HOST) {
+            throw new BusinessException(ErrorCode.SCHEDULE_CANNOT_REMOVE_HOST);
+        }
+
+        meetingParticipantRepository.delete(target);
     }
 
     private void notifyParticipants(String meetingId, String actorEmployeeId,

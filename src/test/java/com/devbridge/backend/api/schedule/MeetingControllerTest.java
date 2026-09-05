@@ -24,9 +24,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -297,5 +299,39 @@ class MeetingControllerTest {
                         .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("GATHERING"));
+    }
+
+    @Test
+    @DisplayName("12. 회의 참석자 추가 API 성공 테스트 (POST /api/meetings/{meetingId}/participants)")
+    void addParticipants_Success() throws Exception {
+        AddParticipantsRequest request = new AddParticipantsRequest(List.of("EMP005"));
+
+        MeetingParticipantResponse newParticipant = new MeetingParticipantResponse(
+                "EMP005", "박민준", "기획팀", "PM", ParticipantRole.ATTENDEE, ParticipantStatus.PENDING);
+
+        MeetingDetailResponse detailResponse = new MeetingDetailResponse(
+                "meeting-uuid-123", "스프린트 회고", null, null, null, 60, MeetingStatus.GATHERING,
+                null, null, List.of(), List.of(newParticipant), List.of());
+
+        when(meetingService.addParticipants(any(), any(), any())).thenReturn(detailResponse);
+
+        mockMvc.perform(post("/api/meetings/meeting-uuid-123/participants")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .with(authentication(getMockAuthentication("EMP001")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.participants[0].employeeId").value("EMP005"));
+    }
+
+    @Test
+    @DisplayName("13. 회의 참석자 제외 API 성공 테스트 (DELETE /api/meetings/{meetingId}/participants/{employeeId})")
+    void removeParticipant_Success() throws Exception {
+        doNothing().when(meetingService).removeParticipant(any(), any(), any());
+
+        mockMvc.perform(delete("/api/meetings/meeting-uuid-123/participants/EMP005")
+                        .with(authentication(getMockAuthentication("EMP001")))
+                        .with(csrf()))
+                .andExpect(status().isNoContent());
     }
 }

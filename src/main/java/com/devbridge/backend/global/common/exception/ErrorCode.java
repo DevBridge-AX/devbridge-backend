@@ -62,6 +62,9 @@ public enum ErrorCode {
     SCHEDULE_ALREADY_CONFIRMED(HttpStatus.CONFLICT, "이미 확정된 회의입니다."),
     SCHEDULE_INVALID_TIME_RANGE(HttpStatus.BAD_REQUEST, "종료 시간은 시작 시간보다 이후여야 합니다."),
     SCHEDULE_INVALID_STATUS_FOR_REOPEN(HttpStatus.CONFLICT, "재조율은 후보 시간 선정(SELECTING) 상태에서만 가능합니다."),
+    SCHEDULE_PARTICIPANT_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 참석자로 등록된 사용자입니다."),
+    SCHEDULE_PARTICIPANT_NOT_FOUND(HttpStatus.BAD_REQUEST, "해당 참석자를 찾을 수 없습니다."),
+    SCHEDULE_CANNOT_REMOVE_HOST(HttpStatus.BAD_REQUEST, "회의 주최자는 제외할 수 없습니다."),
 
     // setting
     SETTING_USER_NOT_FOUND(HttpStatus.BAD_REQUEST, "사용자를 찾을 수 없습니다."),

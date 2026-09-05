@@ -1,5 +1,6 @@
 package com.devbridge.backend.domain.schedule.service;
 
+import com.devbridge.backend.domain.schedule.dto.AddParticipantsRequest;
 import com.devbridge.backend.domain.schedule.dto.CandidateTimeSlot;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingRequest;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingResponse;
@@ -44,6 +45,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -800,6 +802,154 @@ class MeetingServiceTest {
                         .isEqualTo(ErrorCode.SCHEDULE_INVALID_STATUS_FOR_REOPEN));
 
         verify(participantAvailableTimeRepository, never()).deleteAll(any());
+    }
+
+    @Test
+    void addParticipants_Host가요청하면_참석자가추가되고_초대알림이전송된다() {
+        Workspace ws = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
+        Meeting meeting = Meeting.builder()
+                .id("meeting-1")
+                .workspace(ws)
+                .title("주간 회의")
+                .durationMinutes(60)
+                .status(MeetingStatus.GATHERING)
+                .build();
+
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .meeting(meeting)
+                .employeeId("EMP001")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP001"))
+                .thenReturn(Optional.of(host));
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP005"))
+                .thenReturn(Optional.empty());
+        when(meetingRepository.findById("meeting-1")).thenReturn(Optional.of(meeting));
+        when(meetingParticipantRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(meetingParticipantRepository.findByMeetingId("meeting-1")).thenReturn(List.of(host));
+        when(meetingReferenceService.getReferences("meeting-1")).thenReturn(List.of());
+
+        AddParticipantsRequest request = new AddParticipantsRequest(List.of("EMP005"));
+
+        meetingService.addParticipants("meeting-1", "EMP001", request);
+
+        verify(meetingParticipantRepository).saveAll(argThat(list -> {
+            List<MeetingParticipant> participants = (List<MeetingParticipant>) list;
+            return participants.size() == 1
+                    && participants.get(0).getEmployeeId().equals("EMP005")
+                    && participants.get(0).getRole() == ParticipantRole.ATTENDEE
+                    && participants.get(0).getStatus() == ParticipantStatus.PENDING;
+        }));
+        verify(notificationService).createNotification(any(User.class), eq("MEETING_INVITED"), eq("meeting-1"),
+                eq("회의에 초대되었습니다"), eq("새 회의에 참석자로 초대되었습니다."), any());
+    }
+
+    @Test
+    void addParticipants_이미참석자인경우_예외가발생한다() {
+        Meeting meeting = Meeting.builder()
+                .id("meeting-1")
+                .title("주간 회의")
+                .durationMinutes(60)
+                .status(MeetingStatus.GATHERING)
+                .build();
+
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .employeeId("EMP001")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        MeetingParticipant existingAttendee = MeetingParticipant.builder()
+                .id("participant-attendee")
+                .employeeId("EMP002")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.ATTENDEE)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP001"))
+                .thenReturn(Optional.of(host));
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP002"))
+                .thenReturn(Optional.of(existingAttendee));
+        when(meetingRepository.findById("meeting-1")).thenReturn(Optional.of(meeting));
+
+        AddParticipantsRequest request = new AddParticipantsRequest(List.of("EMP002"));
+
+        assertThatThrownBy(() -> meetingService.addParticipants("meeting-1", "EMP001", request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.SCHEDULE_PARTICIPANT_ALREADY_EXISTS));
+
+        verify(meetingParticipantRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void removeParticipant_Host가요청하면_참석자가제외된다() {
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .employeeId("EMP001")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        MeetingParticipant attendee = MeetingParticipant.builder()
+                .id("participant-attendee")
+                .employeeId("EMP002")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.ATTENDEE)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP001"))
+                .thenReturn(Optional.of(host));
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP002"))
+                .thenReturn(Optional.of(attendee));
+
+        meetingService.removeParticipant("meeting-1", "EMP001", "EMP002");
+
+        verify(meetingParticipantRepository).delete(attendee);
+    }
+
+    @Test
+    void removeParticipant_대상이Host면_예외가발생한다() {
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .employeeId("EMP001")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP001"))
+                .thenReturn(Optional.of(host));
+
+        assertThatThrownBy(() -> meetingService.removeParticipant("meeting-1", "EMP001", "EMP001"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.SCHEDULE_CANNOT_REMOVE_HOST));
+
+        verify(meetingParticipantRepository, never()).delete(any());
+    }
+
+    @Test
+    void removeParticipant_대상이참석자가아니면_예외가발생한다() {
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .employeeId("EMP001")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP001"))
+                .thenReturn(Optional.of(host));
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP999"))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> meetingService.removeParticipant("meeting-1", "EMP001", "EMP999"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.SCHEDULE_PARTICIPANT_NOT_FOUND));
     }
 
     @Test
