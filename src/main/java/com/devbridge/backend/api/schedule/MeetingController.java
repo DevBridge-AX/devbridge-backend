@@ -46,6 +46,11 @@ public class MeetingController implements MeetingAPI {
     }
 
     @Override
+    public ResponseEntity<SubmitAvailableTimesResponse> declineMeeting(String meetingId, String employeeId) {
+        return ResponseEntity.ok(meetingService.declineMeeting(meetingId, employeeId));
+    }
+
+    @Override
     public ResponseEntity<List<ConfirmedScheduleResponse>> getMyConfirmedSchedules(
             String workspaceId, String employeeId, LocalDate startDate, LocalDate endDate) {
         return ResponseEntity.ok(meetingService.getMyConfirmedSchedules(workspaceId, employeeId, startDate, endDate));

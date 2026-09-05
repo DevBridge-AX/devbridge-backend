@@ -50,6 +50,12 @@ public interface MeetingAPI {
             @AuthenticationPrincipal String employeeId,
             @Valid @RequestBody SubmitAvailableTimesRequest request);
 
+    @Operation(summary = "회의 참석 거절", description = "로그인한 참석자가 회의 참석을 명시적으로 거절합니다. 주최자는 자신이 주최한 회의를 거절할 수 없습니다. 전원이 응답(제출 또는 거절)을 완료하면 자동 확정 로직이 실행됩니다.")
+    @PostMapping("/{meetingId}/participants/me/decline")
+    ResponseEntity<SubmitAvailableTimesResponse> declineMeeting(
+            @PathVariable("meetingId") String meetingId,
+            @AuthenticationPrincipal String employeeId);
+
     @Operation(summary = "내 확정 일정 조회", description = "로그인한 사용자가 현재 워크스페이스에서 참여 중인 CONFIRMED 상태 회의의 확정 시간 슬롯을 기간 내에서 조회합니다. 캘린더의 선택 불가(Blocked) 영역 렌더링에 사용됩니다.")
     @GetMapping("/participants/me/schedules")
     ResponseEntity<List<ConfirmedScheduleResponse>> getMyConfirmedSchedules(

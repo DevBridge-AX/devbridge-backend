@@ -65,6 +65,7 @@ public enum ErrorCode {
     SCHEDULE_PARTICIPANT_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 참석자로 등록된 사용자입니다."),
     SCHEDULE_PARTICIPANT_NOT_FOUND(HttpStatus.BAD_REQUEST, "해당 참석자를 찾을 수 없습니다."),
     SCHEDULE_CANNOT_REMOVE_HOST(HttpStatus.BAD_REQUEST, "회의 주최자는 제외할 수 없습니다."),
+    SCHEDULE_HOST_CANNOT_DECLINE(HttpStatus.BAD_REQUEST, "회의 주최자는 참석을 거절할 수 없습니다."),
 
     // setting
     SETTING_USER_NOT_FOUND(HttpStatus.BAD_REQUEST, "사용자를 찾을 수 없습니다."),

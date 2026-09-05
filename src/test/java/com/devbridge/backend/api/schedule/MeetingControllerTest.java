@@ -7,6 +7,8 @@ import com.devbridge.backend.domain.schedule.entity.ParticipantStatus;
 import com.devbridge.backend.domain.schedule.service.MeetingReferenceService;
 import com.devbridge.backend.domain.schedule.service.MeetingService;
 import com.devbridge.backend.global.auth.jwt.JwtTokenProvider;
+import com.devbridge.backend.global.common.exception.BusinessException;
+import com.devbridge.backend.global.common.exception.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.DisplayName;
@@ -333,5 +335,32 @@ class MeetingControllerTest {
                         .with(authentication(getMockAuthentication("EMP001")))
                         .with(csrf()))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("14. 회의 참석 거절 API 성공 테스트 (POST /api/meetings/{meetingId}/participants/me/decline)")
+    void declineMeeting_Success() throws Exception {
+        SubmitAvailableTimesResponse response = new SubmitAvailableTimesResponse(
+                "meeting-uuid-123", "EMP002", ParticipantStatus.DECLINED, false);
+
+        when(meetingService.declineMeeting(any(), any())).thenReturn(response);
+
+        mockMvc.perform(post("/api/meetings/meeting-uuid-123/participants/me/decline")
+                        .with(authentication(getMockAuthentication("EMP002")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DECLINED"));
+    }
+
+    @Test
+    @DisplayName("15. [예외] 회의 참석 거절 API - 주최자가 거절을 시도하는 경우 예외 테스트")
+    void declineMeeting_HostCannotDecline_Failure() throws Exception {
+        when(meetingService.declineMeeting(any(), any()))
+                .thenThrow(new BusinessException(ErrorCode.SCHEDULE_HOST_CANNOT_DECLINE));
+
+        mockMvc.perform(post("/api/meetings/meeting-uuid-123/participants/me/decline")
+                        .with(authentication(getMockAuthentication("EMP001")))
+                        .with(csrf()))
+                .andExpect(status().isBadRequest());
     }
 }

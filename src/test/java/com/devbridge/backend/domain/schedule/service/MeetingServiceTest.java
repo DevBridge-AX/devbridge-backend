@@ -1110,6 +1110,156 @@ class MeetingServiceTest {
     }
 
     @Test
+    void declineMeeting_참석자가아니면_예외가발생한다() {
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP999"))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> meetingService.declineMeeting("meeting-1", "EMP999"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.SCHEDULE_NOT_PARTICIPANT));
+    }
+
+    @Test
+    void declineMeeting_주최자가거절을시도하면_예외가발생한다() {
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .employeeId("EMP001")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP001"))
+                .thenReturn(Optional.of(host));
+
+        assertThatThrownBy(() -> meetingService.declineMeeting("meeting-1", "EMP001"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.SCHEDULE_HOST_CANNOT_DECLINE));
+
+        assertThat(host.getStatus()).isEqualTo(ParticipantStatus.PENDING);
+    }
+
+    @Test
+    void declineMeeting_성공하면_참석자상태가DECLINED로변경된다() {
+        Meeting meeting = Meeting.builder()
+                .id("meeting-1")
+                .title("주간 회의")
+                .durationMinutes(60)
+                .status(MeetingStatus.GATHERING)
+                .build();
+
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .meeting(meeting)
+                .employeeId("EMP001")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        MeetingParticipant attendee = MeetingParticipant.builder()
+                .id("participant-attendee")
+                .meeting(meeting)
+                .employeeId("EMP002")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.ATTENDEE)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP002"))
+                .thenReturn(Optional.of(attendee));
+        when(meetingParticipantRepository.findByMeetingId("meeting-1")).thenReturn(List.of(host, attendee));
+
+        SubmitAvailableTimesResponse response = meetingService.declineMeeting("meeting-1", "EMP002");
+
+        assertThat(attendee.getStatus()).isEqualTo(ParticipantStatus.DECLINED);
+        assertThat(response.status()).isEqualTo(ParticipantStatus.DECLINED);
+        assertThat(response.allParticipantsResponded()).isFalse();
+    }
+
+    @Test
+    void declineMeeting_전원이응답또는거절을완료하면_자동확정로직이실행된다() {
+        Workspace ws = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
+        Meeting meeting = Meeting.builder()
+                .id("meeting-1")
+                .workspace(ws)
+                .title("주간 회의")
+                .durationMinutes(60)
+                .status(MeetingStatus.GATHERING)
+                .build();
+
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .meeting(meeting)
+                .employeeId("EMP001")
+                .status(ParticipantStatus.RESPONDED)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        MeetingParticipant attendee = MeetingParticipant.builder()
+                .id("participant-attendee")
+                .meeting(meeting)
+                .employeeId("EMP002")
+                .status(ParticipantStatus.PENDING)
+                .role(ParticipantRole.ATTENDEE)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP002"))
+                .thenReturn(Optional.of(attendee));
+        when(meetingParticipantRepository.findByMeetingId("meeting-1")).thenReturn(List.of(host, attendee));
+
+        LocalDateTime rangeStart = LocalDateTime.of(2026, 6, 15, 9, 0);
+        LocalDateTime rangeEnd = LocalDateTime.of(2026, 6, 15, 11, 0);
+
+        when(participantAvailableTimeRepository.findByMeetingParticipant_MeetingId("meeting-1"))
+                .thenReturn(List.of(
+                        ParticipantAvailableTime.builder()
+                                .id("time-host")
+                                .meetingParticipant(host)
+                                .startTime(rangeStart)
+                                .endTime(rangeEnd)
+                                .build()));
+
+        SubmitAvailableTimesResponse response = meetingService.declineMeeting("meeting-1", "EMP002");
+
+        assertThat(response.allParticipantsResponded()).isTrue();
+        assertThat(meeting.getStatus()).isEqualTo(MeetingStatus.CONFIRMED);
+        assertThat(meeting.getConfirmedStartTime()).isEqualTo(rangeStart);
+        assertThat(meeting.getConfirmedEndTime()).isEqualTo(rangeStart.plusMinutes(60));
+    }
+
+    @Test
+    void submitAvailableTimes_거절후재제출하면_RESPONDED로되돌아간다() {
+        Meeting meeting = Meeting.builder()
+                .id("meeting-1")
+                .title("주간 회의")
+                .durationMinutes(60)
+                .status(MeetingStatus.GATHERING)
+                .build();
+
+        MeetingParticipant attendee = MeetingParticipant.builder()
+                .id("participant-attendee")
+                .meeting(meeting)
+                .employeeId("EMP002")
+                .status(ParticipantStatus.DECLINED)
+                .role(ParticipantRole.ATTENDEE)
+                .build();
+
+        when(meetingParticipantRepository.findByMeetingIdAndEmployeeId("meeting-1", "EMP002"))
+                .thenReturn(Optional.of(attendee));
+        when(meetingParticipantRepository.findByMeetingId("meeting-1")).thenReturn(List.of(attendee));
+
+        LocalDateTime rangeStart = LocalDateTime.of(2026, 6, 15, 9, 0);
+        LocalDateTime rangeEnd = LocalDateTime.of(2026, 6, 15, 10, 0);
+
+        SubmitAvailableTimesRequest request = new SubmitAvailableTimesRequest(
+                List.of(new TimeSlotRequest(rangeStart, rangeEnd)));
+
+        meetingService.submitAvailableTimes("meeting-1", "EMP002", request);
+
+        assertThat(attendee.getStatus()).isEqualTo(ParticipantStatus.RESPONDED);
+    }
+
+    @Test
     void findMeetingIdsDueForReminder_조건에맞는회의ID목록을반환한다() {
         Meeting meeting1 = Meeting.builder().id("meeting-1").title("A").durationMinutes(30).status(MeetingStatus.CONFIRMED).build();
         Meeting meeting2 = Meeting.builder().id("meeting-2").title("B").durationMinutes(30).status(MeetingStatus.CONFIRMED).build();

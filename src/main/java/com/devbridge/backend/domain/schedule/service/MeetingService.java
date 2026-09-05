@@ -406,11 +406,14 @@ public class MeetingService {
             return;
         }
 
-        notifyParticipants(meetingId, null,
-                NOTIFICATION_TYPE_MEETING_REMINDER,
-                "회의가 곧 시작합니다",
-                "참여 중인 회의가 곧 시작됩니다.",
-                meeting.getWorkspace().getId());
+        // 거절한 참석자는 리마인더 대상에서 제외한다(공용 notifyParticipants는 이 필터가 없다).
+        meetingParticipantRepository.findByMeetingId(meetingId).stream()
+                .filter(p -> p.getStatus() != ParticipantStatus.DECLINED)
+                .forEach(p -> userInternalService.findByEmployeeId(p.getEmployeeId())
+                        .ifPresent(recipient -> notificationService.createNotification(
+                                recipient, NOTIFICATION_TYPE_MEETING_REMINDER, meetingId,
+                                "회의가 곧 시작합니다", "참여 중인 회의가 곧 시작됩니다.",
+                                meeting.getWorkspace().getId())));
 
         meeting.markReminderSent();
     }
@@ -488,9 +491,32 @@ public class MeetingService {
         return new SubmitAvailableTimesResponse(meetingId, employeeId, participant.getStatus(), allResponded);
     }
 
+    @Transactional
+    public SubmitAvailableTimesResponse declineMeeting(String meetingId, String employeeId) {
+        resolveUser(employeeId);
+
+        MeetingParticipant participant = meetingParticipantRepository
+                .findByMeetingIdAndEmployeeId(meetingId, employeeId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_NOT_PARTICIPANT));
+
+        if (participant.getRole() == ParticipantRole.HOST) {
+            throw new BusinessException(ErrorCode.SCHEDULE_HOST_CANNOT_DECLINE);
+        }
+
+        participant.decline();
+
+        boolean allResponded = isAllParticipantsResponded(meetingId);
+
+        if (allResponded) {
+            selectTopCandidateTimes(participant.getMeeting());
+        }
+
+        return new SubmitAvailableTimesResponse(meetingId, employeeId, participant.getStatus(), allResponded);
+    }
+
     private boolean isAllParticipantsResponded(String meetingId) {
         return meetingParticipantRepository.findByMeetingId(meetingId).stream()
-                .allMatch(participant -> participant.getStatus() == ParticipantStatus.RESPONDED);
+                .allMatch(participant -> participant.getStatus() != ParticipantStatus.PENDING);
     }
 
     private void selectTopCandidateTimes(Meeting meeting) {
