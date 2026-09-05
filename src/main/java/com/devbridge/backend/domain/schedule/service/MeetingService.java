@@ -65,6 +65,7 @@ public class MeetingService {
     private static final String NOTIFICATION_TYPE_MEETING_CANCELED = "MEETING_CANCELED";
     private static final String NOTIFICATION_TYPE_MEETING_CONFIRMED = "MEETING_CONFIRMED";
     private static final String NOTIFICATION_TYPE_MEETING_REOPENED = "MEETING_REOPENED";
+    private static final String NOTIFICATION_TYPE_MEETING_REMINDER = "MEETING_REMINDER";
 
     private User resolveUser(String employeeId) {
         return userInternalService.findByEmployeeId(employeeId)
@@ -384,6 +385,34 @@ public class MeetingService {
         }
 
         meetingParticipantRepository.delete(target);
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> findMeetingIdsDueForReminder(LocalDateTime windowStart, LocalDateTime windowEnd) {
+        return meetingRepository
+                .findByStatusAndReminderSentFalseAndConfirmedStartTimeBetween(MeetingStatus.CONFIRMED, windowStart, windowEnd)
+                .stream()
+                .map(Meeting::getId)
+                .toList();
+    }
+
+    @Transactional
+    public void sendReminder(String meetingId) {
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_MEETING_NOT_FOUND));
+
+        // 폴링 시점과 처리 시점 사이 상태가 바뀌었을 수 있어 방어적으로 재확인한다.
+        if (meeting.getStatus() != MeetingStatus.CONFIRMED || meeting.isReminderSent()) {
+            return;
+        }
+
+        notifyParticipants(meetingId, null,
+                NOTIFICATION_TYPE_MEETING_REMINDER,
+                "회의가 곧 시작합니다",
+                "참여 중인 회의가 곧 시작됩니다.",
+                meeting.getWorkspace().getId());
+
+        meeting.markReminderSent();
     }
 
     private void notifyParticipants(String meetingId, String actorEmployeeId,

@@ -64,6 +64,9 @@ public class Meeting extends BaseEntity {
     @Column(name = "top_candidate_times", columnDefinition = "TEXT")
     private String topCandidateTimes;
 
+    @Column(name = "reminder_sent", nullable = false)
+    private boolean reminderSent;
+
     @Builder.Default
     @OneToMany(mappedBy = "meeting", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MeetingReference> references = new ArrayList<>();
@@ -106,5 +109,9 @@ public class Meeting extends BaseEntity {
         this.topCandidateTimes = null;
         this.confirmedStartTime = null;
         this.confirmedEndTime = null;
+    }
+
+    public void markReminderSent() {
+        this.reminderSent = true;
     }
 }

@@ -1110,6 +1110,87 @@ class MeetingServiceTest {
     }
 
     @Test
+    void findMeetingIdsDueForReminder_조건에맞는회의ID목록을반환한다() {
+        Meeting meeting1 = Meeting.builder().id("meeting-1").title("A").durationMinutes(30).status(MeetingStatus.CONFIRMED).build();
+        Meeting meeting2 = Meeting.builder().id("meeting-2").title("B").durationMinutes(30).status(MeetingStatus.CONFIRMED).build();
+
+        LocalDateTime windowStart = LocalDateTime.of(2026, 6, 15, 10, 0);
+        LocalDateTime windowEnd = LocalDateTime.of(2026, 6, 15, 10, 10);
+
+        when(meetingRepository.findByStatusAndReminderSentFalseAndConfirmedStartTimeBetween(
+                MeetingStatus.CONFIRMED, windowStart, windowEnd))
+                .thenReturn(List.of(meeting1, meeting2));
+
+        List<String> result = meetingService.findMeetingIdsDueForReminder(windowStart, windowEnd);
+
+        assertThat(result).containsExactly("meeting-1", "meeting-2");
+    }
+
+    @Test
+    void sendReminder_CONFIRMED이고미발송이면_참석자전원에게알림을보내고reminderSent를true로설정한다() {
+        Workspace ws = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
+        Meeting meeting = Meeting.builder()
+                .id("meeting-1")
+                .workspace(ws)
+                .title("주간 회의")
+                .durationMinutes(60)
+                .status(MeetingStatus.CONFIRMED)
+                .build();
+
+        MeetingParticipant host = MeetingParticipant.builder()
+                .id("participant-host")
+                .meeting(meeting)
+                .employeeId("EMP001")
+                .status(ParticipantStatus.RESPONDED)
+                .role(ParticipantRole.HOST)
+                .build();
+
+        MeetingParticipant attendee = MeetingParticipant.builder()
+                .id("participant-attendee")
+                .meeting(meeting)
+                .employeeId("EMP002")
+                .status(ParticipantStatus.RESPONDED)
+                .role(ParticipantRole.ATTENDEE)
+                .build();
+
+        when(meetingRepository.findById("meeting-1")).thenReturn(Optional.of(meeting));
+        when(meetingParticipantRepository.findByMeetingId("meeting-1")).thenReturn(List.of(host, attendee));
+
+        meetingService.sendReminder("meeting-1");
+
+        assertThat(meeting.isReminderSent()).isTrue();
+        verify(notificationService, times(2)).createNotification(any(User.class), eq("MEETING_REMINDER"),
+                eq("meeting-1"), eq("회의가 곧 시작합니다"), eq("참여 중인 회의가 곧 시작됩니다."), any());
+    }
+
+    @Test
+    void sendReminder_이미발송되었거나CONFIRMED가아니면_아무것도하지않는다() {
+        Meeting alreadySent = Meeting.builder()
+                .id("meeting-1")
+                .title("주간 회의")
+                .durationMinutes(60)
+                .status(MeetingStatus.CONFIRMED)
+                .reminderSent(true)
+                .build();
+
+        Meeting notConfirmed = Meeting.builder()
+                .id("meeting-2")
+                .title("주간 회의")
+                .durationMinutes(60)
+                .status(MeetingStatus.SELECTING)
+                .build();
+
+        when(meetingRepository.findById("meeting-1")).thenReturn(Optional.of(alreadySent));
+        when(meetingRepository.findById("meeting-2")).thenReturn(Optional.of(notConfirmed));
+
+        meetingService.sendReminder("meeting-1");
+        meetingService.sendReminder("meeting-2");
+
+        verify(notificationService, never()).createNotification(any(), eq("MEETING_REMINDER"), any(), any(), any(), any());
+        verify(meetingParticipantRepository, never()).findByMeetingId(any());
+    }
+
+    @Test
     void createMeeting_참석자에게MEETING_INVITED알림이전송된다_생성자본인제외() {
         Workspace workspace = Workspace.builder().id("ws-1").name("테스트 워크스페이스").build();
         when(workspaceContextValidator.getValidWorkspace("ws-1")).thenReturn(workspace);
