@@ -39,4 +39,12 @@ public class MeetingParticipant extends BaseEntity {
     public void respond() {
         this.status = ParticipantStatus.RESPONDED;
     }
+
+    public void resetToPending() {
+        this.status = ParticipantStatus.PENDING;
+    }
+
+    public void decline() {
+        this.status = ParticipantStatus.DECLINED;
+    }
 }

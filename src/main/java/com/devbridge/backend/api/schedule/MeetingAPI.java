@@ -1,8 +1,10 @@
 package com.devbridge.backend.api.schedule;
 
+import com.devbridge.backend.domain.schedule.dto.AddParticipantsRequest;
 import com.devbridge.backend.domain.schedule.dto.ConfirmedScheduleResponse;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingRequest;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingResponse;
+import com.devbridge.backend.domain.schedule.dto.ManualConfirmRequest;
 import com.devbridge.backend.domain.schedule.dto.MeetingDetailResponse;
 import com.devbridge.backend.domain.schedule.dto.MeetingReferenceRequest;
 import com.devbridge.backend.domain.schedule.dto.MeetingReferenceResponse;
@@ -48,6 +50,12 @@ public interface MeetingAPI {
             @AuthenticationPrincipal String employeeId,
             @Valid @RequestBody SubmitAvailableTimesRequest request);
 
+    @Operation(summary = "회의 참석 거절", description = "로그인한 참석자가 회의 참석을 명시적으로 거절합니다. 주최자는 자신이 주최한 회의를 거절할 수 없습니다. 전원이 응답(제출 또는 거절)을 완료하면 자동 확정 로직이 실행됩니다.")
+    @PostMapping("/{meetingId}/participants/me/decline")
+    ResponseEntity<SubmitAvailableTimesResponse> declineMeeting(
+            @PathVariable("meetingId") String meetingId,
+            @AuthenticationPrincipal String employeeId);
+
     @Operation(summary = "내 확정 일정 조회", description = "로그인한 사용자가 현재 워크스페이스에서 참여 중인 CONFIRMED 상태 회의의 확정 시간 슬롯을 기간 내에서 조회합니다. 캘린더의 선택 불가(Blocked) 영역 렌더링에 사용됩니다.")
     @GetMapping("/participants/me/schedules")
     ResponseEntity<List<ConfirmedScheduleResponse>> getMyConfirmedSchedules(
@@ -69,12 +77,45 @@ public interface MeetingAPI {
             @PathVariable("meetingId") String meetingId,
             @AuthenticationPrincipal String employeeId);
 
-    @Operation(summary = "회의 정보 수정", description = "회의 주최자가 제목, 목적, 아젠다, 장소를 수정합니다. 주최자가 아닌 경우 수정할 수 없으며, 수정 시 다른 참석자 전원에게 알림이 전달됩니다.")
+    @Operation(summary = "회의 정보 수정", description = "회의 주최자가 제목, 목적, 아젠다, 장소, 화상회의 링크를 부분 수정합니다. 요청에 포함되지 않은(null) 필드는 기존 값이 유지되므로 필드를 하나씩 개별적으로 수정할 수 있습니다. 주최자가 아닌 경우 수정할 수 없으며, 수정 시 다른 참석자 전원에게 알림이 전달됩니다.")
     @PatchMapping("/{meetingId}")
     ResponseEntity<MeetingDetailResponse> updateMeeting(
             @PathVariable("meetingId") String meetingId,
             @AuthenticationPrincipal String employeeId,
             @Valid @RequestBody UpdateMeetingRequest request);
+
+    @Operation(summary = "회의 취소", description = "회의 주최자가 회의를 취소합니다. 이미 취소된 회의는 다시 취소할 수 없으며, 취소 시 다른 참석자 전원에게 알림이 전달됩니다.")
+    @PatchMapping("/{meetingId}/cancel")
+    ResponseEntity<MeetingDetailResponse> cancelMeeting(
+            @PathVariable("meetingId") String meetingId,
+            @AuthenticationPrincipal String employeeId);
+
+    @Operation(summary = "회의 시간 수동 확정", description = "주최자가 자동 확정 결과와 무관하게 회의 시간을 직접 지정해 확정합니다. 이미 확정되었거나 취소된 회의는 수동 확정할 수 없습니다.")
+    @PostMapping("/{meetingId}/confirm")
+    ResponseEntity<MeetingDetailResponse> confirmMeetingManually(
+            @PathVariable("meetingId") String meetingId,
+            @AuthenticationPrincipal String employeeId,
+            @Valid @RequestBody ManualConfirmRequest request);
+
+    @Operation(summary = "회의 재조율 요청", description = "자동 확정이 실패해 후보 시간 선정(SELECTING) 상태에 머물러 있는 회의를 시간 수집(GATHERING) 상태로 되돌립니다. 기존에 제출된 참석자 가능 시간은 모두 초기화되며, 참석자 전원에게 재제출 알림이 전달됩니다.")
+    @PostMapping("/{meetingId}/reopen")
+    ResponseEntity<MeetingDetailResponse> reopenMeeting(
+            @PathVariable("meetingId") String meetingId,
+            @AuthenticationPrincipal String employeeId);
+
+    @Operation(summary = "회의 참석자 추가", description = "회의 주최자가 참석자를 추가로 초대합니다. 이미 등록된 참석자는 중복으로 추가할 수 없습니다.")
+    @PostMapping("/{meetingId}/participants")
+    ResponseEntity<MeetingDetailResponse> addParticipants(
+            @PathVariable("meetingId") String meetingId,
+            @AuthenticationPrincipal String employeeId,
+            @Valid @RequestBody AddParticipantsRequest request);
+
+    @Operation(summary = "회의 참석자 제외", description = "회의 주최자가 참석자를 제외합니다. 주최자 본인은 제외할 수 없습니다.")
+    @DeleteMapping("/{meetingId}/participants/{employeeId}")
+    ResponseEntity<Void> removeParticipant(
+            @PathVariable("meetingId") String meetingId,
+            @AuthenticationPrincipal String employeeId,
+            @PathVariable("employeeId") String targetEmployeeId);
 
     @Operation(summary = "회의 첨부파일 추가", description = "회의 상세 화면에서 파일 업로드 또는 링크 형태의 첨부파일을 추가합니다.")
     @PostMapping("/{meetingId}/references")

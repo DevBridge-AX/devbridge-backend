@@ -11,6 +11,7 @@ public record MeetingDetailResponse(
         String purpose,
         String agenda,
         String location,
+        String meetingLink,
         Integer durationMinutes,
         MeetingStatus status,
         LocalDateTime confirmedStartTime,

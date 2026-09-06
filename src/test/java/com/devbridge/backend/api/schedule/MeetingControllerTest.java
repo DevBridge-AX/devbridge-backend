@@ -7,6 +7,8 @@ import com.devbridge.backend.domain.schedule.entity.ParticipantStatus;
 import com.devbridge.backend.domain.schedule.service.MeetingReferenceService;
 import com.devbridge.backend.domain.schedule.service.MeetingService;
 import com.devbridge.backend.global.auth.jwt.JwtTokenProvider;
+import com.devbridge.backend.global.common.exception.BusinessException;
+import com.devbridge.backend.global.common.exception.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.DisplayName;
@@ -24,9 +26,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -163,7 +167,7 @@ class MeetingControllerTest {
                 LocalDateTime.of(2026, 6, 15, 12, 0));
 
         MeetingDetailResponse detailResponse = new MeetingDetailResponse(
-                "meeting-uuid-123", "스프린트 회고", "회고 진행", "지난 스프린트 회고", "회의실 A", 60, MeetingStatus.CONFIRMED,
+                "meeting-uuid-123", "스프린트 회고", "회고 진행", "지난 스프린트 회고", "회의실 A", null, 60, MeetingStatus.CONFIRMED,
                 LocalDateTime.of(2026, 6, 15, 10, 0),
                 LocalDateTime.of(2026, 6, 15, 11, 0),
                 List.of(candidate),
@@ -204,10 +208,10 @@ class MeetingControllerTest {
     @DisplayName("7. 회의 정보 수정 API 성공 테스트 (PATCH /api/meetings/{meetingId})")
     void updateMeeting_Success() throws Exception {
         // given
-        UpdateMeetingRequest request = new UpdateMeetingRequest("수정된 회의", "목적", "아젠다", "회의실 A");
+        UpdateMeetingRequest request = new UpdateMeetingRequest("수정된 회의", "목적", "아젠다", "회의실 A", null);
 
         MeetingDetailResponse detailResponse = new MeetingDetailResponse(
-                "meeting-uuid-123", "수정된 회의", "목적", "아젠다", "회의실 A", 60, MeetingStatus.GATHERING,
+                "meeting-uuid-123", "수정된 회의", "목적", "아젠다", "회의실 A", null, 60, MeetingStatus.GATHERING,
                 null, null, List.of(), List.of(), List.of());
 
         when(meetingService.updateMeeting(any(), any(), any()))
@@ -230,7 +234,7 @@ class MeetingControllerTest {
     @DisplayName("8. [예외] 회의 정보 수정 API - 주최자가 아닌 경우 예외 테스트")
     void updateMeeting_NotHost_Failure() throws Exception {
         // given
-        UpdateMeetingRequest request = new UpdateMeetingRequest("수정된 회의", "목적", "아젠다", "회의실 A");
+        UpdateMeetingRequest request = new UpdateMeetingRequest("수정된 회의", "목적", "아젠다", "회의실 A", null);
 
         when(meetingService.updateMeeting(any(), any(), any()))
                 .thenThrow(new IllegalArgumentException("회의 주최자만 회의 정보를 수정할 수 있습니다."));
@@ -240,6 +244,122 @@ class MeetingControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
                         .with(authentication(getMockAuthentication("EMP002")))
+                        .with(csrf()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("9. 회의 취소 API 성공 테스트 (PATCH /api/meetings/{meetingId}/cancel)")
+    void cancelMeeting_Success() throws Exception {
+        MeetingDetailResponse detailResponse = new MeetingDetailResponse(
+                "meeting-uuid-123", "스프린트 회고", null, null, null, null, 60, MeetingStatus.CANCELED,
+                null, null, List.of(), List.of(), List.of());
+
+        when(meetingService.cancelMeeting(any(), any())).thenReturn(detailResponse);
+
+        mockMvc.perform(patch("/api/meetings/meeting-uuid-123/cancel")
+                        .with(authentication(getMockAuthentication("EMP001")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELED"));
+    }
+
+    @Test
+    @DisplayName("10. 회의 시간 수동 확정 API 성공 테스트 (POST /api/meetings/{meetingId}/confirm)")
+    void confirmMeetingManually_Success() throws Exception {
+        LocalDateTime start = LocalDateTime.of(2026, 6, 20, 14, 0);
+        LocalDateTime end = LocalDateTime.of(2026, 6, 20, 15, 0);
+        ManualConfirmRequest request = new ManualConfirmRequest(start, end);
+
+        MeetingDetailResponse detailResponse = new MeetingDetailResponse(
+                "meeting-uuid-123", "스프린트 회고", null, null, null, null, 60, MeetingStatus.CONFIRMED,
+                start, end, List.of(), List.of(), List.of());
+
+        when(meetingService.confirmMeetingManually(any(), any(), any())).thenReturn(detailResponse);
+
+        mockMvc.perform(post("/api/meetings/meeting-uuid-123/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .with(authentication(getMockAuthentication("EMP001")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.confirmedStartTime").value("2026-06-20T14:00:00"));
+    }
+
+    @Test
+    @DisplayName("11. 회의 재조율 요청 API 성공 테스트 (POST /api/meetings/{meetingId}/reopen)")
+    void reopenMeeting_Success() throws Exception {
+        MeetingDetailResponse detailResponse = new MeetingDetailResponse(
+                "meeting-uuid-123", "스프린트 회고", null, null, null, null, 60, MeetingStatus.GATHERING,
+                null, null, List.of(), List.of(), List.of());
+
+        when(meetingService.reopenMeeting(any(), any())).thenReturn(detailResponse);
+
+        mockMvc.perform(post("/api/meetings/meeting-uuid-123/reopen")
+                        .with(authentication(getMockAuthentication("EMP001")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("GATHERING"));
+    }
+
+    @Test
+    @DisplayName("12. 회의 참석자 추가 API 성공 테스트 (POST /api/meetings/{meetingId}/participants)")
+    void addParticipants_Success() throws Exception {
+        AddParticipantsRequest request = new AddParticipantsRequest(List.of("EMP005"));
+
+        MeetingParticipantResponse newParticipant = new MeetingParticipantResponse(
+                "EMP005", "박민준", "기획팀", "PM", ParticipantRole.ATTENDEE, ParticipantStatus.PENDING);
+
+        MeetingDetailResponse detailResponse = new MeetingDetailResponse(
+                "meeting-uuid-123", "스프린트 회고", null, null, null, null, 60, MeetingStatus.GATHERING,
+                null, null, List.of(), List.of(newParticipant), List.of());
+
+        when(meetingService.addParticipants(any(), any(), any())).thenReturn(detailResponse);
+
+        mockMvc.perform(post("/api/meetings/meeting-uuid-123/participants")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .with(authentication(getMockAuthentication("EMP001")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.participants[0].employeeId").value("EMP005"));
+    }
+
+    @Test
+    @DisplayName("13. 회의 참석자 제외 API 성공 테스트 (DELETE /api/meetings/{meetingId}/participants/{employeeId})")
+    void removeParticipant_Success() throws Exception {
+        doNothing().when(meetingService).removeParticipant(any(), any(), any());
+
+        mockMvc.perform(delete("/api/meetings/meeting-uuid-123/participants/EMP005")
+                        .with(authentication(getMockAuthentication("EMP001")))
+                        .with(csrf()))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("14. 회의 참석 거절 API 성공 테스트 (POST /api/meetings/{meetingId}/participants/me/decline)")
+    void declineMeeting_Success() throws Exception {
+        SubmitAvailableTimesResponse response = new SubmitAvailableTimesResponse(
+                "meeting-uuid-123", "EMP002", ParticipantStatus.DECLINED, false);
+
+        when(meetingService.declineMeeting(any(), any())).thenReturn(response);
+
+        mockMvc.perform(post("/api/meetings/meeting-uuid-123/participants/me/decline")
+                        .with(authentication(getMockAuthentication("EMP002")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DECLINED"));
+    }
+
+    @Test
+    @DisplayName("15. [예외] 회의 참석 거절 API - 주최자가 거절을 시도하는 경우 예외 테스트")
+    void declineMeeting_HostCannotDecline_Failure() throws Exception {
+        when(meetingService.declineMeeting(any(), any()))
+                .thenThrow(new BusinessException(ErrorCode.SCHEDULE_HOST_CANNOT_DECLINE));
+
+        mockMvc.perform(post("/api/meetings/meeting-uuid-123/participants/me/decline")
+                        .with(authentication(getMockAuthentication("EMP001")))
                         .with(csrf()))
                 .andExpect(status().isBadRequest());
     }

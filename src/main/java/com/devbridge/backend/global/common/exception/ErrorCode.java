@@ -55,8 +55,17 @@ public enum ErrorCode {
     SCHEDULE_REFERENCE_NOT_FOUND(HttpStatus.BAD_REQUEST, "해당 회의의 첨부파일이 아닙니다."),
     SCHEDULE_DOCUMENT_NOT_FOUND(HttpStatus.BAD_REQUEST, "해당 문서가 존재하지 않습니다."),
     SCHEDULE_NOT_HOST(HttpStatus.BAD_REQUEST, "회의 주최자만 회의 정보를 수정할 수 있습니다."),
+    SCHEDULE_INVALID_TITLE(HttpStatus.BAD_REQUEST, "회의 제목은 빈 값일 수 없습니다."),
     SCHEDULE_CANDIDATE_SERIALIZE_FAILED(HttpStatus.CONFLICT, "후보 시간 목록 직렬화에 실패했습니다."),
     SCHEDULE_CANDIDATE_DESERIALIZE_FAILED(HttpStatus.CONFLICT, "후보 시간 목록 역직렬화에 실패했습니다."),
+    SCHEDULE_ALREADY_CANCELED(HttpStatus.CONFLICT, "이미 취소된 회의입니다."),
+    SCHEDULE_ALREADY_CONFIRMED(HttpStatus.CONFLICT, "이미 확정된 회의입니다."),
+    SCHEDULE_INVALID_TIME_RANGE(HttpStatus.BAD_REQUEST, "종료 시간은 시작 시간보다 이후여야 합니다."),
+    SCHEDULE_INVALID_STATUS_FOR_REOPEN(HttpStatus.CONFLICT, "재조율은 후보 시간 선정(SELECTING) 상태에서만 가능합니다."),
+    SCHEDULE_PARTICIPANT_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 참석자로 등록된 사용자입니다."),
+    SCHEDULE_PARTICIPANT_NOT_FOUND(HttpStatus.BAD_REQUEST, "해당 참석자를 찾을 수 없습니다."),
+    SCHEDULE_CANNOT_REMOVE_HOST(HttpStatus.BAD_REQUEST, "회의 주최자는 제외할 수 없습니다."),
+    SCHEDULE_HOST_CANNOT_DECLINE(HttpStatus.BAD_REQUEST, "회의 주최자는 참석을 거절할 수 없습니다."),
 
     // setting
     SETTING_USER_NOT_FOUND(HttpStatus.BAD_REQUEST, "사용자를 찾을 수 없습니다."),

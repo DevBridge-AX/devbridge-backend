@@ -1,10 +1,12 @@
 package com.devbridge.backend.domain.schedule.service;
 
 import com.devbridge.backend.domain.notification.service.NotificationService;
+import com.devbridge.backend.domain.schedule.dto.AddParticipantsRequest;
 import com.devbridge.backend.domain.schedule.dto.CandidateTimeSlot;
 import com.devbridge.backend.domain.schedule.dto.ConfirmedScheduleResponse;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingRequest;
 import com.devbridge.backend.domain.schedule.dto.CreateMeetingResponse;
+import com.devbridge.backend.domain.schedule.dto.ManualConfirmRequest;
 import com.devbridge.backend.domain.schedule.dto.MeetingDetailResponse;
 import com.devbridge.backend.domain.schedule.dto.MeetingParticipantResponse;
 import com.devbridge.backend.domain.schedule.dto.MeetingSummaryResponse;
@@ -60,11 +62,26 @@ public class MeetingService {
 
     private static final String NOTIFICATION_TYPE_MEETING_INVITED = "MEETING_INVITED";
     private static final String NOTIFICATION_TYPE_MEETING_UPDATED = "MEETING_UPDATED";
+    private static final String NOTIFICATION_TYPE_MEETING_CANCELED = "MEETING_CANCELED";
+    private static final String NOTIFICATION_TYPE_MEETING_CONFIRMED = "MEETING_CONFIRMED";
+    private static final String NOTIFICATION_TYPE_MEETING_REOPENED = "MEETING_REOPENED";
+    private static final String NOTIFICATION_TYPE_MEETING_REMINDER = "MEETING_REMINDER";
 
     private User resolveUser(String employeeId) {
         return userInternalService.findByEmployeeId(employeeId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_USER_NOT_FOUND,
                         "해당 사용자가 존재하지 않습니다: " + employeeId));
+    }
+
+    private MeetingParticipant resolveHost(String meetingId, String employeeId) {
+        MeetingParticipant participant = meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, employeeId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_NOT_PARTICIPANT));
+
+        if (participant.getRole() != ParticipantRole.HOST) {
+            throw new BusinessException(ErrorCode.SCHEDULE_NOT_HOST);
+        }
+
+        return participant;
     }
 
     @Transactional
@@ -212,18 +229,17 @@ public class MeetingService {
     @Transactional
     public MeetingDetailResponse updateMeeting(String meetingId, String employeeId, UpdateMeetingRequest request) {
         resolveUser(employeeId);
+        resolveHost(meetingId, employeeId);
 
-        MeetingParticipant participant = meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, employeeId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_NOT_PARTICIPANT));
-
-        if (participant.getRole() != ParticipantRole.HOST) {
-            throw new BusinessException(ErrorCode.SCHEDULE_NOT_HOST);
+        if (request.title() != null && request.title().isBlank()) {
+            throw new BusinessException(ErrorCode.SCHEDULE_INVALID_TITLE);
         }
 
         Meeting meeting = meetingRepository.findById(meetingId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_MEETING_NOT_FOUND));
 
-        meeting.updateInfo(request.title(), request.purpose(), request.agenda(), request.location());
+        // 제공된 필드만 반영한다(null은 미변경). PATCH 의미상 필드를 하나씩 개별 수정할 수 있어야 한다.
+        meeting.updateInfo(request.title(), request.purpose(), request.agenda(), request.location(), request.meetingLink());
 
         notifyParticipants(meetingId, employeeId,
                 NOTIFICATION_TYPE_MEETING_UPDATED,
@@ -232,6 +248,174 @@ public class MeetingService {
                 meeting.getWorkspace().getId());
 
         return buildDetailResponse(meeting);
+    }
+
+    @Transactional
+    public MeetingDetailResponse cancelMeeting(String meetingId, String employeeId) {
+        resolveUser(employeeId);
+        resolveHost(meetingId, employeeId);
+
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_MEETING_NOT_FOUND));
+
+        if (meeting.getStatus() == MeetingStatus.CANCELED) {
+            throw new BusinessException(ErrorCode.SCHEDULE_ALREADY_CANCELED);
+        }
+
+        meeting.cancel();
+
+        notifyParticipants(meetingId, employeeId,
+                NOTIFICATION_TYPE_MEETING_CANCELED,
+                "회의가 취소되었습니다",
+                "참여 중인 회의가 주최자에 의해 취소되었습니다.",
+                meeting.getWorkspace().getId());
+
+        return buildDetailResponse(meeting);
+    }
+
+    @Transactional
+    public MeetingDetailResponse confirmMeetingManually(String meetingId, String employeeId, ManualConfirmRequest request) {
+        resolveUser(employeeId);
+        resolveHost(meetingId, employeeId);
+
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_MEETING_NOT_FOUND));
+
+        if (meeting.getStatus() == MeetingStatus.CANCELED) {
+            throw new BusinessException(ErrorCode.SCHEDULE_ALREADY_CANCELED);
+        }
+        if (meeting.getStatus() == MeetingStatus.CONFIRMED) {
+            throw new BusinessException(ErrorCode.SCHEDULE_ALREADY_CONFIRMED);
+        }
+        if (!request.confirmedStartTime().isBefore(request.confirmedEndTime())) {
+            throw new BusinessException(ErrorCode.SCHEDULE_INVALID_TIME_RANGE);
+        }
+
+        meeting.confirmSchedule(request.confirmedStartTime(), request.confirmedEndTime());
+
+        notifyParticipants(meetingId, employeeId,
+                NOTIFICATION_TYPE_MEETING_CONFIRMED,
+                "회의 일정이 확정되었습니다",
+                "주최자가 회의 시간을 직접 확정했습니다.",
+                meeting.getWorkspace().getId());
+
+        return buildDetailResponse(meeting);
+    }
+
+    @Transactional
+    public MeetingDetailResponse reopenMeeting(String meetingId, String employeeId) {
+        resolveUser(employeeId);
+        resolveHost(meetingId, employeeId);
+
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_MEETING_NOT_FOUND));
+
+        // 자동 확정이 교집합 부재로 실패해 후보가 없는 채로 멈춘 SELECTING 상태만 재조율 대상으로 삼는다.
+        if (meeting.getStatus() != MeetingStatus.SELECTING) {
+            throw new BusinessException(ErrorCode.SCHEDULE_INVALID_STATUS_FOR_REOPEN);
+        }
+
+        List<ParticipantAvailableTime> existingTimes =
+                participantAvailableTimeRepository.findByMeetingParticipant_MeetingId(meetingId);
+        participantAvailableTimeRepository.deleteAll(existingTimes);
+
+        meetingParticipantRepository.findByMeetingId(meetingId)
+                .forEach(MeetingParticipant::resetToPending);
+
+        meeting.reopen();
+
+        notifyParticipants(meetingId, employeeId,
+                NOTIFICATION_TYPE_MEETING_REOPENED,
+                "회의 일정 재조율이 요청되었습니다",
+                "가능한 시간을 다시 제출해주세요.",
+                meeting.getWorkspace().getId());
+
+        return buildDetailResponse(meeting);
+    }
+
+    @Transactional
+    public MeetingDetailResponse addParticipants(String meetingId, String employeeId, AddParticipantsRequest request) {
+        resolveUser(employeeId);
+        resolveHost(meetingId, employeeId);
+
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_MEETING_NOT_FOUND));
+
+        if (meeting.getStatus() == MeetingStatus.CANCELED) {
+            throw new BusinessException(ErrorCode.SCHEDULE_ALREADY_CANCELED);
+        }
+
+        for (String newEmployeeId : request.employeeIds()) {
+            if (meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, newEmployeeId).isPresent()) {
+                throw new BusinessException(ErrorCode.SCHEDULE_PARTICIPANT_ALREADY_EXISTS,
+                        "이미 참석자로 등록된 사용자입니다: " + newEmployeeId);
+            }
+        }
+
+        List<MeetingParticipant> newParticipants = request.employeeIds().stream()
+                .map(newEmployeeId -> MeetingParticipant.builder()
+                        .meeting(meeting)
+                        .employeeId(newEmployeeId)
+                        .status(ParticipantStatus.PENDING)
+                        .role(ParticipantRole.ATTENDEE)
+                        .build())
+                .toList();
+
+        meetingParticipantRepository.saveAll(newParticipants);
+
+        newParticipants.forEach(p -> userInternalService.findByEmployeeId(p.getEmployeeId())
+                .ifPresent(recipient -> notificationService.createNotification(
+                        recipient, NOTIFICATION_TYPE_MEETING_INVITED, meetingId,
+                        "회의에 초대되었습니다", "새 회의에 참석자로 초대되었습니다.",
+                        meeting.getWorkspace().getId())));
+
+        return buildDetailResponse(meeting);
+    }
+
+    @Transactional
+    public void removeParticipant(String meetingId, String employeeId, String targetEmployeeId) {
+        resolveUser(employeeId);
+        resolveHost(meetingId, employeeId);
+
+        MeetingParticipant target = meetingParticipantRepository.findByMeetingIdAndEmployeeId(meetingId, targetEmployeeId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_PARTICIPANT_NOT_FOUND));
+
+        if (target.getRole() == ParticipantRole.HOST) {
+            throw new BusinessException(ErrorCode.SCHEDULE_CANNOT_REMOVE_HOST);
+        }
+
+        meetingParticipantRepository.delete(target);
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> findMeetingIdsDueForReminder(LocalDateTime windowStart, LocalDateTime windowEnd) {
+        return meetingRepository
+                .findByStatusAndReminderSentFalseAndConfirmedStartTimeBetween(MeetingStatus.CONFIRMED, windowStart, windowEnd)
+                .stream()
+                .map(Meeting::getId)
+                .toList();
+    }
+
+    @Transactional
+    public void sendReminder(String meetingId) {
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_MEETING_NOT_FOUND));
+
+        // 폴링 시점과 처리 시점 사이 상태가 바뀌었을 수 있어 방어적으로 재확인한다.
+        if (meeting.getStatus() != MeetingStatus.CONFIRMED || meeting.isReminderSent()) {
+            return;
+        }
+
+        // 거절한 참석자는 리마인더 대상에서 제외한다(공용 notifyParticipants는 이 필터가 없다).
+        meetingParticipantRepository.findByMeetingId(meetingId).stream()
+                .filter(p -> p.getStatus() != ParticipantStatus.DECLINED)
+                .forEach(p -> userInternalService.findByEmployeeId(p.getEmployeeId())
+                        .ifPresent(recipient -> notificationService.createNotification(
+                                recipient, NOTIFICATION_TYPE_MEETING_REMINDER, meetingId,
+                                "회의가 곧 시작합니다", "참여 중인 회의가 곧 시작됩니다.",
+                                meeting.getWorkspace().getId())));
+
+        meeting.markReminderSent();
     }
 
     private void notifyParticipants(String meetingId, String actorEmployeeId,
@@ -264,6 +448,7 @@ public class MeetingService {
                 meeting.getPurpose(),
                 meeting.getAgenda(),
                 meeting.getLocation(),
+                meeting.getMeetingLink(),
                 meeting.getDurationMinutes(),
                 meeting.getStatus(),
                 meeting.getConfirmedStartTime(),
@@ -306,9 +491,32 @@ public class MeetingService {
         return new SubmitAvailableTimesResponse(meetingId, employeeId, participant.getStatus(), allResponded);
     }
 
+    @Transactional
+    public SubmitAvailableTimesResponse declineMeeting(String meetingId, String employeeId) {
+        resolveUser(employeeId);
+
+        MeetingParticipant participant = meetingParticipantRepository
+                .findByMeetingIdAndEmployeeId(meetingId, employeeId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_NOT_PARTICIPANT));
+
+        if (participant.getRole() == ParticipantRole.HOST) {
+            throw new BusinessException(ErrorCode.SCHEDULE_HOST_CANNOT_DECLINE);
+        }
+
+        participant.decline();
+
+        boolean allResponded = isAllParticipantsResponded(meetingId);
+
+        if (allResponded) {
+            selectTopCandidateTimes(participant.getMeeting());
+        }
+
+        return new SubmitAvailableTimesResponse(meetingId, employeeId, participant.getStatus(), allResponded);
+    }
+
     private boolean isAllParticipantsResponded(String meetingId) {
         return meetingParticipantRepository.findByMeetingId(meetingId).stream()
-                .allMatch(participant -> participant.getStatus() == ParticipantStatus.RESPONDED);
+                .allMatch(participant -> participant.getStatus() != ParticipantStatus.PENDING);
     }
 
     private void selectTopCandidateTimes(Meeting meeting) {
@@ -346,6 +554,12 @@ public class MeetingService {
 
         TimeRange bestRange = sufficientRanges.get(0);
         meeting.confirmSchedule(bestRange.start(), bestRange.start().plusMinutes(meeting.getDurationMinutes()));
+
+        notifyParticipants(meeting.getId(), null,
+                NOTIFICATION_TYPE_MEETING_CONFIRMED,
+                "회의 일정이 확정되었습니다",
+                "제출된 가능 시간을 기반으로 회의 일정이 자동으로 확정되었습니다.",
+                meeting.getWorkspace().getId());
     }
 
     private List<TimeRange> mergeRanges(List<TimeRange> ranges) {

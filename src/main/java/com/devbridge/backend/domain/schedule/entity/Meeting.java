@@ -64,15 +64,29 @@ public class Meeting extends BaseEntity {
     @Column(name = "top_candidate_times", columnDefinition = "TEXT")
     private String topCandidateTimes;
 
+    @Column(name = "reminder_sent", nullable = false)
+    private boolean reminderSent;
+
     @Builder.Default
     @OneToMany(mappedBy = "meeting", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MeetingReference> references = new ArrayList<>();
 
-    public void updateInfo(String title, String purpose, String agenda, String location) {
-        this.title = title;
-        this.purpose = purpose;
-        this.agenda = agenda;
-        this.location = location;
+    public void updateInfo(String title, String purpose, String agenda, String location, String meetingLink) {
+        if (title != null) {
+            this.title = title;
+        }
+        if (purpose != null) {
+            this.purpose = purpose;
+        }
+        if (agenda != null) {
+            this.agenda = agenda;
+        }
+        if (location != null) {
+            this.location = location;
+        }
+        if (meetingLink != null) {
+            this.meetingLink = meetingLink;
+        }
     }
 
     public void selectTopCandidateTimes(String topCandidateTimesJson) {
@@ -84,5 +98,20 @@ public class Meeting extends BaseEntity {
         this.confirmedStartTime = confirmedStartTime;
         this.confirmedEndTime = confirmedEndTime;
         this.status = MeetingStatus.CONFIRMED;
+    }
+
+    public void cancel() {
+        this.status = MeetingStatus.CANCELED;
+    }
+
+    public void reopen() {
+        this.status = MeetingStatus.GATHERING;
+        this.topCandidateTimes = null;
+        this.confirmedStartTime = null;
+        this.confirmedEndTime = null;
+    }
+
+    public void markReminderSent() {
+        this.reminderSent = true;
     }
 }
