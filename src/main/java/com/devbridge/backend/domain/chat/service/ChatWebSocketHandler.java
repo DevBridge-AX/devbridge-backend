@@ -1,5 +1,6 @@
 package com.devbridge.backend.domain.chat.service;
 
+import com.devbridge.backend.domain.chat.dto.ChatAccessScope;
 import com.devbridge.backend.domain.chat.dto.ConversationContext;
 import com.devbridge.backend.domain.chat.dto.fastapi.FastApiChatRequest;
 import com.devbridge.backend.domain.chat.dto.fastapi.FastApiDoneEvent;
@@ -32,6 +33,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private final UserInternalService userInternalService;
     private final ObjectMapper objectMapper;
     private final WebSocketSessionRegistry webSocketSessionRegistry;
+    private final ChatAccessScopeResolver chatAccessScopeResolver;
 
     private static final CloseStatus CLOSE_AUTH_FAILED = WebSocketContract.CLOSE_AUTH_FAILED;
 
@@ -97,6 +99,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
         String messageId = java.util.UUID.randomUUID().toString();
 
+        ChatAccessScope accessScope = chatAccessScopeResolver.resolve(context.getWorkspaceId(), employeeId);
+
         FastApiChatRequest request = FastApiChatRequest.builder()
                 .sessionId(sessionId)
                 .content(content)
@@ -104,6 +108,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 .workspaceId(context.getWorkspaceId())
                 .userId(context.getUserId())
                 .role(role)
+                .accessibleTaskIds(accessScope.getAccessibleTaskIds())
+                .canViewRestricted(accessScope.isCanViewRestricted())
                 .build();
 
         StringBuilder fullContent = new StringBuilder();
