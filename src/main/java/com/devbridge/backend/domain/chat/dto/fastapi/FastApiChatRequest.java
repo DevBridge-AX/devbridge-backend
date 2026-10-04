@@ -30,6 +30,12 @@ public class FastApiChatRequest {
 
     private String role;
 
+    @JsonProperty("accessible_task_ids")
+    private List<String> accessibleTaskIds;
+
+    @JsonProperty("can_view_restricted")
+    private boolean canViewRestricted;
+
     @Getter
     @NoArgsConstructor
     @AllArgsConstructor
