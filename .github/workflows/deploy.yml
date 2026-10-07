@@ -90,6 +90,7 @@ jobs:
             MYSQL_USER=${{ secrets.MYSQL_USER }}
             MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}
             INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
             SPRING_MAIL_USERNAME=${{ secrets.SPRING_MAIL_USERNAME }}
             SPRING_MAIL_PASSWORD=${{ secrets.SPRING_MAIL_PASSWORD }}
             MYSQL_USER_AI=${{ secrets.MYSQL_USER_AI }}

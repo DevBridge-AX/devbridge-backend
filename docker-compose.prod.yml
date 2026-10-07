@@ -58,6 +58,7 @@ services:
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       INTERNAL_API_KEY: "${INTERNAL_API_KEY}"
+      JWT_SECRET: "${JWT_SECRET}"
       # AI 엔진 프로덕션 URL (같은 EC2라면 localhost:8000 이나 내부망 IP 사용, 아래는 동일 네트워크 기준)
       AI_ENGINE_BASE_URL: http://ai-engine:8000
       AI_ENGINE_INTERNAL_API_KEY: "${INTERNAL_API_KEY}"
