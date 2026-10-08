@@ -1,5 +1,6 @@
 package com.devbridge.backend.domain.chat.service;
 
+import com.devbridge.backend.domain.chat.dto.ChatAccessScope;
 import com.devbridge.backend.domain.chat.dto.ConversationContext;
 import com.devbridge.backend.domain.chat.dto.fastapi.FastApiChatRequest;
 import com.devbridge.backend.domain.chat.dto.fastapi.FastApiDoneEvent;
@@ -68,6 +69,9 @@ class ChatWebSocketHandlerTest {
     private WebSocketSessionRegistry webSocketSessionRegistry;
 
     @Mock
+    private ChatAccessScopeResolver chatAccessScopeResolver;
+
+    @Mock
     private WebSocketSession session;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -78,10 +82,12 @@ class ChatWebSocketHandlerTest {
     @BeforeEach
     void setUp() {
         handler = new ChatWebSocketHandler(
-                fastApiClient, chatMessageService, userInternalService, objectMapper, webSocketSessionRegistry);
+                fastApiClient, chatMessageService, userInternalService, objectMapper, webSocketSessionRegistry,
+                chatAccessScopeResolver);
         attributes = new HashMap<>();
         lenient().when(session.getAttributes()).thenReturn(attributes);
         lenient().when(session.isOpen()).thenReturn(true);
+        lenient().when(chatAccessScopeResolver.resolve(any(), any())).thenReturn(ChatAccessScope.unrestricted());
         lenient().when(session.getId()).thenReturn("WS-SESSION-1");
     }
 
@@ -209,6 +215,42 @@ class ChatWebSocketHandlerTest {
             assertThat(captor.getValue().getWorkspaceId()).isEqualTo("WS-001");
             assertThat(captor.getValue().getUserId()).isEqualTo("USER-001");
             assertThat(captor.getValue().getContent()).isEqualTo("질문입니다");
+        }
+
+        @Test
+        @DisplayName("handleTextMessage_withChatMessage_passesResolvedAccessScopeToFastApi")
+        void handleTextMessage_withChatMessage_passesResolvedAccessScopeToFastApi() throws Exception {
+            when(chatMessageService.getConversationContext(SESSION_ID)).thenReturn(
+                    ConversationContext.builder()
+                            .workspaceId("WS-001").userId("USER-001").conversationHistory(List.of()).build());
+            when(chatAccessScopeResolver.resolve("WS-001", EMPLOYEE_ID))
+                    .thenReturn(new ChatAccessScope(List.of("TASK-1", "TASK-2"), true));
+            when(fastApiClient.streamChat(any(FastApiChatRequest.class))).thenReturn(Flux.empty());
+
+            handler.handleMessage(session, new TextMessage(
+                    "{\"type\":\"chat_message\",\"session_id\":\"" + SESSION_ID + "\",\"content\":\"질문입니다\"}"));
+
+            ArgumentCaptor<FastApiChatRequest> captor = ArgumentCaptor.forClass(FastApiChatRequest.class);
+            verify(fastApiClient).streamChat(captor.capture());
+            assertThat(captor.getValue().getAccessibleTaskIds()).containsExactly("TASK-1", "TASK-2");
+            assertThat(captor.getValue().isCanViewRestricted()).isTrue();
+        }
+
+        @Test
+        @DisplayName("handleTextMessage_withUnrestrictedScope_sendsNullTaskIdsAndRestrictedFalse")
+        void handleTextMessage_withUnrestrictedScope_sendsNullTaskIdsAndRestrictedFalse() throws Exception {
+            when(chatMessageService.getConversationContext(SESSION_ID)).thenReturn(
+                    ConversationContext.builder()
+                            .workspaceId("WS-001").userId("USER-001").conversationHistory(List.of()).build());
+            when(fastApiClient.streamChat(any(FastApiChatRequest.class))).thenReturn(Flux.empty());
+
+            handler.handleMessage(session, new TextMessage(
+                    "{\"type\":\"chat_message\",\"session_id\":\"" + SESSION_ID + "\",\"content\":\"질문입니다\"}"));
+
+            ArgumentCaptor<FastApiChatRequest> captor = ArgumentCaptor.forClass(FastApiChatRequest.class);
+            verify(fastApiClient).streamChat(captor.capture());
+            assertThat(captor.getValue().getAccessibleTaskIds()).isNull();
+            assertThat(captor.getValue().isCanViewRestricted()).isFalse();
         }
     }
 
