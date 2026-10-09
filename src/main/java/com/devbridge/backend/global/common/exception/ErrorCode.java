@@ -29,8 +29,8 @@ public enum ErrorCode {
     AUTH_HR_NOT_FOUND(HttpStatus.BAD_REQUEST, "일치하는 사원 정보를 찾을 수 없습니다."),
     AUTH_INACTIVE_EMPLOYEE(HttpStatus.BAD_REQUEST, "비활성화된 사원입니다."),
     AUTH_EMPLOYEE_EMAIL_MISMATCH(HttpStatus.BAD_REQUEST, "사번과 등록된 이메일 정보가 일치하지 않습니다."),
-    // 상태코드가 부적절하다는 게 이미 알려져 있으나(프론트 합의 전까지 500 유지) 그대로 보존한다.
-    AUTH_EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "이메일 발송 중 오류가 발생했습니다."),
+    // 메일 서버는 외부 의존이라 재시도 가능한 일시 장애(503)로 응답한다.
+    AUTH_EMAIL_SEND_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "이메일 발송에 실패했습니다. 잠시 후 다시 시도해 주세요."),
     AUTH_CODE_MISMATCH(HttpStatus.BAD_REQUEST, "인증번호가 불일치하거나 만료되었습니다."),
     AUTH_EMAIL_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "이메일 인증이 완료되지 않았습니다."),
     AUTH_VERIFICATION_FAILED(HttpStatus.BAD_REQUEST, "인증 실패"),

@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
@@ -88,8 +89,8 @@ public class AuthService {
             helper.setText(htmlContent, true);
 
             mailSender.send(message);
-        } catch (MessagingException e) {
-            throw new BusinessException(ErrorCode.AUTH_EMAIL_SEND_FAILED, "이메일 발송 중 오류가 발생했습니다.", e);
+        } catch (MessagingException | MailException e) {
+            throw new BusinessException(ErrorCode.AUTH_EMAIL_SEND_FAILED, ErrorCode.AUTH_EMAIL_SEND_FAILED.getMessage(), e);
         }
     }
 
