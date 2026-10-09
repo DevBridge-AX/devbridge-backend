@@ -276,8 +276,7 @@ nginx 설정은 이 레포에서 관리하지 않으므로 EC2 운영 설정에�
 ### 운영 배포에 필요한 GitHub Secrets
 
 `deploy.yml`이 아래 Secrets를 EC2의 `.env`로 써서 `docker-compose.prod.yml`에 주입합니다.
-누락 시 해당 설정은 `application.yml`의 기본값으로 대체되며, 특히 `JWT_SECRET`이 빠지면
-개발용 기본 키로 토큰이 서명되므로 반드시 등록해야 합니다.
+prod 프로필에서는 `JWT_SECRET` 미주입 시 기동에 실패합니다.
 
 | Secret | 용도 |
 | --- | --- |
@@ -295,8 +294,34 @@ nginx 설정은 이 레포에서 관리하지 않으므로 EC2 운영 설정에�
 | `SPRING_MAIL_PASSWORD` | 메일 발송 계정 비밀번호(앱 비밀번호) |
 | `JWT_SECRET` | JWT 서명 키. Base64 인코딩된 32바이트 이상 (`openssl rand -base64 48`로 생성). 값을 바꾸면 기존 발급 토큰이 전부 무효화되어 사용자 재로그인이 필요합니다. |
 
+### 프로필별 설정 동작
+
+`docker-compose.prod.yml`이 `SPRING_PROFILES_ACTIVE=prod`를 주입하므로 운영에서는
+`application-prod.yml`이 공통 `application.yml` 값을 덮어씁니다.
+
+| 항목 | local | prod |
+| --- | --- | --- |
+| `ddl-auto` | `update` (엔티티 기준 자동 변경) | `validate` (불일치 시 기동 실패) |
+| `show-sql` | `true` | `false` |
+| `data.sql` 시드 | 매 기동 시 실행 (`sql.init.mode: always`) | 실행 안 함 (`never`) |
+| `jwt.secret` 기본값 | 있음 (개발용 키) | 없음 (`JWT_SECRET` 필수) |
+
+### 스키마 변경 절차
+
+운영에서는 Hibernate가 스키마를 자동으로 바꾸지 않으므로 아래 순서를 지켜야 합니다.
+
+1. 엔티티를 수정한다.
+2. `src/main/resources/migration/VYYYYMMDD__<내용>.sql`에 변경 SQL을 작성한다.
+3. 배포 전에 운영 DB에 해당 SQL을 수동으로 적용한다.
+4. 배포한 뒤 `validate`를 통과해 기동되는지 확인한다.
+
+스키마가 엔티티와 불일치하면 app 컨테이너가 재시작 루프에 빠집니다. 이 경우
+`docker compose -f docker-compose.prod.yml logs app`에서 `Schema-validation` 문구를 확인합니다.
+
 ### 배포 후 체크리스트
 
+- [ ] app 컨테이너가 재시작 루프 없이 기동됐는지 확인한다
+      (`docker compose -f docker-compose.prod.yml ps`).
 - [ ] `wss://<운영도메인>/ws/chat?token=<유효한 JWT>`로 접속해 **101 Switching Protocols**
       응답을 확인한다.
 - [ ] 컨테이너 환경변수에 `JWT_SECRET`이 전달됐는지 확인한다
