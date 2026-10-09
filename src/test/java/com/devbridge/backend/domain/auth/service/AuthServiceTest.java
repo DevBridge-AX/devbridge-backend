@@ -31,6 +31,8 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.http.HttpStatus;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.thymeleaf.TemplateEngine;
@@ -232,27 +234,49 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("sendEmailAuthCode_whenMailFails_throwsRuntimeExceptionMappedTo500")
-        void sendEmailAuthCode_whenMailFails_throwsRuntimeExceptionMappedTo500() throws Exception {
+        @DisplayName("sendEmailAuthCode_whenMessagingFails_throwsBusinessExceptionMappedTo503")
+        void sendEmailAuthCode_whenMessagingFails_throwsBusinessExceptionMappedTo503() throws Exception {
             MimeMessage mimeMessage = org.mockito.Mockito.mock(MimeMessage.class);
             when(templateEngine.process(eq("mail-template"), any(Context.class))).thenReturn("<html/>");
             when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
             doThrow(new MessagingException("발송 실패")).when(mimeMessage).setRecipient(any(), any());
 
-            // BusinessException(AUTH_EMAIL_SEND_FAILED)이 500으로 매핑된다.
-            // 이메일 발송 실패는 서버 장애가 아니므로 상태코드가 부적절하나, 프론트 합의 전까지 현재 동작을 고정한다.
+            // BusinessException(AUTH_EMAIL_SEND_FAILED)이 503으로 매핑된다.
+            // 메일 서버는 외부 의존이므로 서버 오류(500)가 아닌 재시도 가능한 일시 장애로 응답한다.
             assertThatThrownBy(() -> authService.sendEmailAuthCode(new SendEmailRequest(EMPLOYEE_ID, EMAIL)))
                     .isInstanceOf(BusinessException.class)
-                    .hasMessage("이메일 발송 중 오류가 발생했습니다.")
+                    .hasMessage("이메일 발송에 실패했습니다. 잠시 후 다시 시도해 주세요.")
                     .hasCauseInstanceOf(MessagingException.class)
                     .satisfies(e -> {
                         ErrorCode errorCode = ((BusinessException) e).getErrorCode();
                         assertThat(errorCode).isEqualTo(ErrorCode.AUTH_EMAIL_SEND_FAILED);
-                        assertThat(errorCode.getHttpStatus()).isEqualTo(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR);
+                        assertThat(errorCode.getHttpStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
                     });
 
             // 인증코드는 메일 발송 이전에 이미 저장된다(발송 실패해도 Redis에 남는다).
             verify(valueOperations).set(anyString(), anyString(), anyLong(), any(TimeUnit.class));
+        }
+
+        @Test
+        @DisplayName("sendEmailAuthCode_whenSmtpFails_throwsBusinessExceptionWithSameErrorCode")
+        void sendEmailAuthCode_whenSmtpFails_throwsBusinessExceptionWithSameErrorCode() {
+            MimeMessage mimeMessage = org.mockito.Mockito.mock(MimeMessage.class);
+            when(templateEngine.process(eq("mail-template"), any(Context.class))).thenReturn("<html/>");
+            when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
+            // 실제 SMTP 실패(인증 실패·타임아웃·연결 거부)는 MessagingException이 아니라 런타임 MailException으로 올라온다.
+            doThrow(new MailSendException("smtp down")).when(mailSender).send(any(MimeMessage.class));
+
+            assertThatThrownBy(() -> authService.sendEmailAuthCode(new SendEmailRequest(EMPLOYEE_ID, EMAIL)))
+                    .isInstanceOf(BusinessException.class)
+                    .hasCauseInstanceOf(MailSendException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.AUTH_EMAIL_SEND_FAILED));
+        }
+
+        @Test
+        @DisplayName("errorCode_authEmailSendFailed_isMappedTo503")
+        void errorCode_authEmailSendFailed_isMappedTo503() {
+            assertThat(ErrorCode.AUTH_EMAIL_SEND_FAILED.getHttpStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
         }
     }
 
