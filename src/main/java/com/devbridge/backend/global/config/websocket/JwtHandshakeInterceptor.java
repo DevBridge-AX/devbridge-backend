@@ -2,7 +2,7 @@ package com.devbridge.backend.global.config.websocket;
 
 import com.devbridge.backend.domain.user.entity.JobRole;
 import com.devbridge.backend.domain.user.entity.User;
-import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.domain.user.service.UserInternalService;
 import com.devbridge.backend.global.auth.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +24,7 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final StringRedisTemplate redisTemplate;
-    private final UserRepository userRepository;
+    private final UserInternalService userInternalService;
 
     @Override
     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
@@ -41,7 +41,7 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
         String employeeId = jwtTokenProvider.extractEmployeeId(token);
         attributes.put("employeeId", employeeId);
 
-        String jobRole = userRepository.findByEmployeeId(employeeId)
+        String jobRole = userInternalService.findByEmployeeId(employeeId)
                 .map(User::getJobRole)
                 .map(JobRole::name)
                 .map(String::toLowerCase)
