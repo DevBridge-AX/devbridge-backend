@@ -8,7 +8,7 @@ import com.devbridge.backend.domain.chat.repository.ChatMessageRepository;
 import com.devbridge.backend.domain.chat.repository.OwnerConfirmationRepository;
 import com.devbridge.backend.domain.datasource.entity.DataSource;
 import com.devbridge.backend.domain.datasource.entity.KnowledgeDocument;
-import com.devbridge.backend.domain.datasource.repository.KnowledgeDocumentRepository;
+import com.devbridge.backend.domain.datasource.service.DataSourceInternalService;
 import com.devbridge.backend.domain.notification.service.NotificationService;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.service.UserInternalService;
@@ -55,7 +55,7 @@ class OwnerConfirmationServiceTest {
     private OwnerConfirmationRepository ownerConfirmationRepository;
 
     @Mock
-    private KnowledgeDocumentRepository knowledgeDocumentRepository;
+    private DataSourceInternalService dataSourceInternalService;
 
     @Mock
     private NotificationService notificationService;
@@ -80,7 +80,7 @@ class OwnerConfirmationServiceTest {
     void setUp() {
         ownerConfirmationService = new OwnerConfirmationService(
                 userInternalService, chatMessageRepository, ownerConfirmationRepository,
-                knowledgeDocumentRepository, notificationService, fastApiClient,
+                dataSourceInternalService, notificationService, fastApiClient,
                 webSocketSessionRegistry, objectMapper, workspaceContextValidator, workspaceService);
     }
 
@@ -200,7 +200,7 @@ class OwnerConfirmationServiceTest {
         KnowledgeDocument document = KnowledgeDocument.builder()
                 .id("doc-1").dataSource(dataSource).uploadedBy(uploader).title("설계 문서").build();
 
-        when(knowledgeDocumentRepository.findById("doc-1")).thenReturn(Optional.of(document));
+        when(dataSourceInternalService.findDocumentById("doc-1")).thenReturn(Optional.of(document));
         when(userInternalService.findByEmployeeId("EMP030")).thenReturn(Optional.of(requester));
         when(ownerConfirmationRepository.save(any(OwnerConfirmation.class))).thenAnswer(invocation -> {
             OwnerConfirmation oc = invocation.getArgument(0);
@@ -235,7 +235,7 @@ class OwnerConfirmationServiceTest {
         KnowledgeDocument document = KnowledgeDocument.builder()
                 .id("doc-1").dataSource(dataSource).uploadedBy(uploader).title("설계 문서").build();
 
-        when(knowledgeDocumentRepository.findById("doc-1")).thenReturn(Optional.of(document));
+        when(dataSourceInternalService.findDocumentById("doc-1")).thenReturn(Optional.of(document));
         when(userInternalService.findByEmployeeId("EMP020")).thenReturn(Optional.of(uploader));
 
         assertThatThrownBy(() -> ownerConfirmationService.createOwnerConfirmationFromDocument(
