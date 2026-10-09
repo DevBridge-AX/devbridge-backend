@@ -1,0 +1,16 @@
+spring:
+  jpa:
+    hibernate:
+      # 운영 스키마를 기동 시 자동 변경하지 않고, 엔티티와 불일치하면 즉시 기동 실패시킨다. 긴급 시 환경변수로 none 전환 가능.
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
+    # 운영 로그에 SQL 전문이 남지 않도록 끈다.
+    show-sql: false
+
+  sql:
+    init:
+      # data.sql 시연 시드가 매 기동마다 실행되지 않도록 차단한다.
+      mode: never
+
+jwt:
+  # 기본값 없음. JWT_SECRET 미주입 시 개발용 기본 키로 서명하지 않고 기동에 실패한다.
+  secret: ${JWT_SECRET}
