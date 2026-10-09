@@ -273,10 +273,35 @@ nginx access log 등에 평문으로 남을 수 있으므로, 운영 nginx 설�
 로그에서 마스킹하는 것을 권장합니다(예: `log_format`에서 `$request` 대신 마스킹된 URI 사용).
 nginx 설정은 이 레포에서 관리하지 않으므로 EC2 운영 설정에서 별도로 적용해야 합니다.
 
+### 운영 배포에 필요한 GitHub Secrets
+
+`deploy.yml`이 아래 Secrets를 EC2의 `.env`로 써서 `docker-compose.prod.yml`에 주입합니다.
+누락 시 해당 설정은 `application.yml`의 기본값으로 대체되며, 특히 `JWT_SECRET`이 빠지면
+개발용 기본 키로 토큰이 서명되므로 반드시 등록해야 합니다.
+
+| Secret | 용도 |
+| --- | --- |
+| `EC2_HOST` | 배포 대상 EC2 호스트 주소 |
+| `EC2_USERNAME` | EC2 SSH 접속 사용자명 |
+| `EC2_SSH_KEY` | EC2 SSH 접속용 개인 키 |
+| `MYSQL_ROOT_PASSWORD` | MySQL root 비밀번호 |
+| `MYSQL_DATABASE` | 백엔드가 사용하는 MySQL 데이터베이스명 |
+| `MYSQL_USER` | 백엔드용 MySQL 사용자명 |
+| `MYSQL_PASSWORD` | 백엔드용 MySQL 사용자 비밀번호 |
+| `MYSQL_USER_AI` | AI 엔진용 MySQL 사용자명 |
+| `MYSQL_PASSWORD_AI` | AI 엔진용 MySQL 사용자 비밀번호 |
+| `INTERNAL_API_KEY` | 백엔드와 AI 엔진 간 내부 API 인증 키 |
+| `SPRING_MAIL_USERNAME` | 메일 발송 계정 |
+| `SPRING_MAIL_PASSWORD` | 메일 발송 계정 비밀번호(앱 비밀번호) |
+| `JWT_SECRET` | JWT 서명 키. Base64 인코딩된 32바이트 이상 (`openssl rand -base64 48`로 생성). 값을 바꾸면 기존 발급 토큰이 전부 무효화되어 사용자 재로그인이 필요합니다. |
+
 ### 배포 후 체크리스트
 
 - [ ] `wss://<운영도메인>/ws/chat?token=<유효한 JWT>`로 접속해 **101 Switching Protocols**
       응답을 확인한다.
+- [ ] 컨테이너 환경변수에 `JWT_SECRET`이 전달됐는지 확인한다
+      (`docker compose -f docker-compose.prod.yml exec app printenv JWT_SECRET`).
+      로그인 후 발급된 토큰으로 인증 API를 1회 호출해 성공하는지 확인한다.
 
 ---
 
