@@ -2,7 +2,7 @@ package com.devbridge.backend.global.config.websocket;
 
 import com.devbridge.backend.domain.user.entity.JobRole;
 import com.devbridge.backend.domain.user.entity.User;
-import com.devbridge.backend.domain.user.repository.UserRepository;
+import com.devbridge.backend.domain.user.service.UserInternalService;
 import com.devbridge.backend.global.auth.jwt.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -57,7 +57,7 @@ class JwtHandshakeInterceptorTest {
     private StringRedisTemplate redisTemplate;
 
     @Mock
-    private UserRepository userRepository;
+    private UserInternalService userInternalService;
 
     @Mock
     private ServerHttpRequest request;
@@ -73,7 +73,7 @@ class JwtHandshakeInterceptorTest {
 
     @BeforeEach
     void setUp() {
-        interceptor = new JwtHandshakeInterceptor(jwtTokenProvider, redisTemplate, userRepository);
+        interceptor = new JwtHandshakeInterceptor(jwtTokenProvider, redisTemplate, userInternalService);
         attributes = new HashMap<>();
     }
 
@@ -92,7 +92,7 @@ class JwtHandshakeInterceptorTest {
         when(jwtTokenProvider.validateToken(TOKEN)).thenReturn(true);
         when(redisTemplate.hasKey("blacklist:" + TOKEN)).thenReturn(false);
         when(jwtTokenProvider.extractEmployeeId(TOKEN)).thenReturn(EMPLOYEE_ID);
-        when(userRepository.findByEmployeeId(EMPLOYEE_ID)).thenReturn(
+        when(userInternalService.findByEmployeeId(EMPLOYEE_ID)).thenReturn(
                 Optional.of(User.builder().employeeId(EMPLOYEE_ID).jobRole(JobRole.DEVELOPER).build()));
 
         assertThat(handshake()).isTrue();
@@ -108,7 +108,7 @@ class JwtHandshakeInterceptorTest {
         when(jwtTokenProvider.validateToken(TOKEN)).thenReturn(true);
         when(redisTemplate.hasKey("blacklist:" + TOKEN)).thenReturn(false);
         when(jwtTokenProvider.extractEmployeeId(TOKEN)).thenReturn(EMPLOYEE_ID);
-        when(userRepository.findByEmployeeId(EMPLOYEE_ID)).thenReturn(Optional.empty());
+        when(userInternalService.findByEmployeeId(EMPLOYEE_ID)).thenReturn(Optional.empty());
 
         assertThat(handshake()).isTrue();
         // 사용자가 DB에 없어도 연결은 허용되며 jobRole만 newcomer로 폴백된다.
@@ -138,7 +138,7 @@ class JwtHandshakeInterceptorTest {
         when(redisTemplate.hasKey("blacklist:" + TOKEN))
                 .thenThrow(new RedisConnectionFailureException("redis down"));
         when(jwtTokenProvider.extractEmployeeId(TOKEN)).thenReturn(EMPLOYEE_ID);
-        when(userRepository.findByEmployeeId(EMPLOYEE_ID)).thenReturn(
+        when(userInternalService.findByEmployeeId(EMPLOYEE_ID)).thenReturn(
                 Optional.of(User.builder().employeeId(EMPLOYEE_ID).jobRole(JobRole.QA).build()));
 
         assertThat(handshake()).isTrue();
