@@ -1,7 +1,7 @@
 package com.devbridge.backend.domain.schedule.service;
 
 import com.devbridge.backend.domain.datasource.entity.KnowledgeDocument;
-import com.devbridge.backend.domain.datasource.repository.KnowledgeDocumentRepository;
+import com.devbridge.backend.domain.datasource.service.DataSourceInternalService;
 import com.devbridge.backend.domain.schedule.dto.MeetingReferenceRequest;
 import com.devbridge.backend.domain.schedule.dto.MeetingReferenceResponse;
 import com.devbridge.backend.domain.schedule.entity.Meeting;
@@ -26,7 +26,7 @@ public class MeetingReferenceService {
     private final MeetingRepository meetingRepository;
     private final MeetingReferenceRepository meetingReferenceRepository;
     private final MeetingParticipantRepository meetingParticipantRepository;
-    private final KnowledgeDocumentRepository knowledgeDocumentRepository;
+    private final DataSourceInternalService dataSourceInternalService;
     private final UserInternalService userInternalService;
 
     private User resolveUser(String employeeId) {
@@ -65,7 +65,7 @@ public class MeetingReferenceService {
     public MeetingReference createReference(Meeting meeting, String employeeId, MeetingReferenceRequest request) {
         KnowledgeDocument document = null;
         if (request.documentId() != null) {
-            document = knowledgeDocumentRepository.findById(request.documentId())
+            document = dataSourceInternalService.findDocumentById(request.documentId())
                     .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_DOCUMENT_NOT_FOUND));
         }
 

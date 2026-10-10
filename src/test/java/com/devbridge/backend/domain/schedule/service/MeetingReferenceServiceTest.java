@@ -1,7 +1,7 @@
 package com.devbridge.backend.domain.schedule.service;
 
 import com.devbridge.backend.domain.datasource.entity.KnowledgeDocument;
-import com.devbridge.backend.domain.datasource.repository.KnowledgeDocumentRepository;
+import com.devbridge.backend.domain.datasource.service.DataSourceInternalService;
 import com.devbridge.backend.domain.schedule.dto.MeetingReferenceRequest;
 import com.devbridge.backend.domain.schedule.dto.MeetingReferenceResponse;
 import com.devbridge.backend.domain.schedule.entity.Meeting;
@@ -38,8 +38,7 @@ import static org.mockito.Mockito.when;
  * {@link MeetingReferenceService} 특성 테스트(characterization test).
  *
  * <p>"올바른 동작"이 아니라 <b>현재 동작</b>을 그대로 고정하는 것이 목적이다.
- * 이 서비스는 {@code KnowledgeDocumentRepository}(C-4 대상)를 여전히 직접 참조하므로,
- * 그 참조 제거 작업 전에 예외 타입·메시지를 고정하는 안전망이 필요하다.
+ * datasource 문서 조회는 {@link DataSourceInternalService}로 치환 완료했다(C-4, refactor/datasource).
  * {@code UserRepository} 직접 참조는 {@link UserInternalService}로 치환 완료했다(C-3, refactor/schedule).
  */
 @ExtendWith(MockitoExtension.class)
@@ -58,7 +57,7 @@ class MeetingReferenceServiceTest {
     private MeetingParticipantRepository meetingParticipantRepository;
 
     @Mock
-    private KnowledgeDocumentRepository knowledgeDocumentRepository;
+    private DataSourceInternalService dataSourceInternalService;
 
     @Mock
     private UserInternalService userInternalService;
@@ -71,7 +70,7 @@ class MeetingReferenceServiceTest {
                 meetingRepository,
                 meetingReferenceRepository,
                 meetingParticipantRepository,
-                knowledgeDocumentRepository,
+                dataSourceInternalService,
                 userInternalService
         );
     }
@@ -145,7 +144,7 @@ class MeetingReferenceServiceTest {
             givenUser();
             givenParticipant();
             when(meetingRepository.findById(MEETING_ID)).thenReturn(Optional.of(meeting()));
-            when(knowledgeDocumentRepository.findById("doc-1"))
+            when(dataSourceInternalService.findDocumentById("doc-1"))
                     .thenReturn(Optional.of(KnowledgeDocument.builder().id("doc-1").build()));
             stubSaveReturnsArgument();
 
@@ -194,7 +193,7 @@ class MeetingReferenceServiceTest {
             givenUser();
             givenParticipant();
             when(meetingRepository.findById(MEETING_ID)).thenReturn(Optional.of(meeting()));
-            when(knowledgeDocumentRepository.findById("missing-doc")).thenReturn(Optional.empty());
+            when(dataSourceInternalService.findDocumentById("missing-doc")).thenReturn(Optional.empty());
 
             assertBusinessException(() -> meetingReferenceService.addReference(
                     MEETING_ID, EMPLOYEE_ID, request("missing-doc")),

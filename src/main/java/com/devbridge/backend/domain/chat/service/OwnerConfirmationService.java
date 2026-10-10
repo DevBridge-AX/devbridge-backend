@@ -6,7 +6,7 @@ import com.devbridge.backend.domain.chat.entity.OwnerConfirmation;
 import com.devbridge.backend.domain.chat.repository.ChatMessageRepository;
 import com.devbridge.backend.domain.chat.repository.OwnerConfirmationRepository;
 import com.devbridge.backend.domain.datasource.entity.KnowledgeDocument;
-import com.devbridge.backend.domain.datasource.repository.KnowledgeDocumentRepository;
+import com.devbridge.backend.domain.datasource.service.DataSourceInternalService;
 import com.devbridge.backend.domain.notification.service.NotificationService;
 import com.devbridge.backend.domain.user.entity.User;
 import com.devbridge.backend.domain.user.service.UserInternalService;
@@ -38,7 +38,7 @@ public class OwnerConfirmationService {
     private final UserInternalService userInternalService;
     private final ChatMessageRepository chatMessageRepository;
     private final OwnerConfirmationRepository ownerConfirmationRepository;
-    private final KnowledgeDocumentRepository knowledgeDocumentRepository;
+    private final DataSourceInternalService dataSourceInternalService;
     private final NotificationService notificationService;
     private final FastApiClient fastApiClient;
     private final WebSocketSessionRegistry webSocketSessionRegistry;
@@ -165,7 +165,7 @@ public class OwnerConfirmationService {
     @Transactional
     public void createOwnerConfirmationFromDocument(String documentId, String questionContent,
                                                     String requesterEmployeeId) {
-        KnowledgeDocument document = knowledgeDocumentRepository.findById(documentId)
+        KnowledgeDocument document = dataSourceInternalService.findDocumentById(documentId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_DOCUMENT_NOT_FOUND,
                         "해당 문서가 존재하지 않습니다: " + documentId));
 
