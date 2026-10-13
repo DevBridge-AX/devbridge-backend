@@ -84,6 +84,7 @@ jobs:
             cd ~/devbridge-backend
             
             # .env 파일 생성
+            # SPRING_JPA_HIBERNATE_DDL_AUTO는 비밀값이 아니라 Variables(vars)에서 읽는다. 미설정이면 빈 값 → compose 기본값 validate
             cat <<EOF > .env
             MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
             MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}
@@ -95,6 +96,7 @@ jobs:
             SPRING_MAIL_PASSWORD=${{ secrets.SPRING_MAIL_PASSWORD }}
             MYSQL_USER_AI=${{ secrets.MYSQL_USER_AI }}
             MYSQL_PASSWORD_AI=${{ secrets.MYSQL_PASSWORD_AI }}
+            SPRING_JPA_HIBERNATE_DDL_AUTO=${{ vars.SPRING_JPA_HIBERNATE_DDL_AUTO }}
             EOF
             
             # APP_IMAGE 이름을 소문자로 변환하여 .env에 추가
