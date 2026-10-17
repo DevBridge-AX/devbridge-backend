@@ -68,6 +68,8 @@ services:
       SPRING_MAIL_USERNAME: "${SPRING_MAIL_USERNAME}"
       SPRING_MAIL_PASSWORD: "${SPRING_MAIL_PASSWORD}"
       SPRING_PROFILES_ACTIVE: prod
+      # 스키마 불일치 시 탈출구. 평소엔 비워 두어 validate로 동작하고, 첫 배포·긴급 복구 때만 update/none을 넣는다.
+      SPRING_JPA_HIBERNATE_DDL_AUTO: "${SPRING_JPA_HIBERNATE_DDL_AUTO:-validate}"
     volumes:
       - ./uploads:/app/uploads
       # EC2 호스트에서 관리할 실제 git-repos 경로 마운트 필요
